@@ -7,3 +7,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .fade-in { animation: fadeIn .15s ease-out; }
+
+/* iOS dá zoom ao focar campos com fonte < 16px. Forçar 16px no mobile evita
+   isso sem desativar o zoom de pinça da página. */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+}
