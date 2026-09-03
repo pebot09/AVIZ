@@ -98,7 +98,7 @@ function TurmaCard({ turma, state, dispatch, vocab, exp, onToggle, onGerenciar }
           <div className="mb-3 flex gap-2">
             <input
               className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-              placeholder="Observação (ex: com Bia)"
+              placeholder="Observação"
               value={editObs !== undefined ? editObs : (turma.observacao || '')}
               onChange={(e) => setEditObs(e.target.value)}
             />
@@ -292,7 +292,7 @@ function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, onClose
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Observação (opcional)</label>
-          <input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="ex.: com Bia" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          <input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Observação" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
         {erro && <p className="text-red-600 text-xs">{erro}</p>}
         <div className="flex gap-2 pt-1">

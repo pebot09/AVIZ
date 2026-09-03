@@ -183,7 +183,7 @@ export default function Onboarding({ user }) {
               <ArtigoNome artigo={r.espacoArtigo} nome={r.nomeEscola}
                 onArtigo={(v) => set({ espacoArtigo: v })}
                 onNome={(v) => set({ nomeEscola: v })}
-                placeholder="Ex.: Ateliê Passarinho" autoFocus />
+                placeholder="Nome do espaço" autoFocus />
             </Campo>
           </Passo>
         )}
