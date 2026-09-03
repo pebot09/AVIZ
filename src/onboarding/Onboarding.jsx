@@ -162,14 +162,9 @@ export default function Onboarding({ user }) {
     );
   }
 
-  const passoNum = i + 1, total = steps.length;
-
   return (
     <Card>
-      <div className="text-[10px] tracking-[0.2em] text-gray-300 font-semibold mb-1">AVIZ</div>
-      <div className="h-1 bg-gray-100 rounded-full mb-5">
-        <div className="h-1 bg-blue-600 rounded-full transition-all" style={{ width: `${(passoNum / total) * 100}%` }} />
-      </div>
+      <div className="text-[10px] tracking-[0.2em] text-gray-300 font-semibold mb-5">AVIZ</div>
 
       <div className="min-h-[160px]">
         {step === 'dono' && (
@@ -320,7 +315,6 @@ export default function Onboarding({ user }) {
 
       <div className="flex justify-between items-center mt-6">
         <button onClick={voltar} disabled={i === 0} className="text-sm text-gray-500 disabled:opacity-30">← Voltar</button>
-        <span className="text-xs text-gray-400">{passoNum} / {total}</span>
         {ehUltimo ? (
           <button onClick={finalizar} disabled={salvando || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
             {salvando ? 'Criando…' : 'Criar meu app'}
