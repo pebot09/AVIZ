@@ -26,9 +26,9 @@ export function slugify(txt) {
 }
 
 // Cria a escola. `uid` é o dono. Retorna o slug.
-export async function provisionTenant({ slug, nomeEscola, cor, donoNome, config, uid }) {
-  await set(ref(db, paths.member(slug, uid)), { role: 'owner', nome: donoNome || 'Dono' });
-  await set(ref(db, paths.tenantPublic(slug)), { nome: nomeEscola, cor: cor || '#2563eb' });
+export async function provisionTenant({ slug, nomeEscola, artigo, cor, donoNome, donoGenero, config, uid }) {
+  await set(ref(db, paths.member(slug, uid)), { role: 'owner', nome: donoNome || 'Dono', genero: donoGenero || 'o' });
+  await set(ref(db, paths.tenantPublic(slug)), { nome: nomeEscola, artigo: artigo || 'o', cor: cor || '#2563eb' });
   await set(ref(db, paths.config(slug)), config);
   return slug;
 }

@@ -33,8 +33,17 @@ const HORAS_ANTEC = [
   { value: 6, label: '6 horas' }, { value: 12, label: '12 horas' }, { value: 24, label: '24 horas' }, { value: 48, label: '48 horas' },
 ];
 
+// Contração de preposição + artigo (o/a): ao/à, do/da, no/na.
+function contrair(prep, artigo) {
+  const a = artigo === 'a' ? 'a' : 'o';
+  if (prep === 'a') return a === 'a' ? 'à' : 'ao';
+  if (prep === 'de') return a === 'a' ? 'da' : 'do';
+  if (prep === 'em') return a === 'a' ? 'na' : 'no';
+  return prep;
+}
+
 const INICIAL = {
-  donoNome: '', nomeEscola: '', slug: '', slugEditado: false,
+  donoNome: '', donoArtigo: '', nomeEscola: '', espacoArtigo: '', slug: '', slugEditado: false,
   vAluno: 'aluno', vTurma: 'turma', vProfessor: 'professor',
   capNominal: 7, capFisica: 8,
   antecedencia: 24, semAntec: null, semAntecJanela: 2,
@@ -72,8 +81,8 @@ export default function Onboarding({ user }) {
 
   function podeAvancar() {
     switch (step) {
-      case 'dono': return r.donoNome.trim().length > 0;
-      case 'espaco': return r.nomeEscola.trim().length > 0 && (r.slug || slugify(r.nomeEscola)).length > 0;
+      case 'dono': return r.donoNome.trim().length > 0 && !!r.donoArtigo;
+      case 'espaco': return r.nomeEscola.trim().length > 0 && !!r.espacoArtigo && (r.slug || slugify(r.nomeEscola)).length > 0;
       case 'semAntec': return r.semAntec !== null;
       case 'vagaExtra': return r.vagaExtra !== null;
       case 'ferias': return r.ferias !== null;
@@ -94,6 +103,7 @@ export default function Onboarding({ user }) {
       vocab: {
         aluno: A, alunos: As, turma: T, turmas: Ts,
         professor: r.vProfessor || 'professor', professores: plural(r.vProfessor, VOC_PROF),
+        espacoArtigo: r.espacoArtigo || 'o',
       },
       regras: {
         capacidadeNominal: Number(r.capNominal) || 7,
@@ -120,7 +130,7 @@ export default function Onboarding({ user }) {
       if (!slug) throw new Error('Endereço da escola inválido.');
       if (!(await slugDisponivel(slug))) throw new Error(`Já existe uma escola em "${slug}". Escolha outro endereço.`);
       const config = montarConfig();
-      const payload = { slug, nomeEscola: r.nomeEscola.trim(), cor: '#2563eb', donoNome: r.donoNome.trim(), config };
+      const payload = { slug, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), donoGenero: r.donoArtigo || 'o', config };
 
       if (user) {
         await provisionTenant({ ...payload, uid: user.uid });
@@ -160,12 +170,20 @@ export default function Onboarding({ user }) {
         {step === 'dono' && (
           <Passo titulo="Como podemos te chamar?" ajuda="É só para o seu atendimento — o nome do responsável pela escola.">
             <Campo label="Seu nome"><TextInput value={r.donoNome} onChange={(v) => set({ donoNome: v })} placeholder="Ex.: Ana" autoFocus /></Campo>
+            <Campo label="Como devemos te tratar?">
+              <Escolha value={r.donoArtigo} onChange={(v) => set({ donoArtigo: v })}
+                options={[{ value: 'o', label: 'No masculino' }, { value: 'a', label: 'No feminino' }]} />
+            </Campo>
           </Passo>
         )}
 
         {step === 'espaco' && (
           <Passo titulo={`Prazer${r.donoNome ? ', ' + r.donoNome : ''}! Qual o nome do espaço?`} ajuda="É o nome que vai aparecer grande no app.">
             <Campo label="Nome do espaço"><TextInput value={r.nomeEscola} onChange={(v) => set({ nomeEscola: v, slug: r.slugEditado ? r.slug : slugify(v) })} placeholder="Ex.: Ateliê Passarinho" autoFocus /></Campo>
+            <Campo label="Como se refere ao espaço?">
+              <Escolha value={r.espacoArtigo} onChange={(v) => set({ espacoArtigo: v })}
+                options={[{ value: 'o', label: `O ${r.nomeEscola || 'espaço'}` }, { value: 'a', label: `A ${r.nomeEscola || 'espaço'}` }]} />
+            </Campo>
             <Campo label="Endereço no AVIZ">
               <div className="flex items-center gap-1 text-sm">
                 <input value={r.slug} onChange={(e) => set({ slug: slugify(e.target.value), slugEditado: true })} className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-40" />
@@ -176,7 +194,7 @@ export default function Onboarding({ user }) {
         )}
 
         {step === 'vocAluno' && (
-          <Passo titulo={`Como vocês chamam quem vem ao ${r.nomeEscola || 'espaço'}?`}>
+          <Passo titulo={`Como vocês chamam quem vem ${contrair('a', r.espacoArtigo)} ${r.nomeEscola || 'espaço'}?`}>
             <OptionCards value={r.vAluno} onChange={(v) => set({ vAluno: v })} options={VOC_ALUNO} permiteOutro />
           </Passo>
         )}
@@ -294,6 +312,21 @@ export default function Onboarding({ user }) {
         )}
       </div>
     </Card>
+  );
+}
+
+function Escolha({ value, onChange, options }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.value} onClick={() => onChange(o.value)}
+          className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
+            value === o.value ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >{o.label}</button>
+      ))}
+    </div>
   );
 }
 
