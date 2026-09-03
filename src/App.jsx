@@ -4,6 +4,7 @@ import { db } from './lib/firebase.js';
 import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
+import EscolaApp from './components/EscolaApp.jsx';
 
 export default function App() {
   const tenant = resolveTenant();
@@ -22,7 +23,7 @@ export default function App() {
   if (!tenant) return <Shell><SemTenant /></Shell>;
   if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
   if (!user) return <Shell><Login tenant={tenant} erro={erro} /></Shell>;
-  return <Shell><Dono tenant={tenant} user={user} /></Shell>;
+  return <Dono tenant={tenant} user={user} />;
 }
 
 function Login({ tenant, erro }) {
@@ -73,33 +74,27 @@ function Dono({ tenant, user }) {
       .catch(() => setMembro(null));
   }, [tenant, user.uid]);
 
-  return (
-    <div>
-      <div style={s.rowTop}>
-        <h2 style={s.h2}>{tenant}</h2>
-        <button onClick={() => logout()} style={s.link}>sair</button>
-      </div>
-      <p style={s.p}>Logado como <b>{user.email}</b>.</p>
+  if (membro === undefined) return <Shell><p style={s.dim}>Verificando acesso…</p></Shell>;
 
-      {membro === undefined && <p style={s.dim}>Verificando acesso…</p>}
-
-      {membro === null && (
+  if (membro === null) {
+    return (
+      <Shell>
+        <div style={s.rowTop}>
+          <h2 style={s.h2}>{tenant}</h2>
+          <button onClick={() => logout()} style={s.link}>sair</button>
+        </div>
+        <p style={s.p}>Logado como <b>{user.email}</b>.</p>
         <div style={s.aviso}>
           <p style={s.p}>Você ainda não é membro desta escola no banco.</p>
           <p style={s.p}>Para liberar o acesso de dono, é preciso criar o registro em
             <code style={s.code}> {paths.member(tenant, user.uid)}</code> com <code style={s.code}>{'{ role: "owner" }'}</code>.</p>
           <p style={s.dim}>Seu UID: <code style={s.code}>{user.uid}</code></p>
         </div>
-      )}
+      </Shell>
+    );
+  }
 
-      {membro && (
-        <div style={s.ok}>
-          <p style={s.p}>Acesso confirmado — papel: <b>{membro.role}</b>.</p>
-          <p style={s.dim}>Painel da escola em construção (Fase 1).</p>
-        </div>
-      )}
-    </div>
-  );
+  return <EscolaApp tenant={tenant} user={user} />;
 }
 
 function AlunoPlaceholder({ code }) {
