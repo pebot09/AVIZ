@@ -1,0 +1,45 @@
+{
+  "//": "Regras de segurança do Realtime Database do AVIZ. Substituem o modelo aberto do Passarinho. Colar na aba 'Regras' do Realtime Database no console (ou publicar via firebase CLI). Firebase RTDB usa '==', não '==='.",
+
+  "rules": {
+
+    "//1": "Vitrine pública de cada escola (nome, logo, cor). Leitura livre — a tela de login/aluno precisa dela antes de qualquer autenticação. Escrita só pelo servidor (Admin SDK), nunca pelo cliente.",
+    "tenantsPublic": {
+      ".read": true,
+      "$tid": { ".write": false }
+    },
+
+    "//2": "Dados de cada escola. Leitura liberada só para quem é membro daquela escola. IMPORTANTE (semântica do RTDB): uma regra de pai que concede acesso NÃO pode ser restringida por um filho — por isso a escrita é concedida por subárvore, no nível certo, e nunca em bloco no $tid.",
+    "tenants": {
+      "$tid": {
+        ".read": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid).exists()",
+
+        "//config": "Só o dono muda regras/identidade da escola.",
+        "config": {
+          ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
+        },
+
+        "//members": "Só o dono gere a equipe.",
+        "members": {
+          ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
+        },
+
+        "//state": "Operação do dia. Qualquer membro autenticado da escola escreve. Aluno e professor-por-PIN NÃO entram por aqui — passam pela Cloud Function (fatia-no-servidor), que valida a credencial e escreve com Admin SDK.",
+        "state": {
+          ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid).exists()"
+        },
+
+        "//snapshots": "Backup automático por escola; membro autenticado grava/lê (a leitura já herda do $tid).",
+        "snapshots": {
+          ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid).exists()"
+        }
+      }
+    },
+
+    "//3": "Cobrança: só o super-admin (operador do AVIZ), via Admin SDK. Nunca pelo cliente.",
+    "billing": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
