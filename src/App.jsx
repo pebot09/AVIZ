@@ -1,67 +1,152 @@
+import { useEffect, useState } from 'react';
+import { ref, get } from 'firebase/database';
+import { db } from './lib/firebase.js';
+import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode } from './lib/tenant.js';
-
-// Casca inicial do AVIZ. Ainda sem Firebase — só prova que a resolução de
-// tenant e o roteamento básico (painel x aluno) funcionam. As telas reais
-// entram quando a fundação multi-tenant + Auth estiver plugada (Fase 1).
+import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
 
 export default function App() {
   const tenant = resolveTenant();
   const accessCode = resolveAccessCode();
 
+  const [user, setUser] = useState(undefined); // undefined = carregando; null = deslogado
+  const [erro, setErro] = useState(null);
+
+  useEffect(() => {
+    // Fecha o login se caímos aqui vindos de um link mágico.
+    completeLoginIfPresent().catch((e) => setErro(e.message));
+    return watchAuth(setUser);
+  }, []);
+
+  if (accessCode) return <Shell><AlunoPlaceholder code={accessCode} /></Shell>;
+  if (!tenant) return <Shell><SemTenant /></Shell>;
+  if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
+  if (!user) return <Shell><Login tenant={tenant} erro={erro} /></Shell>;
+  return <Shell><Dono tenant={tenant} user={user} /></Shell>;
+}
+
+function Login({ tenant, erro }) {
+  const [email, setEmail] = useState('');
+  const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [falha, setFalha] = useState(null);
+
+  async function enviar(e) {
+    e.preventDefault();
+    setEnviando(true); setFalha(null);
+    try { await sendLoginLink(email); setEnviado(true); }
+    catch (err) { setFalha(err.message); }
+    finally { setEnviando(false); }
+  }
+
+  if (enviado) {
+    return (
+      <div>
+        <h2 style={s.h2}>Confira seu e-mail</h2>
+        <p style={s.p}>Mandamos um link de acesso para <b>{email}</b>. Abra o e-mail e clique para entrar.</p>
+      </div>
+    );
+  }
+
   return (
-    <main style={styles.wrap}>
-      <div style={styles.card}>
-        <h1 style={styles.logo}>AVIZ</h1>
-        <p style={styles.sub}>Gestão de faltas e reposições</p>
+    <form onSubmit={enviar}>
+      <h2 style={s.h2}>Entrar — {tenant}</h2>
+      <p style={s.p}>Acesso do responsável pela escola. Enviamos um link, sem senha.</p>
+      <input
+        type="email" required placeholder="seu@email.com" value={email}
+        onChange={(e) => setEmail(e.target.value)} style={s.input} autoFocus
+      />
+      <button type="submit" disabled={enviando} style={s.btn}>
+        {enviando ? 'Enviando…' : 'Receber link de acesso'}
+      </button>
+      {(falha || erro) && <p style={s.err}>{falha || erro}</p>}
+    </form>
+  );
+}
 
-        <div style={styles.status}>
-          <Linha rotulo="Escola (tenant)" valor={tenant || '— nenhuma —'} />
-          <Linha rotulo="Modo" valor={accessCode ? 'Painel do aluno' : 'Painel da escola'} />
-          {accessCode && <Linha rotulo="Código de acesso" valor={accessCode} />}
+function Dono({ tenant, user }) {
+  const [membro, setMembro] = useState(undefined);
+
+  useEffect(() => {
+    get(ref(db, paths.member(tenant, user.uid)))
+      .then((snap) => setMembro(snap.exists() ? snap.val() : null))
+      .catch(() => setMembro(null));
+  }, [tenant, user.uid]);
+
+  return (
+    <div>
+      <div style={s.rowTop}>
+        <h2 style={s.h2}>{tenant}</h2>
+        <button onClick={() => logout()} style={s.link}>sair</button>
+      </div>
+      <p style={s.p}>Logado como <b>{user.email}</b>.</p>
+
+      {membro === undefined && <p style={s.dim}>Verificando acesso…</p>}
+
+      {membro === null && (
+        <div style={s.aviso}>
+          <p style={s.p}>Você ainda não é membro desta escola no banco.</p>
+          <p style={s.p}>Para liberar o acesso de dono, é preciso criar o registro em
+            <code style={s.code}> {paths.member(tenant, user.uid)}</code> com <code style={s.code}>{'{ role: "owner" }'}</code>.</p>
+          <p style={s.dim}>Seu UID: <code style={s.code}>{user.uid}</code></p>
         </div>
+      )}
 
-        {!tenant && (
-          <p style={styles.dica}>
-            Nenhuma escola no endereço. Em desenvolvimento, abra com{' '}
-            <code style={styles.code}>?e=nome-da-escola</code>.
-          </p>
-        )}
+      {membro && (
+        <div style={s.ok}>
+          <p style={s.p}>Acesso confirmado — papel: <b>{membro.role}</b>.</p>
+          <p style={s.dim}>Painel da escola em construção (Fase 1).</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
-        <p style={styles.rodape}>Esqueleto — fundação em construção (Fase 1).</p>
+function AlunoPlaceholder({ code }) {
+  return (
+    <div>
+      <h2 style={s.h2}>Painel do aluno</h2>
+      <p style={s.p}>Código: <code style={s.code}>{code}</code></p>
+      <p style={s.dim}>Este painel vai ler os dados por uma função no servidor
+        (fatia-no-servidor), em construção. Acesso direto ao banco fica bloqueado
+        de propósito.</p>
+    </div>
+  );
+}
+
+function SemTenant() {
+  return (
+    <div>
+      <h2 style={s.h2}>Nenhuma escola no endereço</h2>
+      <p style={s.p}>Em desenvolvimento, abra com <code style={s.code}>?e=nome-da-escola</code>.</p>
+    </div>
+  );
+}
+
+function Shell({ children }) {
+  return (
+    <main style={s.wrap}>
+      <div style={s.card}>
+        <div style={s.logo}>AVIZ</div>
+        {children}
       </div>
     </main>
   );
 }
 
-function Linha({ rotulo, valor }) {
-  return (
-    <div style={styles.linha}>
-      <span style={styles.rotulo}>{rotulo}</span>
-      <span style={styles.valor}>{valor}</span>
-    </div>
-  );
-}
-
-const styles = {
-  wrap: {
-    minHeight: '100vh', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', background: '#faf9f7', padding: 24,
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-  },
-  card: {
-    background: '#fff', borderRadius: 16, padding: '32px 28px',
-    boxShadow: '0 1px 3px rgba(0,0,0,.08)', maxWidth: 420, width: '100%',
-  },
-  logo: { margin: 0, fontSize: 34, letterSpacing: 2, color: '#1f2937' },
-  sub: { margin: '4px 0 24px', color: '#6b7280', fontSize: 14 },
-  status: { display: 'flex', flexDirection: 'column', gap: 8 },
-  linha: {
-    display: 'flex', justifyContent: 'space-between', gap: 12,
-    fontSize: 14, padding: '8px 0', borderBottom: '1px solid #f3f4f6',
-  },
-  rotulo: { color: '#6b7280' },
-  valor: { color: '#111827', fontWeight: 600 },
-  dica: { marginTop: 20, fontSize: 13, color: '#6b7280', lineHeight: 1.5 },
-  code: { background: '#f3f4f6', padding: '1px 6px', borderRadius: 4 },
-  rodape: { marginTop: 24, fontSize: 12, color: '#9ca3af' },
+const s = {
+  wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf9f7', padding: 24, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' },
+  card: { background: '#fff', borderRadius: 16, padding: '28px 26px', boxShadow: '0 1px 3px rgba(0,0,0,.08)', maxWidth: 420, width: '100%' },
+  logo: { fontSize: 22, letterSpacing: 2, color: '#1f2937', fontWeight: 700, marginBottom: 18 },
+  h2: { margin: '0 0 6px', fontSize: 20, color: '#111827' },
+  rowTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
+  p: { margin: '6px 0', fontSize: 14, color: '#374151', lineHeight: 1.5 },
+  dim: { margin: '6px 0', fontSize: 13, color: '#9ca3af', lineHeight: 1.5 },
+  input: { width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 15, border: '1px solid #d1d5db', borderRadius: 8, margin: '12px 0' },
+  btn: { width: '100%', padding: '10px 12px', fontSize: 15, fontWeight: 600, color: '#fff', background: '#2563eb', border: 'none', borderRadius: 8, cursor: 'pointer' },
+  link: { background: 'none', border: 'none', color: '#6b7280', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' },
+  err: { color: '#dc2626', fontSize: 13, marginTop: 10 },
+  aviso: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14, marginTop: 12 },
+  ok: { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 14, marginTop: 12 },
+  code: { background: '#f3f4f6', padding: '1px 6px', borderRadius: 4, fontSize: 12, wordBreak: 'break-all' },
 };
