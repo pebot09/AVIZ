@@ -242,7 +242,7 @@ export default function Onboarding({ user }) {
             {saibaMais && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-600 mt-2 space-y-2 fade-in">
                 <p>Você acabou de definir um prazo mínimo de aviso ({r.antecedencia}h). Quem avisa <b>dentro</b> desse prazo — em cima da hora — está faltando "sem antecedência".</p>
-                <p>Se você <b>permitir</b>: essa pessoa ainda pode faltar, mas só consegue repor numa vaga que abriria de qualquer jeito, também em cima da hora — não com folga. É um meio-termo: não pune totalmente quem teve um imprevisto, mas desencoraja o aviso de última hora.</p>
+                <p>Se você <b>permitir</b>: essa pessoa ainda pode marcar sua falta em cima da hora, mas só consegue repor também em cima da hora — não com folga. É um mecanismo pra priorizar quem avisa com antecedência, mas também atender a quem sofre com imprevistos.</p>
                 <p>Se você <b>não permitir</b>: faltar sem o aviso mínimo simplesmente não dá direito a reposição.</p>
               </div>
             )}
