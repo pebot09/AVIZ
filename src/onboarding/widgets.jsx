@@ -43,6 +43,15 @@ export function NumberSelect({ value, onChange, options }) {
   );
 }
 
+// Igual ao NumberSelect, mas mantém o valor como texto (não força número).
+export function Select({ value, onChange, options }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
 // Escolha de uma opção em cartões (com opção "outro" digitável).
 export function OptionCards({ value, onChange, options, permiteOutro }) {
   const ehOutro = permiteOutro && value != null && !options.some((o) => o.value === value);

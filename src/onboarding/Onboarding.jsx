@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Campo, TextInput, NumberSelect, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
+import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
 import { slugify, slugDisponivel, provisionTenant } from '../lib/provision.js';
 import { sendLoginLink } from '../lib/auth.js';
 
@@ -45,7 +45,7 @@ function contrair(prep, artigo) {
 const INICIAL = {
   donoNome: '', donoArtigo: '', nomeEscola: '', espacoArtigo: '', slug: '', slugEditado: false,
   vAluno: 'aluno', vTurma: 'turma', vProfessor: 'professor',
-  capNominal: 7, capFisica: 8,
+  capNominal: 0, capFisica: 0,
   antecedencia: 24, semAntec: null, semAntecJanela: 2,
   vagaExtra: null, vagaExtraQuando: 'vespera',
   ferias: null, feriasCredito: null, feriasCreditos: 1, feriasValidade: 30, feriasLimiteAno: 1,
@@ -57,6 +57,7 @@ export default function Onboarding({ user }) {
   const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [email, setEmail] = useState(user?.email || '');
+  const [saibaMais, setSaibaMais] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const set = (patch) => setR((prev) => ({ ...prev, ...patch }));
 
@@ -67,7 +68,9 @@ export default function Onboarding({ user }) {
   const steps = useMemo(() => {
     const s = [];
     s.push('dono'); s.push('espaco'); s.push('vocAluno'); s.push('vocTurma'); s.push('vocProf');
-    s.push('capNominal'); s.push('capFisica'); s.push('antecedencia');
+    s.push('capNominal'); s.push('capFisica');
+    s.push('avisoRegras');
+    s.push('antecedencia');
     if (r.antecedencia > 0) { s.push('semAntec'); if (r.semAntec) s.push('semAntecJanela'); }
     s.push('vagaExtra'); if (r.vagaExtra) s.push('vagaExtraQuando');
     s.push('ferias');
@@ -83,6 +86,8 @@ export default function Onboarding({ user }) {
     switch (step) {
       case 'dono': return r.donoNome.trim().length > 0 && !!r.donoArtigo;
       case 'espaco': return r.nomeEscola.trim().length > 0 && !!r.espacoArtigo && (r.slug || slugify(r.nomeEscola)).length > 0;
+      case 'capNominal': return Number(r.capNominal) >= 1;
+      case 'capFisica': return Number(r.capFisica) >= 1;
       case 'semAntec': return r.semAntec !== null;
       case 'vagaExtra': return r.vagaExtra !== null;
       case 'ferias': return r.ferias !== null;
@@ -221,6 +226,14 @@ export default function Onboarding({ user }) {
           </Passo>
         )}
 
+        {step === 'avisoRegras' && (
+          <Passo titulo="Agora, as regras" ajuda="As próximas perguntas definem como funcionam faltas e reposições no seu espaço.">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              Não se preocupe em acertar tudo agora: <b>todas essas regras podem ser alteradas a qualquer momento</b> no painel, depois que a escola estiver criada.
+            </div>
+          </Passo>
+        )}
+
         {step === 'antecedencia' && (
           <Passo titulo={`Com quanto tempo o ${A} precisa avisar que vai faltar?`} ajuda="Abaixo desse prazo, o aviso conta como “em cima da hora”.">
             <Campo><NumberSelect value={r.antecedencia} onChange={(v) => set({ antecedencia: v })} options={HORAS_ANTEC} /></Campo>
@@ -229,6 +242,16 @@ export default function Onboarding({ user }) {
         {step === 'semAntec' && (
           <Passo titulo="Permitir falta sem antecedência?" ajuda={`Quando o aviso chega perto demais da ${T}: o ${A} ainda pode faltar, mas o direito de repor fica limitado.`}>
             <SimNao value={r.semAntec} onChange={(v) => set({ semAntec: v })} />
+            <button onClick={() => setSaibaMais((x) => !x)} className="text-blue-600 text-sm underline mt-3">
+              {saibaMais ? 'ocultar' : 'saiba mais'}
+            </button>
+            {saibaMais && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-600 mt-2 space-y-2 fade-in">
+                <p>Você acabou de definir um prazo mínimo de aviso ({r.antecedencia}h). Quem avisa <b>dentro</b> desse prazo — em cima da hora — está faltando "sem antecedência".</p>
+                <p>Se você <b>permitir</b>: essa pessoa ainda pode faltar, mas só consegue repor numa vaga que abriria de qualquer jeito, também em cima da hora — não com folga. É um meio-termo: não pune totalmente quem teve um imprevisto, mas desencoraja o aviso de última hora.</p>
+                <p>Se você <b>não permitir</b>: faltar sem o aviso mínimo simplesmente não dá direito a reposição.</p>
+              </div>
+            )}
           </Passo>
         )}
         {step === 'semAntecJanela' && (
@@ -245,7 +268,7 @@ export default function Onboarding({ user }) {
         {step === 'vagaExtraQuando' && (
           <Passo titulo="Quando a vaga extra deve abrir?">
             <Campo>
-              <NumberSelect
+              <Select
                 value={r.vagaExtraQuando} onChange={(v) => set({ vagaExtraQuando: v })}
                 options={[{ value: 'vespera', label: 'Na véspera' }, { value: '6h', label: '6 horas antes' }, { value: '12h', label: '12 horas antes' }, { value: '2d', label: '2 dias antes' }, { value: '3d', label: '3 dias antes' }]}
               />
@@ -254,7 +277,7 @@ export default function Onboarding({ user }) {
         )}
 
         {step === 'ferias' && (
-          <Passo titulo="Vocês oferecem marcação de férias?" ajuda="Tem escola que não oferece essa opção.">
+          <Passo titulo="Vocês oferecem marcação de férias?">
             <SimNao value={r.ferias} onChange={(v) => set({ ferias: v })} />
           </Passo>
         )}
