@@ -106,16 +106,7 @@ function AddAluno({ turma, dispatch, vocab }) {
       ) : (
         <div className="mt-3 space-y-1">
           {alunos.map((a) => (
-            <div key={a} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-              <span
-                className="text-gray-800 cursor-pointer"
-                title="Clique para renomear"
-                onClick={() => { const nv = prompt(`Renomear ${a}:`, a); if (nv && nv.trim() && nv.trim() !== a) dispatch({ type: 'RENAME_ALUNO', turmaId: turma.id, oldNome: a, newNome: nv.trim() }); }}
-              >{a}</span>
-              <button
-                onClick={() => { if (confirm(`Remover ${a}?`)) dispatch({ type: 'REMOVE_ALUNO', turmaId: turma.id, nome: a }); }}
-                className="text-red-400 hover:text-red-600 text-xs px-2">remover</button>
-            </div>
+            <div key={a} className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-800">{a}</div>
           ))}
         </div>
       )}
