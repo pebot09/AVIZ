@@ -2,7 +2,7 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, EXTENSO } from './helpers.js';
+import { genId, arr, getTurmaLabel, EXTENSO, formatHorario } from './helpers.js';
 
 export const EMPTY_STATE = {
   turmas: [], faltas: [], reposicoes: [], vagas: [],
@@ -33,10 +33,13 @@ export function reducer(state, action) {
 
   switch (action.type) {
     case 'ADD_TURMA': {
-      const { diaSemana, horario, capacidade, observacao } = action;
-      const id = `${diaSemana.slice(0, 3).replace('ç', 'c').replace('á', 'a')}-${horario}`;
+      const { diaSemana, hora, minuto, capacidade, observacao } = action;
+      const hh = String(hora).padStart(2, '0');
+      const mm = String(Number(minuto) || 0).padStart(2, '0');
+      const id = `${diaSemana.slice(0, 3).replace('ç', 'c').replace('á', 'a')}-${hh}${mm}`;
       if (state.turmas.find((t) => t.id === id)) return state; // já existe esse dia+horário
-      const nova = { id, diaSemana, horario, capacidade: capacidade || 7, observacao: observacao || '', alunos: [] };
+      const horario = formatHorario(hora, minuto);
+      const nova = { id, diaSemana, hora: Number(hora), minuto: Number(minuto) || 0, horario, capacidade: capacidade || 7, observacao: observacao || '', alunos: [] };
       next = { ...state, turmas: [...state.turmas, nova] };
       next.log = addLog(state.log, autor, `Criou turma ${EXTENSO[diaSemana] || diaSemana} ${horario}`);
       break;
@@ -77,6 +80,27 @@ export function reducer(state, action) {
       if (!state.turmas.find((t) => t.id === action.turmaId)?.alunos?.includes(action.nome)) {
         next.log = addLog(state.log, autor, `Adicionou ${action.nome} à turma ${getTurmaLabel(state.turmas, action.turmaId)}`);
       }
+      break;
+    }
+
+    case 'CHANGE_TURMA_ALUNO': {
+      const { oldTurmaId, newTurmaId, nome } = action;
+      if (!oldTurmaId || !newTurmaId || oldTurmaId === newTurmaId) return state;
+      const destino = state.turmas.find((t) => t.id === newTurmaId);
+      if (destino && arr(destino.alunos).includes(nome)) return state; // já existe nome igual na turma destino
+      next = {
+        ...state,
+        turmas: state.turmas.map((t) => {
+          if (t.id === oldTurmaId) return { ...t, alunos: arr(t.alunos).filter((a) => a !== nome) };
+          if (t.id === newTurmaId) return arr(t.alunos).includes(nome) ? t : { ...t, alunos: [...arr(t.alunos), nome] };
+          return t;
+        }),
+        faltas: state.faltas.map((f) => (f.turmaId === oldTurmaId && f.alunoNome === nome ? { ...f, turmaId: newTurmaId } : f)),
+        reposicoes: state.reposicoes.map((r) => (r.turmaOrigemId === oldTurmaId && r.alunoNome === nome ? { ...r, turmaOrigemId: newTurmaId } : r)),
+        ausencias: state.ausencias.map((a) => (a.turmaId === oldTurmaId && a.alunoNome === nome ? { ...a, turmaId: newTurmaId } : a)),
+        acessos: arr(state.acessos).map((a) => (a.turmaId === oldTurmaId && a.alunoNome === nome ? { ...a, turmaId: newTurmaId } : a)),
+      };
+      next.log = addLog(state.log, autor, `Moveu ${nome} de ${getTurmaLabel(state.turmas, oldTurmaId)} → ${getTurmaLabel(state.turmas, newTurmaId)}`);
       break;
     }
 

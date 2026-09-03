@@ -29,6 +29,13 @@ export function turmaShortLabel(t) {
   return `${ABREV[t.diaSemana]} ${t.horario}`;
 }
 
+// Formata hora/minuto (24h) no estilo do Passarinho: 19h20, 09h.
+export function formatHorario(hora, minuto) {
+  const h = String(hora).padStart(2, '0');
+  const m = Number(minuto) || 0;
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+}
+
 export function sortTurmas(turmas) {
   return [...arr(turmas)].sort((a, b) => {
     if (a.id === TURMA_EXTRA_ID) return 1;

@@ -57,7 +57,7 @@ export default function EscolaApp({ tenant, user }) {
       {carregando ? (
         <p className="text-center text-gray-400 text-sm py-10">Carregando…</p>
       ) : aba === 'Turmas' ? (
-        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} />
+        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} />
       ) : (
         <EmBreve nome={aba} />
       )}
