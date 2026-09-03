@@ -157,7 +157,7 @@ export default function Onboarding({ user }) {
     return (
       <Card>
         <h2 className="text-xl font-bold text-gray-800 mb-2">Quase lá!</h2>
-        <p className="text-sm text-gray-600">Mandamos um link para <b>{email}</b>. Clique nele para entrar e a sua escola será criada.</p>
+        <p className="text-sm text-gray-600">Mandamos um link para <b>{email}</b>. Clique nele para entrar e o seu app será criado.</p>
       </Card>
     );
   }
@@ -329,7 +329,7 @@ export default function Onboarding({ user }) {
         <span className="text-xs text-gray-400">{passoNum} / {total}</span>
         {ehUltimo ? (
           <button onClick={finalizar} disabled={salvando || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
-            {salvando ? 'Criando…' : 'Criar escola'}
+            {salvando ? 'Criando…' : 'Criar meu app'}
           </button>
         ) : (
           <button onClick={avancar} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Avançar →</button>
