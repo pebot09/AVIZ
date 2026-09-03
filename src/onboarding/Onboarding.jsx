@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Campo, TextInput, NumberSelect, OptionCards, SimNao } from './widgets.jsx';
+import { Campo, TextInput, NumberSelect, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
 import { slugify, slugDisponivel, provisionTenant } from '../lib/provision.js';
 import { sendLoginLink } from '../lib/auth.js';
 
@@ -168,21 +168,22 @@ export default function Onboarding({ user }) {
 
       <div className="min-h-[160px]">
         {step === 'dono' && (
-          <Passo titulo="Como podemos te chamar?" ajuda="É só para o seu atendimento — o nome do responsável pela escola.">
-            <Campo label="Seu nome"><TextInput value={r.donoNome} onChange={(v) => set({ donoNome: v })} placeholder="Ex.: Ana" autoFocus /></Campo>
-            <Campo label="Como devemos te tratar?">
-              <Escolha value={r.donoArtigo} onChange={(v) => set({ donoArtigo: v })}
-                options={[{ value: 'o', label: 'No masculino' }, { value: 'a', label: 'No feminino' }]} />
+          <Passo titulo="Como podemos te chamar?" ajuda="O artigo (O / A) nos diz como te tratar — no masculino ou no feminino.">
+            <Campo label="Seu nome">
+              <ArtigoNome artigo={r.donoArtigo} nome={r.donoNome}
+                onArtigo={(v) => set({ donoArtigo: v })} onNome={(v) => set({ donoNome: v })}
+                placeholder="Seu nome" autoFocus />
             </Campo>
           </Passo>
         )}
 
         {step === 'espaco' && (
-          <Passo titulo={`Prazer${r.donoNome ? ', ' + r.donoNome : ''}! Qual o nome do espaço?`} ajuda="É o nome que vai aparecer grande no app.">
-            <Campo label="Nome do espaço"><TextInput value={r.nomeEscola} onChange={(v) => set({ nomeEscola: v, slug: r.slugEditado ? r.slug : slugify(v) })} placeholder="Ex.: Ateliê Passarinho" autoFocus /></Campo>
-            <Campo label="Como se refere ao espaço?">
-              <Escolha value={r.espacoArtigo} onChange={(v) => set({ espacoArtigo: v })}
-                options={[{ value: 'o', label: `O ${r.nomeEscola || 'espaço'}` }, { value: 'a', label: `A ${r.nomeEscola || 'espaço'}` }]} />
+          <Passo titulo={`Prazer${r.donoNome ? ', ' + r.donoNome : ''}! Qual o nome do espaço?`} ajuda="Escolha o artigo (O / A) e digite o nome — é o que vai aparecer grande no app.">
+            <Campo label="Nome do espaço">
+              <ArtigoNome artigo={r.espacoArtigo} nome={r.nomeEscola}
+                onArtigo={(v) => set({ espacoArtigo: v })}
+                onNome={(v) => set({ nomeEscola: v, slug: r.slugEditado ? r.slug : slugify(v) })}
+                placeholder="Ex.: Ateliê Passarinho" autoFocus />
             </Campo>
             <Campo label="Endereço no AVIZ">
               <div className="flex items-center gap-1 text-sm">
@@ -312,21 +313,6 @@ export default function Onboarding({ user }) {
         )}
       </div>
     </Card>
-  );
-}
-
-function Escolha({ value, onChange, options }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((o) => (
-        <button
-          key={o.value} onClick={() => onChange(o.value)}
-          className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
-            value === o.value ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
-        >{o.label}</button>
-      ))}
-    </div>
   );
 }
 

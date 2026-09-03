@@ -18,6 +18,23 @@ export function TextInput({ value, onChange, placeholder, autoFocus }) {
   );
 }
 
+// Seletor de artigo (O/A) + campo de texto, na mesma linha.
+export function ArtigoNome({ artigo, nome, onArtigo, onNome, placeholder, autoFocus }) {
+  return (
+    <div className="flex gap-2">
+      <select value={artigo} onChange={(e) => onArtigo(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2.5 text-sm bg-white" aria-label="Artigo">
+        <option value="">–</option>
+        <option value="o">O</option>
+        <option value="a">A</option>
+      </select>
+      <input
+        value={nome} onChange={(e) => onNome(e.target.value)} placeholder={placeholder} autoFocus={autoFocus}
+        className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
+      />
+    </div>
+  );
+}
+
 export function NumberSelect({ value, onChange, options }) {
   return (
     <select value={value} onChange={(e) => onChange(Number(e.target.value))} className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
