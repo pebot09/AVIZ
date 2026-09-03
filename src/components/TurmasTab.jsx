@@ -100,8 +100,24 @@ function AddAluno({ turma, dispatch, vocab }) {
         <button onClick={add} disabled={!nome.trim()} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Adicionar</button>
       </div>
       {erro && <p className="text-red-600 text-xs mt-2">{erro}</p>}
-      {alunos.length > 0 && (
-        <p className="text-gray-400 text-xs mt-2">{alunos.length} {alunos.length === 1 ? vocab.aluno : vocab.alunos} · use <b>Gerenciar</b> para renomear ou mover.</p>
+
+      {alunos.length === 0 ? (
+        <p className="text-gray-400 text-sm italic mt-3">Nenhum {vocab.aluno} cadastrado.</p>
+      ) : (
+        <div className="mt-3 space-y-1">
+          {alunos.map((a) => (
+            <div key={a} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+              <span
+                className="text-gray-800 cursor-pointer"
+                title="Clique para renomear"
+                onClick={() => { const nv = prompt(`Renomear ${a}:`, a); if (nv && nv.trim() && nv.trim() !== a) dispatch({ type: 'RENAME_ALUNO', turmaId: turma.id, oldNome: a, newNome: nv.trim() }); }}
+              >{a}</span>
+              <button
+                onClick={() => { if (confirm(`Remover ${a}?`)) dispatch({ type: 'REMOVE_ALUNO', turmaId: turma.id, nome: a }); }}
+                className="text-red-400 hover:text-red-600 text-xs px-2">remover</button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
