@@ -2,7 +2,9 @@
   "rules": {
     "tenantsPublic": {
       ".read": true,
-      "$tid": { ".write": false }
+      "$tid": {
+        ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
+      }
     },
     "tenants": {
       "$tid": {
@@ -11,7 +13,9 @@
           ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
         },
         "members": {
-          ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
+          "$uid": {
+            ".write": "auth != null && ( root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner' || ($uid == auth.uid && !root.child('tenants/' + $tid + '/members').exists() && newData.child('role').val() == 'owner') )"
+          }
         },
         "state": {
           ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid).exists()"

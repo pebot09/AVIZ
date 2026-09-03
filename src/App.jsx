@@ -4,7 +4,9 @@ import { db } from './lib/firebase.js';
 import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
+import { provisionTenant } from './lib/provision.js';
 import EscolaApp from './components/EscolaApp.jsx';
+import Onboarding from './onboarding/Onboarding.jsx';
 
 export default function App() {
   const tenant = resolveTenant();
@@ -20,8 +22,9 @@ export default function App() {
   }, []);
 
   if (accessCode) return <Shell><AlunoPlaceholder code={accessCode} /></Shell>;
-  if (!tenant) return <Shell><SemTenant /></Shell>;
   if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
+  // Sem escola no endereço → criar uma (fluxo de onboarding).
+  if (!tenant) return <Onboarding user={user || null} />;
   if (!user) return <Shell><Login tenant={tenant} erro={erro} /></Shell>;
   return <Dono tenant={tenant} user={user} />;
 }
@@ -69,9 +72,24 @@ function Dono({ tenant, user }) {
   const [membro, setMembro] = useState(undefined);
 
   useEffect(() => {
-    get(ref(db, paths.member(tenant, user.uid)))
-      .then((snap) => setMembro(snap.exists() ? snap.val() : null))
-      .catch(() => setMembro(null));
+    let vivo = true;
+    async function checar() {
+      // Volta do link de onboarding? Provisiona a escola pendente antes de checar.
+      try {
+        const raw = localStorage.getItem('aviz_pending_onboarding');
+        if (raw) {
+          const p = JSON.parse(raw);
+          if (p && p.slug === tenant) {
+            await provisionTenant({ ...p, uid: user.uid });
+            localStorage.removeItem('aviz_pending_onboarding');
+          }
+        }
+      } catch { /* ignore */ }
+      const snap = await get(ref(db, paths.member(tenant, user.uid))).catch(() => null);
+      if (vivo) setMembro(snap && snap.exists() ? snap.val() : null);
+    }
+    checar();
+    return () => { vivo = false; };
   }, [tenant, user.uid]);
 
   if (membro === undefined) return <Shell><p style={s.dim}>Verificando acesso…</p></Shell>;
@@ -85,10 +103,8 @@ function Dono({ tenant, user }) {
         </div>
         <p style={s.p}>Logado como <b>{user.email}</b>.</p>
         <div style={s.aviso}>
-          <p style={s.p}>Você ainda não é membro desta escola no banco.</p>
-          <p style={s.p}>Para liberar o acesso de dono, é preciso criar o registro em
-            <code style={s.code}> {paths.member(tenant, user.uid)}</code> com <code style={s.code}>{'{ role: "owner" }'}</code>.</p>
-          <p style={s.dim}>Seu UID: <code style={s.code}>{user.uid}</code></p>
+          <p style={s.p}>Esta conta não tem acesso à escola <b>{tenant}</b>.</p>
+          <p style={s.dim}>Se você é o responsável, use o link de acesso enviado ao e-mail cadastrado.</p>
         </div>
       </Shell>
     );

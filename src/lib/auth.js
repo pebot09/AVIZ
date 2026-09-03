@@ -21,19 +21,19 @@ import { auth } from './firebase.js';
 
 const EMAIL_KEY = 'aviz_login_email';
 
-function actionCodeSettings() {
+function actionCodeSettings(continueUrl) {
   return {
-    url: window.location.href, // preserva ?e=escola
+    url: continueUrl || window.location.href, // preserva ?e=escola (ou volta para a escola recém-criada)
     handleCodeInApp: true,
   };
 }
 
 // Passo 1: envia o link. Guarda o e-mail localmente para completar no retorno
 // (o Firebase exige o mesmo e-mail para fechar o login).
-export async function sendLoginLink(email) {
+export async function sendLoginLink(email, continueUrl) {
   const clean = (email || '').trim().toLowerCase();
   if (!clean) throw new Error('E-mail vazio');
-  await sendSignInLinkToEmail(auth, clean, actionCodeSettings());
+  await sendSignInLinkToEmail(auth, clean, actionCodeSettings(continueUrl));
   try { localStorage.setItem(EMAIL_KEY, clean); } catch { /* ignore */ }
   return clean;
 }
