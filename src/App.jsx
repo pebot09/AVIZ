@@ -110,7 +110,7 @@ function Dono({ tenant, user }) {
     );
   }
 
-  return <EscolaApp tenant={tenant} user={user} />;
+  return <EscolaApp tenant={tenant} user={user} membro={membro} />;
 }
 
 function AlunoPlaceholder({ code }) {

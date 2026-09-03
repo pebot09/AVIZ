@@ -13,9 +13,10 @@ import TurmasTab from './TurmasTab.jsx';
 
 const ABAS = ['Turmas', 'Faltas & Reposições', 'Painel'];
 
-export default function EscolaApp({ tenant, user }) {
+export default function EscolaApp({ tenant, user, membro }) {
   const config = useConfig(tenant);
-  const { state, dispatch, erro } = useTenantStore(tenant, user.email);
+  // Autor do log = nome do membro (não o e-mail), para o histórico ficar limpo.
+  const { state, dispatch, erro } = useTenantStore(tenant, (membro && membro.nome) || user.email);
   const [nomeEscola, setNomeEscola] = useState(tenant);
   const [aba, setAba] = useState('Turmas');
 
