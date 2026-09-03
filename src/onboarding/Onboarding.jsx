@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
-import { slugify, slugDisponivel, provisionTenant } from '../lib/provision.js';
+import { slugify, slugDisponivelAuto, provisionTenant } from '../lib/provision.js';
 import { sendLoginLink } from '../lib/auth.js';
 
 const VOC_ALUNO = [
@@ -85,7 +85,7 @@ export default function Onboarding({ user }) {
   function podeAvancar() {
     switch (step) {
       case 'dono': return r.donoNome.trim().length > 0 && !!r.donoArtigo;
-      case 'espaco': return r.nomeEscola.trim().length > 0 && !!r.espacoArtigo && (r.slug || slugify(r.nomeEscola)).length > 0;
+      case 'espaco': return r.nomeEscola.trim().length > 0 && !!r.espacoArtigo && slugify(r.nomeEscola).length > 0;
       case 'capNominal': return Number(r.capNominal) >= 1;
       case 'capFisica': return Number(r.capFisica) >= 1;
       case 'semAntec': return r.semAntec !== null;
@@ -131,9 +131,9 @@ export default function Onboarding({ user }) {
   async function finalizar() {
     setErro(null); setSalvando(true);
     try {
-      const slug = (r.slug || slugify(r.nomeEscola)).trim();
-      if (!slug) throw new Error('Endereço da escola inválido.');
-      if (!(await slugDisponivel(slug))) throw new Error(`Já existe uma escola em "${slug}". Escolha outro endereço.`);
+      const base = slugify(r.nomeEscola);
+      if (!base) throw new Error('Nome do espaço inválido.');
+      const slug = await slugDisponivelAuto(base);
       const config = montarConfig();
       const payload = { slug, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), donoGenero: r.donoArtigo || 'o', config };
 
@@ -187,14 +187,8 @@ export default function Onboarding({ user }) {
             <Campo label="Nome do espaço">
               <ArtigoNome artigo={r.espacoArtigo} nome={r.nomeEscola}
                 onArtigo={(v) => set({ espacoArtigo: v })}
-                onNome={(v) => set({ nomeEscola: v, slug: r.slugEditado ? r.slug : slugify(v) })}
+                onNome={(v) => set({ nomeEscola: v })}
                 placeholder="Ex.: Ateliê Passarinho" autoFocus />
-            </Campo>
-            <Campo label="Endereço no AVIZ">
-              <div className="flex items-center gap-1 text-sm">
-                <input value={r.slug} onChange={(e) => set({ slug: slugify(e.target.value), slugEditado: true })} className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-40" />
-                <span className="text-gray-400">.aviz…</span>
-              </div>
             </Campo>
           </Passo>
         )}
@@ -308,7 +302,7 @@ export default function Onboarding({ user }) {
         {step === 'revisao' && (
           <Passo titulo="Tudo certo?" ajuda="Você pode mudar qualquer uma dessas regras depois, no painel.">
             <ul className="text-sm text-gray-600 space-y-1">
-              <li><b>{r.nomeEscola}</b> — endereço <code className="bg-gray-100 px-1 rounded">{r.slug || slugify(r.nomeEscola)}</code></li>
+              <li><b>{r.nomeEscola}</b></li>
               <li>Vocabulário: {A} · {T} · {r.vProfessor}</li>
               <li>Capacidade: {r.capNominal} por {T}, {r.capFisica} no espaço</li>
               <li>Aviso de falta: {r.antecedencia === 0 ? 'sem exigência' : `${r.antecedencia}h`}{r.antecedencia > 0 && r.semAntec ? ` (sem antecedência até ${r.semAntecJanela}h antes)` : ''}</li>

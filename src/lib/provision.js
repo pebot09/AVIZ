@@ -16,6 +16,18 @@ export async function slugDisponivel(slug) {
   return !snap.exists();
 }
 
+// Acha um endereço livre a partir de uma base, anexando -2, -3… se preciso.
+export async function slugDisponivelAuto(base) {
+  let slug = base;
+  let n = 1;
+  while (!(await slugDisponivel(slug))) {
+    n += 1;
+    slug = `${base}-${n}`;
+    if (n > 999) throw new Error('Não foi possível gerar um endereço.');
+  }
+  return slug;
+}
+
 export function slugify(txt) {
   return (txt || '')
     .toLowerCase()
