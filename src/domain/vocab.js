@@ -6,6 +6,9 @@
 const PADRAO = {
   aluno: 'aluno', alunos: 'alunos',
   turma: 'turma', turmas: 'turmas',
+  // "aula" = uma ocorrência da turma numa data (uma sessão), distinta da turma
+  // (o grupo recorrente). Um estúdio pode chamar de "aula", "sessão", "treino"…
+  aula: 'aula', aulas: 'aulas',
   professor: 'professor', professores: 'professores',
 };
 

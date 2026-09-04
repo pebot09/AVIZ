@@ -30,7 +30,7 @@ export default function FaltasReposicoesTab({ state, dispatch, vocab, config }) 
       content: [config?.regras?.ferias ? <TabAusenciaProgramada state={state} dispatch={dispatch} vocab={vocab} config={config} /> : <NaoOferece texto={`Sua escola não oferece marcação de férias.`} />] },
     { key: 'credito', label: 'Crédito Extra', color: 'purple', tabs: ['Dar Crédito'],
       content: [<TabCreditoExtra state={state} dispatch={dispatch} vocab={vocab} />] },
-    { key: 'cancelarAula', label: `Cancelar ${cap(vocab.turma)}`, color: 'red', tabs: ['Cancelar'],
+    { key: 'cancelarAula', label: `Cancelar ${cap(vocab.aula)}`, color: 'red', tabs: ['Cancelar'],
       content: [<TabCancelarAula state={state} dispatch={dispatch} vocab={vocab} config={config} />] },
   ];
 
@@ -756,7 +756,7 @@ function TabCancelarAula({ state, dispatch, vocab, config }) {
   return (
     <div className="space-y-4">
       <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-        Cancela uma {vocab.turma} inteira (quando ninguém pôde dar). Todos os {vocab.alunos} presentes viram falta regular, nenhuma vaga é aberta, e reposições marcadas para essa aula são desfeitas sem punição.
+        Cancela uma {vocab.aula} inteira (quando ninguém pôde dar). Todos os {vocab.alunos} presentes viram falta regular, nenhuma vaga é aberta, e reposições marcadas para essa {vocab.aula} são desfeitas sem punição.
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
@@ -767,22 +767,22 @@ function TabCancelarAula({ state, dispatch, vocab, config }) {
       </div>
       {turma && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data da aula</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data da {vocab.aula}</label>
           <select value={data} onChange={(e) => setData(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
             <option value="">— Selecione a data —</option>
             {proximasDatas.map((d) => <option key={d} value={d}>{fmtBRFull(d)}</option>)}
           </select>
-          {proximasDatas.length === 0 && <p className="text-xs text-gray-400 mt-1">Nenhuma aula futura disponível.</p>}
+          {proximasDatas.length === 0 && <p className="text-xs text-gray-400 mt-1">Nenhuma {vocab.aula} futura disponível.</p>}
         </div>
       )}
       {previa && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
           <div><strong>{previa.marcar.length}</strong> {previa.marcar.length === 1 ? vocab.aluno : vocab.alunos} {previa.marcar.length === 1 ? 'será marcado' : 'serão marcados'} como falta.</div>
-          {previa.repos.length > 0 && <div className="mt-1">{previa.repos.length} reposição(ões) marcada(s) para esta aula serão desfeitas (sem punição).</div>}
+          {previa.repos.length > 0 && <div className="mt-1">{previa.repos.length} reposição(ões) marcada(s) para esta {vocab.aula} serão desfeitas (sem punição).</div>}
         </div>
       )}
       {!confirm ? (
-        <button onClick={() => setConfirm(true)} disabled={!turmaId || !data} className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Cancelar aula</button>
+        <button onClick={() => setConfirm(true)} disabled={!turmaId || !data} className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Cancelar {vocab.aula}</button>
       ) : (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
           <p className="text-sm text-red-700 font-medium">Confirmar cancelamento de {getTurmaLabel(state.turmas, turmaId)} em {fmtBRFull(data)}?</p>
@@ -794,7 +794,7 @@ function TabCancelarAula({ state, dispatch, vocab, config }) {
       )}
       {canceladas.length > 0 && (
         <div className="mt-4 border-t border-gray-200 pt-4">
-          <h4 className="text-sm font-semibold text-gray-600 mb-2">Aulas canceladas</h4>
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">{cap(vocab.aulas)} canceladas</h4>
           <div className="space-y-2">
             {canceladas.map((a) => (
               <div key={a.id} className="bg-gray-50 rounded-lg p-3 text-sm flex justify-between items-center gap-2">
