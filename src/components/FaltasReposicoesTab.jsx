@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  sortTurmas, EXTENSO, ABREV, fmtBRFull, todayStr, dateToStr,
-  turmaShortLabel, getTurmaLabel, getFaltaEarliest, getFaltaExpiry,
+  sortTurmas, EXTENSO, ABREV, fmtBR, fmtBRFull, todayStr, dateToStr, parseDate,
+  turmaShortLabel, getTurmaLabel, getFaltaEarliest, getFaltaExpiry, getMesNome, getLastDayOfMonth,
 } from '../domain/helpers.js';
 import {
   getNextOccurrences, getClassDatesInRange, getClassDatetime,
-  getDiaSemanaFromDateStr, feriadoNome, recessoNome,
+  getDiaSemanaFromDateStr, feriadoNome, recessoNome, isRecesso,
 } from '../domain/calendario.js';
 import {
   reposicaoRights, pickReposicaoRight, rightToActionFields, calcOccupancy, fmtDatesText,
@@ -26,7 +26,8 @@ export default function FaltasReposicoesTab({ state, dispatch, vocab, config }) 
       content: [<TabRegistrarFalta state={state} dispatch={dispatch} vocab={vocab} config={config} />, <TabCancelarFalta state={state} dispatch={dispatch} vocab={vocab} />] },
     { key: 'reposicoes', label: 'Reposições', color: 'blue', tabs: ['Registrar', 'Cancelar'],
       content: [<TabRegistrarReposicao state={state} dispatch={dispatch} vocab={vocab} config={config} />, <TabCancelarReposicao state={state} dispatch={dispatch} vocab={vocab} />] },
-    { key: 'ferias', label: 'Férias', color: 'green', tabs: ['Ausência Programada'], content: [<EmBreve />] },
+    { key: 'ferias', label: 'Férias', color: 'green', tabs: ['Ausência Programada'],
+      content: [config?.regras?.ferias ? <TabAusenciaProgramada state={state} dispatch={dispatch} vocab={vocab} config={config} /> : <NaoOferece texto={`Sua escola não oferece marcação de férias.`} />] },
     { key: 'credito', label: 'Crédito Extra', color: 'purple', tabs: ['Dar Crédito'], content: [<EmBreve />] },
     { key: 'cancelarAula', label: `Cancelar ${cap(vocab.turma)}`, color: 'red', tabs: ['Cancelar'], content: [<EmBreve />] },
   ];
@@ -75,6 +76,10 @@ export default function FaltasReposicoesTab({ state, dispatch, vocab, config }) 
 
 function EmBreve() {
   return <p className="text-gray-400 text-sm italic py-4 text-center">Em construção — próxima sub-fatia.</p>;
+}
+
+function NaoOferece({ texto }) {
+  return <p className="text-gray-400 text-sm italic py-4 text-center">{texto}</p>;
 }
 
 function TabRegistrarFalta({ state, dispatch, vocab, config }) {
@@ -506,6 +511,122 @@ function TabCancelarReposicao({ state, dispatch, vocab }) {
       {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
       <button onClick={() => setConfirm(true)} disabled={!selectedId} className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Cancelar Reposição</button>
       {confirm && repo && <ConfirmModal title="Cancelar reposição?" danger message={`Cancelar a reposição de ${repo.alunoNome} em ${fmtBRFull(repo.dataReposicao)}?`} onConfirm={handleCancel} onCancel={() => setConfirm(false)} confirmLabel="Cancelar reposição" />}
+    </div>
+  );
+}
+
+function TabAusenciaProgramada({ state, dispatch, vocab, config }) {
+  const [turmaId, setTurmaId] = useState('');
+  const [alunoNome, setAlunoNome] = useState('');
+  const [mesAno, setMesAno] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
+  const turma = state.turmas.find((t) => t.id === turmaId);
+  const daCredito = !!config?.regras?.feriasCredito;
+  const qtdCredito = Number(config?.regras?.feriasCreditos) || 1;
+  const validadeDias = Number(config?.regras?.feriasValidadeDias) || 30;
+  const temRecessos = (config?.calendario?.recessos || []).length > 0;
+
+  useEffect(() => { const d = new Date(); setMesAno(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }, []);
+
+  const handleSubmit = () => {
+    if (!turmaId || !alunoNome || !mesAno) return;
+    dispatch({ type: 'ADD_AUSENCIA', alunoNome, turmaId, tipo: 'ferias', mesAno });
+    setSuccess(`Férias de ${alunoNome} em ${getMesNome(mesAno)} registradas.`);
+    setAlunoNome('');
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-700">Ausência Programada (Férias)</h3>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+        {daCredito
+          ? <>O {vocab.aluno} em férias recebe <strong>{qtdCredito} crédito{qtdCredito > 1 ? 's' : ''} de reposição</strong> e libera vagas nas aulas do mês. O prazo expira {validadeDias} dias após o fim do mês.</>
+          : <>O {vocab.aluno} em férias libera vagas nas aulas do mês (sem crédito de reposição).</>}
+        {temRecessos && daCredito && <div className="mt-1 text-blue-600 text-xs">Meses de recesso não geram crédito, mas ainda liberam vagas.</div>}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
+        <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setAlunoNome(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">— Selecione a {vocab.turma} —</option>
+          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+        </select>
+      </div>
+
+      {turma && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.aluno)}</label>
+          <select value={alunoNome} onChange={(e) => setAlunoNome(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione o {vocab.aluno} —</option>
+            {[...turma.alunos].sort((a, b) => a.localeCompare(b, 'pt')).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Mês de ausência</label>
+        <input type="month" value={mesAno} onChange={(e) => setMesAno(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+      </div>
+
+      {mesAno && daCredito && (
+        <div className="text-sm text-gray-500">
+          Prazo para reposição: até {fmtBRFull((() => { const d = parseDate(getLastDayOfMonth(mesAno)); d.setDate(d.getDate() + validadeDias); return dateToStr(d); })())}
+        </div>
+      )}
+
+      {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
+
+      <button onClick={handleSubmit} disabled={!turmaId || !alunoNome || !mesAno} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Registrar Ausência</button>
+
+      {state.ausencias.length > 0 && (
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">Ausências registradas</h4>
+          <div className="space-y-2">
+            {state.ausencias.map((a) => {
+              const turmaAus = state.turmas.find((t) => t.id === a.turmaId);
+              const [ayy, amo] = a.mesAno.split('-').map(Number);
+              const firstDay = `${a.mesAno}-01`;
+              const lastDay = dateToStr(new Date(ayy, amo, 0));
+              const expectedDates = turmaAus ? getClassDatesInRange(turmaAus, firstDay, lastDay) : [];
+              const todasDatas = expectedDates.map((date) => {
+                if (isRecesso(date, config)) return { data: date, consumida: false, por: null, recesso: true };
+                const vagaAberta = state.vagas.find((v) => v.ausenciaId === a.id && v.data === date);
+                if (vagaAberta) return { data: date, consumida: false, por: null };
+                const repoConsumiu = state.reposicoes.find((r) => r.vagaConsumedAusenciaId === a.id && r.dataReposicao === date);
+                return { data: date, consumida: true, por: repoConsumiu?.alunoNome || null };
+              });
+              const semCredito = a.creditoReposicao === 0;
+              return (
+                <div key={a.id} className="bg-gray-50 rounded-lg p-3 text-sm">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-medium">{a.alunoNome}</span>
+                      <span className="text-gray-400 ml-2">({getTurmaLabel(state.turmas, a.turmaId)})</span>
+                      <div className="text-gray-500 mt-0.5">Férias: {getMesNome(a.mesAno)} — Crédito: {semCredito ? <span className="text-red-500">indisponível</span> : a.creditoUsado ? <span className="text-green-600">usado</span> : <span className="text-amber-600">disponível</span>}</div>
+                      {todasDatas.length > 0 && (
+                        <div className="text-xs text-teal-600 mt-0.5">Vagas liberadas:{' '}
+                          {todasDatas.map((v, i) => (
+                            <span key={i}>{i > 0 && ', '}
+                              {v.recesso ? <span className="text-gray-400" title="Recesso">🏠 {fmtBR(v.data)}</span>
+                                : v.consumida ? <span className="text-gray-400 line-through" title={v.por ? `Ocupada por ${v.por}` : ''}>{fmtBR(v.data)}</span>
+                                : <span>{fmtBR(v.data)}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => dispatch({ type: 'DELETE_AUSENCIA', id: a.id })} className="text-red-400 hover:text-red-600 text-xs ml-2 shrink-0">Remover</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

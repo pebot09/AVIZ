@@ -2,8 +2,8 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr } from './helpers.js';
-import { isFeriado, isRecesso } from './calendario.js';
+import { genId, arr, getTurmaLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr } from './helpers.js';
+import { isFeriado, isRecesso, mesEhRecesso, getClassDatesInRange } from './calendario.js';
 import { computeVagasExtras, fmtDatesText } from './reposicao.js';
 
 export const EMPTY_STATE = {
@@ -330,6 +330,56 @@ export function reducer(state, action, config) {
       next = { ...state, reposicoes: restRepos, vagas: newVagas, faltas: newFaltas };
       next.log = addLog(state.log, autor, `Cancelou reposição sem crédito — ${repo.alunoNome} (${getTurmaLabel(state.turmas, repo.turmaOrigemId)}) → ${getTurmaLabel(state.turmas, repo.turmaReposicaoId)} ${fmtBRFull(repo.dataReposicao)}`, action.origem);
       next.estatisticas = { ...(next.estatisticas || {}), faltasExpiradas: newExp, reposCanceladas: [...arr((next.estatisticas || {}).reposCanceladas), { alunoNome: repo.alunoNome, turmaId: repo.turmaOrigemId, turmaReposicaoId: repo.turmaReposicaoId, dataReposicao: repo.dataReposicao, semCredito: true, ts: new Date().toISOString() }] };
+      break;
+    }
+
+    case 'ADD_AUSENCIA': {
+      const { alunoNome, turmaId, tipo, mesAno } = action;
+      // Duplicata: mesmo aluno/turma/mês.
+      if (state.ausencias.some((a) => a.alunoNome === alunoNome && a.turmaId === turmaId && a.mesAno === mesAno)) return state;
+      // Limite por ano — POR ALUNO (decisão do AVIZ), config.regras.feriasLimiteAno (0 = ilimitado).
+      const ano = mesAno.slice(0, 4);
+      const limite = Number(config?.regras?.feriasLimiteAno) || 0;
+      if (!action.professorOverride && limite > 0) {
+        const noAno = state.ausencias.filter((a) => a.alunoNome === alunoNome && a.mesAno.slice(0, 4) === ano).length;
+        if (noAno >= limite) return state;
+      }
+      // Crédito: só se a escola oferece crédito de férias e o mês não é de recesso.
+      const daCredito = !!(config?.regras?.ferias && config?.regras?.feriasCredito) && !mesEhRecesso(mesAno, config);
+      const qtd = daCredito ? (Number(config?.regras?.feriasCreditos) || 1) : 0;
+      const ausId = genId('aus');
+      const nova = { id: ausId, alunoNome, turmaId, tipo: tipo || 'ferias', mesAno, creditoReposicao: qtd, creditoUsado: !daCredito };
+      const newAus = [...state.ausencias, nova];
+      // Uma vaga de férias por data de aula do mês (menos feriado/recesso).
+      const turma = state.turmas.find((t) => t.id === turmaId);
+      const vagasFerias = [];
+      if (turma) {
+        const [y, m] = mesAno.split('-').map(Number);
+        const first = `${mesAno}-01`;
+        const last = dateToStr(new Date(y, m, 0));
+        getClassDatesInRange(turma, first, last).forEach((date) => {
+          if (isFeriado(date, config) || isRecesso(date, config)) return;
+          vagasFerias.push({ id: genId('vf'), turmaId, data: date, tipo: 'ferias', ausenciaId: ausId });
+        });
+      }
+      const vagas = computeVagasExtras(state.turmas, state.faltas, state.reposicoes, [...state.vagas, ...vagasFerias], todayStr(), newAus, config);
+      next = { ...state, ausencias: newAus, vagas };
+      next.log = addLog(state.log, autor, `Registrou férias de ${alunoNome} (${getTurmaLabel(state.turmas, turmaId)}) — ${getMesNome(mesAno).toLowerCase()}`, action.origem);
+      break;
+    }
+
+    case 'USE_AUSENCIA_CREDITO': {
+      next = { ...state, ausencias: state.ausencias.map((a) => (a.id === action.id ? { ...a, creditoUsado: true } : a)) };
+      break;
+    }
+
+    case 'DELETE_AUSENCIA': {
+      const ausDel = state.ausencias.find((a) => a.id === action.id);
+      const newAus = state.ausencias.filter((a) => a.id !== action.id);
+      const vagasSemAus = state.vagas.filter((v) => v.ausenciaId !== action.id);
+      const vagas = computeVagasExtras(state.turmas, state.faltas, state.reposicoes, vagasSemAus, todayStr(), newAus, config);
+      next = { ...state, ausencias: newAus, vagas };
+      if (ausDel) next.log = addLog(state.log, autor, `Removeu férias de ${ausDel.alunoNome} (${getTurmaLabel(state.turmas, ausDel.turmaId)}) — ${getMesNome(ausDel.mesAno).toLowerCase()}`, action.origem);
       break;
     }
 

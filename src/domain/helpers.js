@@ -75,6 +75,15 @@ export function getFaltaExpiry(falta, config) {
   return dateToStr(d);
 }
 
+export function getMesNome(mesAno) {
+  const [, m] = mesAno.split('-').map(Number);
+  return MESES_PT[m - 1];
+}
+export function getLastDayOfMonth(mesAno) {
+  const [y, m] = mesAno.split('-').map(Number);
+  return dateToStr(new Date(y, m, 0));
+}
+
 // Casa o nome como palavra inteira dentro de um texto de log.
 export function nomeExatoMatch(texto, nome) {
   const escaped = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

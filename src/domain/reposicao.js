@@ -17,7 +17,7 @@ export function reposicaoRights(state, alunoNome, turmaOrigemId, td, config) {
     .forEach((f) => rights.push({ kind: 'falta', id: f.id, expiry: faltaExpiry(f, config), semAntecedencia: !!f.semAntecedencia }));
   arr(state.ausencias)
     .filter((a) => a.alunoNome === alunoNome && a.turmaId === turmaOrigemId && !a.creditoUsado && a.creditoReposicao > 0)
-    .forEach((a) => rights.push({ kind: 'ferias', id: a.id, expiry: ausenciaExpiry(a) }));
+    .forEach((a) => rights.push({ kind: 'ferias', id: a.id, expiry: ausenciaExpiry(a, config) }));
   arr(state.creditos)
     .filter((c) => c.alunoNome === alunoNome && c.turmaId === turmaOrigemId && !c.usado && c.dataExpiracao >= td)
     .forEach((c) => rights.push({ kind: 'credito', id: c.id, expiry: c.dataExpiracao }));
@@ -48,9 +48,11 @@ function faltaExpiry(falta, config) {
   const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + dias);
   return dateToStr(dt);
 }
-function ausenciaExpiry(aus) {
+// Validade do crédito de férias: fim do mês + config.regras.feriasValidadeDias (padrão 30).
+export function ausenciaExpiry(aus, config) {
+  const dias = config && config.regras && config.regras.feriasValidadeDias ? Number(config.regras.feriasValidadeDias) : 30;
   const [y, m] = aus.mesAno.split('-').map(Number);
-  const last = new Date(y, m, 0); last.setDate(last.getDate() + 30);
+  const last = new Date(y, m, 0); last.setDate(last.getDate() + dias);
   return dateToStr(last);
 }
 

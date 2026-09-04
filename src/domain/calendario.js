@@ -124,6 +124,15 @@ export function recessoNome(dateStr, config) {
 }
 
 export function isRecesso(dateStr, config) { return !!recessoNome(dateStr, config); }
+
+// Mês (YYYY-MM) tocado por algum recesso → não gera crédito de férias.
+// É a derivação "meses sem crédito vêm dos recessos" que combinamos.
+export function mesEhRecesso(mesAno, config) {
+  const [y, m] = mesAno.split('-').map(Number);
+  const first = `${mesAno}-01`;
+  const last = dateToStr(new Date(y, m, 0));
+  return arr(config && config.calendario && config.calendario.recessos).some((r) => r.de && r.ate && r.de <= last && r.ate >= first);
+}
 export function isFeriado(dateStr, config) { return !!feriadoNome(dateStr, config); }
 // Data bloqueada para aula (feriado ou recesso).
 export function isDataBloqueada(dateStr, config) { return isFeriado(dateStr, config) || isRecesso(dateStr, config); }
