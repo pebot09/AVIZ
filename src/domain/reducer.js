@@ -2,8 +2,9 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, EXTENSO, formatHorario } from './helpers.js';
+import { genId, arr, getTurmaLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr } from './helpers.js';
 import { isFeriado, isRecesso } from './calendario.js';
+import { computeVagasExtras } from './reposicao.js';
 
 export const EMPTY_STATE = {
   turmas: [], faltas: [], reposicoes: [], vagas: [],
@@ -159,6 +160,82 @@ export function reducer(state, action, config) {
         const semAnt = novasFaltas.some((f) => f.semAntecedencia);
         next.log = addLog(state.log, autor, `Registrou falta${semAnt ? ' sem antecedência' : ''} de ${alunoNome} (${getTurmaLabel(state.turmas, turmaId)})`, action.origem);
       }
+      break;
+    }
+
+    case 'ADD_REPOSICAO': {
+      const { alunoNome, dataReposicao, turmaReposicaoId, tipo } = action;
+      const repoId = genId('r');
+      const semVagaOficial = action.semVagaOficial || false;
+      const vagaRaw = action.vagaSelId ? state.vagas.find((v) => v.id === action.vagaSelId) : null;
+      // Se a vaga escolhida é extra mas há vaga de falta/férias no mesmo slot, consome a de falta (mantém a extra livre).
+      const vagaConsumed = vagaRaw?.vagaExtra
+        ? (state.vagas.find((v) => v.turmaId === turmaReposicaoId && v.data === dataReposicao && (v.faltaId || v.ausenciaId) && !v.vagaExtra) || vagaRaw)
+        : vagaRaw;
+      const vagaConsumedFaltaId = vagaConsumed?.faltaId || null;
+      const vagaConsumedAusenciaId = vagaConsumed?.ausenciaId || null;
+      const isVagaExtra = !!vagaConsumed?.vagaExtra;
+      const removeVaga = (vs) => (vagaConsumed ? vs.filter((v) => v.id !== vagaConsumed.id) : vs);
+      const tRLbl = getTurmaLabel(state.turmas, turmaReposicaoId);
+
+      if (action.ausenciaId) {
+        next = {
+          ...state,
+          ausencias: state.ausencias.map((a) => (a.id === action.ausenciaId ? { ...a, creditoUsado: true } : a)),
+          reposicoes: [...state.reposicoes, { id: repoId, alunoNome, turmaOrigemId: action.turmaOrigemId, faltaId: null, ausenciaId: action.ausenciaId, vagaConsumedAusenciaId, dataReposicao, turmaReposicaoId, tipo: 'reposicao_ferias', realizada: false, semVagaOficial, vagaConsumedFaltaId, vagaExtra: isVagaExtra, criadoPor: autor || null, criadoEm: new Date().toISOString() }],
+          vagas: removeVaga(state.vagas),
+        };
+        next.log = addLog(state.log, autor, `Agendou reposição (férias) de ${alunoNome} (${getTurmaLabel(state.turmas, action.turmaOrigemId)}) → ${tRLbl}, ${fmtBRFull(dataReposicao)}`, action.origem);
+      } else if (action.creditoId) {
+        next = {
+          ...state,
+          creditos: arr(state.creditos).map((c) => (c.id === action.creditoId ? { ...c, usado: true } : c)),
+          reposicoes: [...state.reposicoes, { id: repoId, alunoNome, turmaOrigemId: action.turmaOrigemId, faltaId: null, creditoId: action.creditoId, vagaConsumedFaltaId, vagaExtra: isVagaExtra, dataReposicao, turmaReposicaoId, tipo: 'reposicao_credito', realizada: false, semVagaOficial, criadoPor: autor || null, criadoEm: new Date().toISOString() }],
+          vagas: removeVaga(state.vagas),
+        };
+        next.log = addLog(state.log, autor, `Agendou reposição (crédito extra) de ${alunoNome} (${getTurmaLabel(state.turmas, action.turmaOrigemId)}) → ${tRLbl}, ${fmtBRFull(dataReposicao)}`, action.origem);
+      } else if (tipo === 'aula_extra') {
+        const turmaOrigemId = action.turmaOrigemId || (state.turmas.find((t) => arr(t.alunos).includes(alunoNome)) || {}).id || null;
+        next = {
+          ...state,
+          reposicoes: [...state.reposicoes, { id: repoId, alunoNome, turmaOrigemId, faltaId: null, dataReposicao, turmaReposicaoId, tipo: 'aula_extra', realizada: false, semVagaOficial, pago: false, vagaConsumedFaltaId, vagaExtra: isVagaExtra, criadoPor: autor || null, criadoEm: new Date().toISOString() }],
+          vagas: removeVaga(state.vagas),
+        };
+        next.log = addLog(state.log, autor, `Agendou aula extra de ${alunoNome} (${getTurmaLabel(state.turmas, turmaOrigemId)}) → ${tRLbl}, ${fmtBRFull(dataReposicao)}`, action.origem);
+      } else {
+        const pending = action.faltaId
+          ? state.faltas.filter((f) => f.id === action.faltaId && f.status === 'pendente')
+          : state.faltas.filter((f) => f.alunoNome === alunoNome && f.turmaId === action.turmaOrigemId && f.status === 'pendente' && !f.semAntecedencia).sort((a, b) => getFaltaEarliest(a).localeCompare(getFaltaEarliest(b)));
+        if (pending.length) {
+          const oldest = pending[0];
+          next = {
+            ...state,
+            faltas: state.faltas.map((f) => (f.id === oldest.id ? { ...f, status: 'marcada', reposicaoId: repoId } : f)),
+            reposicoes: [...state.reposicoes, { id: repoId, alunoNome, turmaOrigemId: oldest.turmaId, faltaId: oldest.id, dataReposicao, turmaReposicaoId, tipo: 'reposicao', realizada: false, semVagaOficial, vagaConsumedFaltaId, vagaExtra: isVagaExtra, criadoPor: autor || null, criadoEm: new Date().toISOString() }],
+            vagas: removeVaga(state.vagas),
+          };
+          next.log = addLog(state.log, autor, `Agendou reposição de ${alunoNome} (${getTurmaLabel(state.turmas, oldest.turmaId)}) → ${tRLbl}, ${fmtBRFull(dataReposicao)}`, action.origem);
+        } else {
+          const turmaOrigemId = action.turmaOrigemId || (state.turmas.find((t) => arr(t.alunos).includes(alunoNome)) || {}).id || null;
+          next = {
+            ...state,
+            reposicoes: [...state.reposicoes, { id: repoId, alunoNome, turmaOrigemId, faltaId: null, dataReposicao, turmaReposicaoId, tipo: 'reposicao', realizada: false, semVagaOficial, vagaConsumedFaltaId, vagaExtra: isVagaExtra, semFaltaVinculada: true, observacao: 'Reposição sem falta vinculada — verificar', criadoPor: autor || null, criadoEm: new Date().toISOString() }],
+            vagas: removeVaga(state.vagas),
+          };
+          next.log = addLog(state.log, autor, `Agendou reposição de ${alunoNome} (${getTurmaLabel(state.turmas, turmaOrigemId)}) → ${tRLbl}, ${fmtBRFull(dataReposicao)}`, action.origem);
+        }
+      }
+      // Recalcula vagas extras após o agendamento.
+      next = { ...next, vagas: computeVagasExtras(next.turmas, next.faltas, next.reposicoes, next.vagas, todayStr(), next.ausencias, config) };
+      break;
+    }
+
+    case 'CLEANUP': {
+      // Recalcula vagas extras (roda no load; expiração entra em fatia futura).
+      const vagas = computeVagasExtras(state.turmas, state.faltas, state.reposicoes, state.vagas, todayStr(), state.ausencias, config);
+      const igual = vagas.length === state.vagas.length && vagas.every((v, i) => v.id === state.vagas[i].id);
+      if (igual) return state; // nada mudou → não grava (evita churn no load)
+      next = { ...state, vagas };
       break;
     }
 

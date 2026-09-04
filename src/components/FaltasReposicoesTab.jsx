@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
-import { sortTurmas, EXTENSO, ABREV, fmtBRFull, todayStr, dateToStr } from '../domain/helpers.js';
+import {
+  sortTurmas, EXTENSO, ABREV, fmtBRFull, todayStr, dateToStr,
+  turmaShortLabel, getTurmaLabel, getFaltaEarliest, getFaltaExpiry,
+} from '../domain/helpers.js';
 import {
   getNextOccurrences, getClassDatesInRange, getClassDatetime,
   getDiaSemanaFromDateStr, feriadoNome, recessoNome,
 } from '../domain/calendario.js';
+import {
+  reposicaoRights, pickReposicaoRight, rightToActionFields, calcOccupancy, fmtDatesText,
+} from '../domain/reposicao.js';
 import { cap } from '../domain/vocab.js';
 
 // Aba Faltas & Reposições — porte do SectionFaltasReposicoes (acordeão de
@@ -17,7 +23,8 @@ export default function FaltasReposicoesTab({ state, dispatch, vocab, config }) 
   const groups = [
     { key: 'faltas', label: 'Faltas', color: 'amber', tabs: ['Registrar', 'Cancelar'],
       content: [<TabRegistrarFalta state={state} dispatch={dispatch} vocab={vocab} config={config} />, <EmBreve />] },
-    { key: 'reposicoes', label: 'Reposições', color: 'blue', tabs: ['Registrar', 'Cancelar'], content: [<EmBreve />, <EmBreve />] },
+    { key: 'reposicoes', label: 'Reposições', color: 'blue', tabs: ['Registrar', 'Cancelar'],
+      content: [<TabRegistrarReposicao state={state} dispatch={dispatch} vocab={vocab} config={config} />, <EmBreve />] },
     { key: 'ferias', label: 'Férias', color: 'green', tabs: ['Ausência Programada'], content: [<EmBreve />] },
     { key: 'credito', label: 'Crédito Extra', color: 'purple', tabs: ['Dar Crédito'], content: [<EmBreve />] },
     { key: 'cancelarAula', label: `Cancelar ${cap(vocab.turma)}`, color: 'red', tabs: ['Cancelar'], content: [<EmBreve />] },
@@ -212,6 +219,173 @@ function TabRegistrarFalta({ state, dispatch, vocab, config }) {
       {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
 
       <button onClick={handleSubmit} disabled={!turmaId || !alunoNome || !selectedDates.length} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Registrar Falta</button>
+    </div>
+  );
+}
+
+function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
+  const [turmaOrigemId, setTurmaOrigemId] = useState('');
+  const [alunoNome, setAlunoNome] = useState('');
+  const [vagaSel, setVagaSel] = useState('');
+  const [extraData, setExtraData] = useState('');
+  const [extraTurma, setExtraTurma] = useState('');
+  const [tipoManual, setTipoManual] = useState('reposicao');
+  const [success, setSuccess] = useState('');
+
+  const td = todayStr();
+  const janela = Number(config?.regras?.semAntecedenciaJanela) || 0;
+  const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
+  const turmaOrigem = state.turmas.find((t) => t.id === turmaOrigemId);
+
+  const vagasFuturas = useMemo(() => {
+    const seen = new Set();
+    return [...state.vagas]
+      .filter((v) => v.data >= td)
+      .sort((a, b) => {
+        if (a.data !== b.data) return a.data.localeCompare(b.data);
+        const ha = state.turmas.find((t) => t.id === a.turmaId)?.horario || '';
+        const hb = state.turmas.find((t) => t.id === b.turmaId)?.horario || '';
+        return ha.localeCompare(hb);
+      })
+      .filter((v) => { const k = `${v.data}|${v.turmaId}`; if (seen.has(k)) return false; seen.add(k); return true; });
+  }, [state.vagas, state.turmas, td]);
+
+  const isManual = vagaSel === 'livre';
+  const vagaObj = !isManual && vagaSel ? state.vagas.find((v) => v.id === vagaSel) : null;
+  const dataRepo = isManual ? extraData : (vagaObj?.data || '');
+  const turmaRepoId = isManual ? extraTurma : (vagaObj?.turmaId || '');
+  const turmaRepo = state.turmas.find((t) => t.id === turmaRepoId);
+
+  const rights = useMemo(() => (alunoNome && turmaOrigemId ? reposicaoRights(state, alunoNome, turmaOrigemId, td, config) : []), [state, alunoNome, turmaOrigemId, td, config]);
+  const dentroJanela = useMemo(() => {
+    const dt = getClassDatetime(turmaRepoId, dataRepo, state.turmas);
+    if (!dt || janela <= 0) return false;
+    const h = (dt - Date.now()) / 3600000;
+    return h >= 0 && h <= janela;
+  }, [turmaRepoId, dataRepo, state.turmas, janela]);
+  const picked = useMemo(() => pickReposicaoRight(rights, dentroJanela), [rights, dentroJanela]);
+  const hasPending = rights.some((r) => r.kind === 'falta' && !r.semAntecedencia);
+
+  const faltaInfo = useMemo(() => {
+    if (!alunoNome) return null;
+    const pend = state.faltas.filter((f) => f.alunoNome === alunoNome && f.status === 'pendente').sort((a, b) => getFaltaEarliest(a).localeCompare(getFaltaEarliest(b)));
+    if (!pend.length) return null;
+    const o = pend[0];
+    return { turmaId: o.turmaId, datas: o.datas, expiry: getFaltaExpiry(o, config) };
+  }, [alunoNome, state.faltas, config]);
+
+  const occupancy = useMemo(() => (turmaRepoId && dataRepo ? calcOccupancy(turmaRepoId, dataRepo, state) : null), [turmaRepoId, dataRepo, state]);
+  const jaTemRepo = !!(alunoNome && dataRepo && turmaRepoId && state.reposicoes.some((r) => r.alunoNome === alunoNome && r.dataReposicao === dataRepo && r.turmaReposicaoId === turmaRepoId && !r.realizada));
+  const canSubmit = turmaOrigemId && alunoNome && vagaSel && dataRepo && turmaRepoId && !jaTemRepo;
+
+  const pickedLabel = (r) => {
+    if (!r) return null;
+    if (r.kind === 'falta') return `falta pendente (vence ${fmtBRFull(r.expiry)})`;
+    if (r.kind === 'ferias') return `crédito de férias (vence ${fmtBRFull(r.expiry)})`;
+    return `crédito extra (vence ${fmtBRFull(r.expiry)})`;
+  };
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    const forcarAulaExtra = !hasPending && tipoManual === 'aula_extra';
+    const fields = forcarAulaExtra ? { tipo: 'aula_extra' } : picked ? rightToActionFields(picked) : { tipo: 'reposicao' };
+    dispatch({ type: 'ADD_REPOSICAO', alunoNome, turmaOrigemId, dataReposicao: dataRepo, turmaReposicaoId: turmaRepoId, semVagaOficial: isManual, vagaSelId: vagaObj?.id || null, ...fields });
+    setSuccess(`${forcarAulaExtra ? 'Aula extra' : 'Reposição'} de ${alunoNome} agendada para ${fmtBRFull(dataRepo)}.`);
+    setAlunoNome(''); setVagaSel(''); setExtraData(''); setExtraTurma(''); setTipoManual('reposicao');
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-700">Registrar Reposição</h3>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)} de origem</label>
+        <select value={turmaOrigemId} onChange={(e) => { setTurmaOrigemId(e.target.value); setAlunoNome(''); setVagaSel(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">— Selecione a {vocab.turma} —</option>
+          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+        </select>
+      </div>
+
+      {turmaOrigem && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.aluno)}</label>
+          <select value={alunoNome} onChange={(e) => { setAlunoNome(e.target.value); setVagaSel(''); setTipoManual('reposicao'); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione o {vocab.aluno} —</option>
+            {[...turmaOrigem.alunos].sort((a, b) => a.localeCompare(b, 'pt')).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      )}
+
+      {alunoNome && faltaInfo && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+          <div className="font-medium text-blue-800">Falta mais antiga a consumir:</div>
+          <div className="text-blue-700 mt-0.5">{getTurmaLabel(state.turmas, faltaInfo.turmaId)} — <strong>{fmtDatesText(faltaInfo.datas)}</strong></div>
+          <div className="text-blue-600 mt-0.5">Expira em: {fmtBRFull(faltaInfo.expiry)}</div>
+        </div>
+      )}
+
+      {alunoNome && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Vaga</label>
+          <select value={vagaSel} onChange={(e) => { setVagaSel(e.target.value); setExtraData(''); setExtraTurma(''); setTipoManual('reposicao'); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione a vaga —</option>
+            {vagasFuturas.map((v) => {
+              const t = state.turmas.find((x) => x.id === v.turmaId);
+              return <option key={v.id} value={v.id}>{fmtBRFull(v.data)} ({ABREV[getDiaSemanaFromDateStr(v.data)]}) — {turmaShortLabel(t)}{v.vagaExtra ? ' ✦ vaga extra' : ''}</option>;
+            })}
+            <option value="livre">✦ Escolher data / {vocab.turma}</option>
+          </select>
+          {vagasFuturas.length === 0 && !isManual && <p className="text-gray-400 text-sm mt-1">Nenhuma vaga aberta no momento.</p>}
+        </div>
+      )}
+
+      {isManual && (
+        <div className="space-y-3 pl-3 border-l-2 border-blue-300">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+            <input type="date" value={extraData} min={td} onChange={(e) => setExtraData(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
+            <select value={extraTurma} onChange={(e) => setExtraTurma(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option value="">— Selecione a {vocab.turma} —</option>
+              {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {!hasPending && vagaSel && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+          <div className="flex gap-3">
+            <label className={`flex-1 flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${tipoManual === 'reposicao' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+              <input type="radio" name="tipoManual" value="reposicao" checked={tipoManual === 'reposicao'} onChange={() => setTipoManual('reposicao')} />
+              <span className="text-sm font-medium">{picked ? 'Reposição (usa crédito)' : 'Reposição sem falta vinculada'}</span>
+            </label>
+            <label className={`flex-1 flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${tipoManual === 'aula_extra' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'}`}>
+              <input type="radio" name="tipoManual" value="aula_extra" checked={tipoManual === 'aula_extra'} onChange={() => setTipoManual('aula_extra')} />
+              <span className="text-sm font-medium">Aula extra</span>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {vagaSel && picked && !(!hasPending && tipoManual === 'aula_extra') && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-700">Vai consumir: <strong>{pickedLabel(picked)}</strong></div>
+      )}
+
+      {occupancy !== null && turmaRepo && (
+        <div className={`rounded-lg px-3 py-2 text-sm font-medium border ${occupancy + 1 > turmaRepo.capacidade ? 'bg-red-50 text-red-700 border-red-200' : occupancy + 1 === turmaRepo.capacidade ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+          {getTurmaLabel(state.turmas, turmaRepoId)} em {fmtBRFull(dataRepo)}: {occupancy + 1}/{turmaRepo.capacidade} {vocab.alunos} esperados{occupancy + 1 > turmaRepo.capacidade && ' ⚠️ Acima da capacidade!'}
+        </div>
+      )}
+
+      {jaTemRepo && <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700 font-medium">{alunoNome} já tem reposição nesse horário.</div>}
+      {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
+
+      <button onClick={handleSubmit} disabled={!canSubmit} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Confirmar Reposição</button>
     </div>
   );
 }

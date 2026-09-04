@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ref, get } from 'firebase/database';
 import { db } from '../lib/firebase.js';
 import { paths } from '../lib/paths.js';
@@ -29,6 +29,12 @@ export default function EscolaApp({ tenant, user, membro }) {
 
   const vocab = makeVocab(config);
   const carregando = state === undefined || config === undefined;
+
+  // Uma vez, após carregar, recalcula as vagas extras (como o Passarinho faz no sync).
+  const cleanupFeito = useRef(false);
+  useEffect(() => {
+    if (!carregando && !cleanupFeito.current) { cleanupFeito.current = true; dispatch({ type: 'CLEANUP' }); }
+  }, [carregando]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="bg-gray-100 min-h-screen">
