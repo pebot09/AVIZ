@@ -46,7 +46,7 @@ const INICIAL = {
   donoNome: '', donoArtigo: '', nomeEscola: '', espacoArtigo: '', slug: '', slugEditado: false,
   vAluno: 'aluno', vTurma: 'turma', vProfessor: 'professor',
   capNominal: 0, capFisica: 0,
-  antecedencia: 24, semAntec: null, semAntecJanela: 2,
+  antecedencia: 24, semAntec: null, semAntecJanela: 2, validadeFalta: 30,
   vagaExtra: null, vagaExtraQuando: 'vespera',
   ferias: null, feriasCredito: null, feriasCreditos: 1, feriasValidade: 30, feriasLimiteAno: 1,
 };
@@ -72,6 +72,7 @@ export default function Onboarding({ user }) {
     s.push('avisoRegras');
     s.push('antecedencia');
     if (r.antecedencia > 0) { s.push('semAntec'); if (r.semAntec) s.push('semAntecJanela'); }
+    s.push('validadeFalta');
     s.push('vagaExtra'); if (r.vagaExtra) s.push('vagaExtraQuando');
     s.push('ferias');
     if (r.ferias) { s.push('feriasCredito'); if (r.feriasCredito) { s.push('feriasCreditos'); s.push('feriasValidade'); s.push('feriasLimite'); } }
@@ -116,6 +117,7 @@ export default function Onboarding({ user }) {
         antecedenciaHoras: Number(r.antecedencia) || 0,
         semAntecedencia: r.antecedencia > 0 ? !!r.semAntec : false,
         semAntecedenciaJanela: r.semAntec ? Number(r.semAntecJanela) || 2 : 0,
+        validadeFaltaDias: Number(r.validadeFalta) || 0,
         vagaExtra: !!r.vagaExtra,
         vagaExtraAbertura: r.vagaExtra ? r.vagaExtraQuando : null,
         ferias: !!r.ferias,
@@ -246,6 +248,15 @@ export default function Onboarding({ user }) {
         {step === 'semAntecJanela' && (
           <Passo titulo="Até quantas horas antes ainda vale avisar sem antecedência?" ajuda="Esse mesmo número define até quando o aluno pode marcar uma reposição sem antecedência.">
             <Campo><NumberSelect value={r.semAntecJanela} onChange={(v) => set({ semAntecJanela: v })} options={Array.from({ length: r.antecedencia }, (_, k) => ({ value: k + 1, label: `${k + 1}h` }))} /></Campo>
+          </Passo>
+        )}
+
+        {step === 'validadeFalta' && (
+          <Passo titulo={`Por quanto tempo o ${A} pode repor uma falta?`} ajuda="Depois desse prazo, a falta expira e perde o direito à reposição.">
+            <Campo>
+              <NumberSelect value={r.validadeFalta} onChange={(v) => set({ validadeFalta: v })}
+                options={[{ value: 30, label: '30 dias' }, { value: 45, label: '45 dias' }, { value: 60, label: '60 dias' }, { value: 90, label: '90 dias' }, { value: 0, label: 'Não expira' }]} />
+            </Campo>
           </Passo>
         )}
 

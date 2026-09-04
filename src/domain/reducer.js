@@ -3,6 +3,7 @@
 // próximas fatias, reaproveitando o código original.
 
 import { genId, arr, getTurmaLabel, EXTENSO, formatHorario } from './helpers.js';
+import { isFeriado, isRecesso } from './calendario.js';
 
 export const EMPTY_STATE = {
   turmas: [], faltas: [], reposicoes: [], vagas: [],
@@ -22,12 +23,13 @@ export function normalizeState(data) {
   };
 }
 
-function addLog(log, autor, descricao) {
+function addLog(log, autor, descricao, origem) {
   const entry = { id: genId('log'), ts: new Date().toISOString(), professor: autor || '?', descricao };
+  if (origem) entry.origem = origem;
   return [entry, ...arr(log)].slice(0, 6000);
 }
 
-export function reducer(state, action) {
+export function reducer(state, action, config) {
   let next = state;
   const autor = action.autor;
 
@@ -128,6 +130,35 @@ export function reducer(state, action) {
         acessos: arr(state.acessos).map((a) => (a.turmaId === turmaId && a.alunoNome === oldNome ? { ...a, alunoNome: newNome } : a)),
       };
       next.log = addLog(state.log, autor, `Renomeou ${oldNome} → ${newNome} (${getTurmaLabel(state.turmas, turmaId)})`);
+      break;
+    }
+
+    case 'ADD_FALTA': {
+      const { alunoNome, turmaId } = action;
+      const datasRaw = action.datasComTipo || arr(action.datas).map((d) => ({ data: d, semAntecedencia: false }));
+      // Feriado/recesso nunca viram falta (datas bloqueadas).
+      const datas = datasRaw.filter(({ data }) => !isFeriado(data, config) && !isRecesso(data, config));
+      const novasFaltas = [];
+      const novasVagas = [];
+      let reposicoes = state.reposicoes;
+      datas.forEach(({ data, semAntecedencia }) => {
+        const existe = state.faltas.some((f) => f.alunoNome === alunoNome && f.turmaId === turmaId && arr(f.datas).includes(data) && (f.status === 'pendente' || f.status === 'marcada'));
+        if (existe) return;
+        const faltaId = genId('f');
+        novasFaltas.push({ id: faltaId, alunoNome, turmaId, datas: [data], status: 'pendente', semAntecedencia: !!semAntecedencia, criadoPor: autor || null, criadoEm: new Date().toISOString() });
+        // Se já havia reposição marcada nessa turma/data sem vaga própria, ela regulariza para esta falta.
+        const repoOrfao = reposicoes.find((r) => r.turmaReposicaoId === turmaId && r.dataReposicao === data && !r.realizada && !r.vagaConsumedFaltaId);
+        if (repoOrfao) {
+          reposicoes = reposicoes.map((r) => (r.id === repoOrfao.id ? { ...r, vagaConsumedFaltaId: faltaId, vagaExtra: false, semVagaOficial: false } : r));
+        } else {
+          novasVagas.push({ id: genId('v'), turmaId, data, faltaId });
+        }
+      });
+      next = { ...state, faltas: [...state.faltas, ...novasFaltas], vagas: [...state.vagas, ...novasVagas], reposicoes };
+      if (novasFaltas.length) {
+        const semAnt = novasFaltas.some((f) => f.semAntecedencia);
+        next.log = addLog(state.log, autor, `Registrou falta${semAnt ? ' sem antecedência' : ''} de ${alunoNome} (${getTurmaLabel(state.turmas, turmaId)})`, action.origem);
+      }
       break;
     }
 

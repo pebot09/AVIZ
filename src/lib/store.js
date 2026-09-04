@@ -23,9 +23,11 @@ export function useConfig(tid) {
   return config;
 }
 
-export function useTenantStore(tid, autor) {
+export function useTenantStore(tid, autor, config) {
   const [state, setState] = useState(undefined);
   const stateRef = useRef(EMPTY);
+  const configRef = useRef(config);
+  configRef.current = config;
   const [erro, setErro] = useState(null);
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function useTenantStore(tid, autor) {
 
   function dispatch(action) {
     const atual = stateRef.current || EMPTY;
-    const next = reducer(atual, { ...action, autor });
+    const next = reducer(atual, { ...action, autor }, configRef.current);
     if (next === atual) return;
     stateRef.current = next;
     setState(next); // otimista

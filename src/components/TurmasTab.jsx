@@ -10,7 +10,7 @@ import HistoricoAluno from './HistoricoAluno.jsx';
 
 // Aba Turmas — porte fiel do SectionTurmas do Passarinho, com vocabulário
 // configurável e o seletor de horário 24h do AVIZ.
-export default function TurmasTab({ state, dispatch, vocab, capacidadePadrao }) {
+export default function TurmasTab({ state, dispatch, vocab, config, capacidadePadrao }) {
   const sorted = useMemo(() => sortTurmas(state.turmas).filter((t) => t.id !== TURMA_EXTRA_ID), [state.turmas]);
   const [expandedId, setExpandedId] = useState(null);
   const [gerenciando, setGerenciando] = useState(null);
@@ -29,7 +29,7 @@ export default function TurmasTab({ state, dispatch, vocab, capacidadePadrao }) 
 
       {sorted.map((turma) => (
         <TurmaCard
-          key={turma.id} turma={turma} state={state} dispatch={dispatch} vocab={vocab}
+          key={turma.id} turma={turma} state={state} dispatch={dispatch} vocab={vocab} config={config}
           exp={expandedId === turma.id}
           onToggle={() => setExpandedId(expandedId === turma.id ? null : turma.id)}
           onGerenciar={() => setGerenciando(turma)}
@@ -49,7 +49,7 @@ export default function TurmasTab({ state, dispatch, vocab, capacidadePadrao }) 
   );
 }
 
-function TurmaCard({ turma, state, dispatch, vocab, exp, onToggle, onGerenciar }) {
+function TurmaCard({ turma, state, dispatch, vocab, config, exp, onToggle, onGerenciar }) {
   const td = todayStr();
   const in7 = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 7); return dateToStr(d); }, []);
   const [editObs, setEditObs] = useState(undefined);
@@ -129,7 +129,7 @@ function TurmaCard({ turma, state, dispatch, vocab, exp, onToggle, onGerenciar }
                   const nRepos = arr(state.reposicoes).filter((r) => r.turmaOrigemId === turma.id && r.alunoNome === nome && !r.realizada).length;
                   const nFerias = arr(state.ausencias).filter((a) => a.turmaId === turma.id && a.alunoNome === nome && !a.creditoUsado && a.creditoReposicao > 0).length;
                   const nExtra = arr(state.creditos).filter((c) => c.turmaId === turma.id && c.alunoNome === nome && !c.usado && c.dataExpiracao >= td).length;
-                  const faltaExpirando = arr(state.faltas).some((f) => f.turmaId === turma.id && f.alunoNome === nome && f.status === 'pendente' && getFaltaExpiry(f) >= td && getFaltaExpiry(f) <= in7);
+                  const faltaExpirando = arr(state.faltas).some((f) => f.turmaId === turma.id && f.alunoNome === nome && f.status === 'pendente' && getFaltaExpiry(f, config) >= td && getFaltaExpiry(f, config) <= in7);
                   return (
                     <Fragment key={nome}>
                       <span className="text-sm text-gray-700 py-1.5 pr-2 whitespace-nowrap">{nome}</span>

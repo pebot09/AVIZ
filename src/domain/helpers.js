@@ -64,9 +64,14 @@ export function fmtBRFull(dateStr) {
 export function getFaltaEarliest(falta) {
   return [...arr(falta.datas)].sort()[0];
 }
-export function getFaltaExpiry(falta) {
+// Validade da falta: config.regras.validadeFaltaDias (0 = não expira).
+// Sem config, cai em 30 dias (o padrão histórico), só como fallback.
+export function getFaltaExpiry(falta, config) {
+  const dias = config && config.regras && config.regras.validadeFaltaDias != null
+    ? Number(config.regras.validadeFaltaDias) : 30;
+  if (!dias || dias <= 0) return '9999-12-31';
   const d = parseDate(getFaltaEarliest(falta));
-  d.setDate(d.getDate() + 30);
+  d.setDate(d.getDate() + dias);
   return dateToStr(d);
 }
 

@@ -6,6 +6,7 @@ import { useTenantStore, useConfig } from '../lib/store.js';
 import { makeVocab, cap } from '../domain/vocab.js';
 import { logout } from '../lib/auth.js';
 import TurmasTab from './TurmasTab.jsx';
+import FaltasReposicoesTab from './FaltasReposicoesTab.jsx';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
 // Passarinho: Turmas · Faltas & Reposições · Painel. Por ora, Turmas está
@@ -16,7 +17,7 @@ const ABAS = ['Turmas', 'Faltas & Reposições', 'Painel'];
 export default function EscolaApp({ tenant, user, membro }) {
   const config = useConfig(tenant);
   // Autor do log = nome do membro (não o e-mail), para o histórico ficar limpo.
-  const { state, dispatch, erro } = useTenantStore(tenant, (membro && membro.nome) || user.email);
+  const { state, dispatch, erro } = useTenantStore(tenant, (membro && membro.nome) || user.email, config);
   const [nomeEscola, setNomeEscola] = useState(tenant);
   const [aba, setAba] = useState('Turmas');
 
@@ -58,7 +59,9 @@ export default function EscolaApp({ tenant, user, membro }) {
       {carregando ? (
         <p className="text-center text-gray-400 text-sm py-10">Carregando…</p>
       ) : aba === 'Turmas' ? (
-        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} />
+        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} config={config} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} />
+      ) : aba === 'Faltas & Reposições' ? (
+        <FaltasReposicoesTab state={state} dispatch={dispatch} vocab={vocab} config={config} />
       ) : (
         <EmBreve nome={aba} />
       )}
