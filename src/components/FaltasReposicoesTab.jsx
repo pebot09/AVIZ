@@ -240,7 +240,8 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
   const vagasFuturas = useMemo(() => {
     const seen = new Set();
     return [...state.vagas]
-      .filter((v) => v.data >= td)
+      // Não pode repor na própria turma de origem (nenhuma data).
+      .filter((v) => v.data >= td && v.turmaId !== turmaOrigemId)
       .sort((a, b) => {
         if (a.data !== b.data) return a.data.localeCompare(b.data);
         const ha = state.turmas.find((t) => t.id === a.turmaId)?.horario || '';
@@ -248,7 +249,7 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
         return ha.localeCompare(hb);
       })
       .filter((v) => { const k = `${v.data}|${v.turmaId}`; if (seen.has(k)) return false; seen.add(k); return true; });
-  }, [state.vagas, state.turmas, td]);
+  }, [state.vagas, state.turmas, td, turmaOrigemId]);
 
   const isManual = vagaSel === 'livre';
   const vagaObj = !isManual && vagaSel ? state.vagas.find((v) => v.id === vagaSel) : null;
@@ -350,7 +351,7 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
             <select value={extraTurma} onChange={(e) => setExtraTurma(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">— Selecione a {vocab.turma} —</option>
-              {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+              {sorted.filter((t) => t.id !== turmaOrigemId).map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
             </select>
           </div>
         </div>

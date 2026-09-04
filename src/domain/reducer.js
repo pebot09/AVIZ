@@ -165,6 +165,8 @@ export function reducer(state, action, config) {
 
     case 'ADD_REPOSICAO': {
       const { alunoNome, dataReposicao, turmaReposicaoId, tipo } = action;
+      // Regra: ninguém repõe na própria turma de origem (nenhuma data).
+      if (turmaReposicaoId && action.turmaOrigemId && turmaReposicaoId === action.turmaOrigemId) return state;
       const repoId = genId('r');
       const semVagaOficial = action.semVagaOficial || false;
       const vagaRaw = action.vagaSelId ? state.vagas.find((v) => v.id === action.vagaSelId) : null;
