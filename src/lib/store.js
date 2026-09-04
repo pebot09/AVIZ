@@ -29,6 +29,13 @@ export async function saveConfig(tid, patch) {
   await set(ref(db, paths.config(tid)), { ...atual, ...patch });
 }
 
+// Salva a vitrine pública (nome, artigo, cor).
+export async function saveTenantPublic(tid, patch) {
+  const snap = await get(ref(db, paths.tenantPublic(tid)));
+  const atual = snap.exists() ? snap.val() : {};
+  await set(ref(db, paths.tenantPublic(tid)), { ...atual, ...patch });
+}
+
 export function useTenantStore(tid, autor, config) {
   const [state, setState] = useState(undefined);
   const stateRef = useRef(EMPTY);
