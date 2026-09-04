@@ -28,8 +28,10 @@ export default function FaltasReposicoesTab({ state, dispatch, vocab, config }) 
       content: [<TabRegistrarReposicao state={state} dispatch={dispatch} vocab={vocab} config={config} />, <TabCancelarReposicao state={state} dispatch={dispatch} vocab={vocab} />] },
     { key: 'ferias', label: 'Férias', color: 'green', tabs: ['Ausência Programada'],
       content: [config?.regras?.ferias ? <TabAusenciaProgramada state={state} dispatch={dispatch} vocab={vocab} config={config} /> : <NaoOferece texto={`Sua escola não oferece marcação de férias.`} />] },
-    { key: 'credito', label: 'Crédito Extra', color: 'purple', tabs: ['Dar Crédito'], content: [<EmBreve />] },
-    { key: 'cancelarAula', label: `Cancelar ${cap(vocab.turma)}`, color: 'red', tabs: ['Cancelar'], content: [<EmBreve />] },
+    { key: 'credito', label: 'Crédito Extra', color: 'purple', tabs: ['Dar Crédito'],
+      content: [<TabCreditoExtra state={state} dispatch={dispatch} vocab={vocab} />] },
+    { key: 'cancelarAula', label: `Cancelar ${cap(vocab.turma)}`, color: 'red', tabs: ['Cancelar'],
+      content: [<TabCancelarAula state={state} dispatch={dispatch} vocab={vocab} config={config} />] },
   ];
 
   const colorMap = {
@@ -624,6 +626,182 @@ function TabAusenciaProgramada({ state, dispatch, vocab, config }) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabCreditoExtra({ state, dispatch, vocab }) {
+  const [turmaId, setTurmaId] = useState('');
+  const [alunoNome, setAlunoNome] = useState('');
+  const [dataExpiracao, setDataExpiracao] = useState('');
+  const [success, setSuccess] = useState('');
+  const td = todayStr();
+  const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
+  const turma = state.turmas.find((t) => t.id === turmaId);
+
+  useEffect(() => { const d = new Date(); d.setDate(d.getDate() + 30); setDataExpiracao(dateToStr(d)); }, []);
+
+  const handleSubmit = () => {
+    if (!turmaId || !alunoNome || !dataExpiracao) return;
+    dispatch({ type: 'ADD_CREDITO', alunoNome, turmaId, dataExpiracao });
+    setSuccess(`Crédito de reposição adicionado para ${alunoNome}.`);
+    setAlunoNome('');
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  const creditos = useMemo(() => arr(state.creditos).filter((c) => !c.usado && c.dataExpiracao >= td), [state.creditos, td]);
+  const expirados = useMemo(() => arr(state.creditos).filter((c) => !c.usado && c.dataExpiracao < td), [state.creditos, td]);
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-700">
+        Dar um crédito de reposição avulso ao {vocab.aluno}. Ele pode usar para marcar uma reposição sem precisar de uma falta registrada.
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
+        <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setAlunoNome(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">— Selecione a {vocab.turma} —</option>
+          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+        </select>
+      </div>
+      {turma && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.aluno)}</label>
+          <select value={alunoNome} onChange={(e) => setAlunoNome(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione o {vocab.aluno} —</option>
+            {[...turma.alunos].sort((a, b) => a.localeCompare(b, 'pt')).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      )}
+      {alunoNome && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data de expiração</label>
+          <input type="date" value={dataExpiracao} min={td} onChange={(e) => setDataExpiracao(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+      )}
+      {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
+      <button onClick={handleSubmit} disabled={!turmaId || !alunoNome || !dataExpiracao} className="w-full py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed">Dar Crédito</button>
+
+      {creditos.length > 0 && (
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">Créditos ativos</h4>
+          <div className="space-y-2">
+            {creditos.map((c) => (
+              <div key={c.id} className="bg-gray-50 rounded-lg p-3 text-sm flex justify-between items-center">
+                <div>
+                  <span className="font-medium">{c.alunoNome}</span>
+                  <span className="text-gray-400 ml-2">({getTurmaLabel(state.turmas, c.turmaId)})</span>
+                  <div className="text-gray-500 mt-0.5">Expira: {fmtBRFull(c.dataExpiracao)}</div>
+                  {c.criadoPor && <div className="text-gray-400 text-xs mt-0.5">por {c.criadoPor}</div>}
+                </div>
+                <button onClick={() => dispatch({ type: 'DELETE_CREDITO', id: c.id })} className="text-red-400 hover:text-red-600 text-xs ml-2 shrink-0">Remover</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {expirados.length > 0 && (
+        <div className="mt-2 border-t border-gray-100 pt-3">
+          <h4 className="text-sm font-semibold text-gray-400 mb-2">Expirados</h4>
+          <div className="space-y-1">
+            {expirados.map((c) => (
+              <div key={c.id} className="bg-gray-50 rounded-lg px-3 py-2 text-sm flex justify-between items-center opacity-60">
+                <div><span className="font-medium">{c.alunoNome}</span><span className="text-gray-400 ml-2 text-xs">expirou {fmtBRFull(c.dataExpiracao)}</span></div>
+                <button onClick={() => dispatch({ type: 'DELETE_CREDITO', id: c.id })} className="text-red-400 hover:text-red-600 text-xs ml-2">Remover</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabCancelarAula({ state, dispatch, vocab, config }) {
+  const [turmaId, setTurmaId] = useState('');
+  const [data, setData] = useState('');
+  const [confirm, setConfirm] = useState(false);
+  const td = todayStr();
+  const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
+  const turma = state.turmas.find((t) => t.id === turmaId);
+
+  const proximasDatas = useMemo(() => {
+    if (!turma) return [];
+    const end = new Date(); end.setDate(end.getDate() + 60);
+    const jaCanc = new Set(arr(state.aulasCanceladas).filter((a) => a.turmaId === turmaId).map((a) => a.data));
+    return getClassDatesInRange(turma, td, dateToStr(end)).filter((d) => !feriadoNome(d, config) && !isRecesso(d, config) && !jaCanc.has(d));
+  }, [turma, turmaId, state.aulasCanceladas, td, config]);
+
+  const previa = useMemo(() => {
+    if (!turma || !data) return null;
+    const mes = data.slice(0, 7);
+    const ferias = new Set(arr(state.ausencias).filter((a) => a.turmaId === turmaId && a.mesAno === mes).map((a) => a.alunoNome));
+    const jaFaltam = new Set(state.faltas.filter((f) => f.turmaId === turmaId && f.datas.includes(data) && (f.status === 'pendente' || f.status === 'marcada')).map((f) => f.alunoNome));
+    const marcar = turma.alunos.filter((n) => !ferias.has(n) && !jaFaltam.has(n));
+    const repos = state.reposicoes.filter((r) => r.turmaReposicaoId === turmaId && r.dataReposicao === data && !r.realizada);
+    return { marcar, repos };
+  }, [turma, turmaId, data, state.ausencias, state.faltas, state.reposicoes]);
+
+  const handleCancelar = () => {
+    if (!turmaId || !data) return;
+    dispatch({ type: 'CANCEL_AULA', turmaId, data });
+    setConfirm(false); setData(''); setTurmaId('');
+  };
+
+  const canceladas = useMemo(() => [...arr(state.aulasCanceladas)].sort((a, b) => b.data.localeCompare(a.data)), [state.aulasCanceladas]);
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+        Cancela uma {vocab.turma} inteira (quando ninguém pôde dar). Todos os {vocab.alunos} presentes viram falta regular, nenhuma vaga é aberta, e reposições marcadas para essa aula são desfeitas sem punição.
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
+        <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setData(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">— Selecione a {vocab.turma} —</option>
+          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+        </select>
+      </div>
+      {turma && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data da aula</label>
+          <select value={data} onChange={(e) => setData(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione a data —</option>
+            {proximasDatas.map((d) => <option key={d} value={d}>{fmtBRFull(d)}</option>)}
+          </select>
+          {proximasDatas.length === 0 && <p className="text-xs text-gray-400 mt-1">Nenhuma aula futura disponível.</p>}
+        </div>
+      )}
+      {previa && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
+          <div><strong>{previa.marcar.length}</strong> {previa.marcar.length === 1 ? vocab.aluno : vocab.alunos} {previa.marcar.length === 1 ? 'será marcado' : 'serão marcados'} como falta.</div>
+          {previa.repos.length > 0 && <div className="mt-1">{previa.repos.length} reposição(ões) marcada(s) para esta aula serão desfeitas (sem punição).</div>}
+        </div>
+      )}
+      {!confirm ? (
+        <button onClick={() => setConfirm(true)} disabled={!turmaId || !data} className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Cancelar aula</button>
+      ) : (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+          <p className="text-sm text-red-700 font-medium">Confirmar cancelamento de {getTurmaLabel(state.turmas, turmaId)} em {fmtBRFull(data)}?</p>
+          <div className="flex gap-2">
+            <button onClick={handleCancelar} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Confirmar</button>
+            <button onClick={() => setConfirm(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm">Voltar</button>
+          </div>
+        </div>
+      )}
+      {canceladas.length > 0 && (
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">Aulas canceladas</h4>
+          <div className="space-y-2">
+            {canceladas.map((a) => (
+              <div key={a.id} className="bg-gray-50 rounded-lg p-3 text-sm flex justify-between items-center gap-2">
+                <div><span className="font-medium">{getTurmaLabel(state.turmas, a.turmaId)}</span><div className="text-gray-500 mt-0.5">{fmtBRFull(a.data)}</div></div>
+                <button onClick={() => dispatch({ type: 'REVERT_AULA_CANCELADA', id: a.id })} className="text-xs px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 shrink-0">Reativar</button>
+              </div>
+            ))}
           </div>
         </div>
       )}

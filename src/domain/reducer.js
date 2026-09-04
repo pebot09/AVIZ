@@ -4,12 +4,12 @@
 
 import { genId, arr, getTurmaLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr } from './helpers.js';
 import { isFeriado, isRecesso, mesEhRecesso, getClassDatesInRange } from './calendario.js';
-import { computeVagasExtras, fmtDatesText } from './reposicao.js';
+import { computeVagasExtras, fmtDatesText, stripVagasCanceladas } from './reposicao.js';
 
 export const EMPTY_STATE = {
   turmas: [], faltas: [], reposicoes: [], vagas: [],
   ausencias: [], acessos: [], creditos: [], notas: [],
-  log: [], estatisticas: { faltasExpiradas: [] },
+  log: [], aulasCanceladas: [], estatisticas: { faltasExpiradas: [] },
 };
 
 export function normalizeState(data) {
@@ -19,7 +19,7 @@ export function normalizeState(data) {
     ...s,
     turmas: arr(s.turmas), faltas: arr(s.faltas), reposicoes: arr(s.reposicoes),
     vagas: arr(s.vagas), ausencias: arr(s.ausencias), acessos: arr(s.acessos),
-    creditos: arr(s.creditos), notas: arr(s.notas), log: arr(s.log),
+    creditos: arr(s.creditos), notas: arr(s.notas), log: arr(s.log), aulasCanceladas: arr(s.aulasCanceladas),
     estatisticas: {
       faltasExpiradas: arr((s.estatisticas || {}).faltasExpiradas),
       reposCanceladas: arr((s.estatisticas || {}).reposCanceladas),
@@ -383,9 +383,69 @@ export function reducer(state, action, config) {
       break;
     }
 
+    case 'ADD_CREDITO': {
+      const cred = { id: genId('cred'), alunoNome: action.alunoNome, turmaId: action.turmaId, dataExpiracao: action.dataExpiracao, usado: false, criadoPor: autor || null, criadoEm: new Date().toISOString() };
+      next = { ...state, creditos: [...arr(state.creditos), cred] };
+      next.log = addLog(state.log, autor, `Deu crédito extra de reposição para ${action.alunoNome} (${getTurmaLabel(state.turmas, action.turmaId)}) — expira ${fmtBRFull(action.dataExpiracao)}`, action.origem);
+      break;
+    }
+
+    case 'DELETE_CREDITO': {
+      const credDel = arr(state.creditos).find((c) => c.id === action.id);
+      next = { ...state, creditos: arr(state.creditos).filter((c) => c.id !== action.id) };
+      if (credDel) next.log = addLog(state.log, autor, `Removeu crédito extra de ${credDel.alunoNome} (${getTurmaLabel(state.turmas, credDel.turmaId)})`, action.origem);
+      break;
+    }
+
+    case 'CANCEL_AULA': {
+      const caT = state.turmas.find((t) => t.id === action.turmaId);
+      const caData = action.data;
+      if (!caT || !caData) return state;
+      const cancelamentoId = genId('cancaula');
+      const caMes = caData.slice(0, 7);
+      const caFerias = new Set(arr(state.ausencias).filter((a) => a.turmaId === action.turmaId && a.mesAno === caMes).map((a) => a.alunoNome));
+      const caJaFaltam = new Set(state.faltas.filter((f) => f.turmaId === action.turmaId && arr(f.datas).includes(caData) && (f.status === 'pendente' || f.status === 'marcada')).map((f) => f.alunoNome));
+      const novasFaltas = [];
+      arr(caT.alunos).forEach((nome) => {
+        if (caFerias.has(nome) || caJaFaltam.has(nome)) return;
+        novasFaltas.push({ id: genId('f'), alunoNome: nome, turmaId: action.turmaId, datas: [caData], status: 'pendente', semAntecedencia: false, cancelamentoId, criadoPor: autor || null, criadoEm: new Date().toISOString() });
+      });
+      const reposAfetadas = state.reposicoes.filter((r) => r.turmaReposicaoId === action.turmaId && r.dataReposicao === caData && !r.realizada);
+      let caFaltas = [...state.faltas, ...novasFaltas];
+      let caRepos = state.reposicoes;
+      let caAus = state.ausencias;
+      let caCred = state.creditos;
+      reposAfetadas.forEach((repo) => {
+        caRepos = caRepos.filter((r) => r.id !== repo.id);
+        if (repo.tipo === 'reposicao_ferias' && repo.ausenciaId) caAus = caAus.map((a) => (a.id === repo.ausenciaId ? { ...a, creditoUsado: false } : a));
+        else if (repo.tipo === 'reposicao_credito' && repo.creditoId) caCred = arr(caCred).map((c) => (c.id === repo.creditoId ? { ...c, usado: false } : c));
+        else if (repo.faltaId) caFaltas = caFaltas.map((f) => (f.id === repo.faltaId ? { ...f, status: 'pendente', reposicaoId: undefined } : f));
+      });
+      let caVagas = state.vagas.filter((v) => !(v.turmaId === action.turmaId && v.data === caData));
+      const caAulas = [...arr(state.aulasCanceladas), { id: cancelamentoId, turmaId: action.turmaId, data: caData, ts: new Date().toISOString(), professor: autor || null }];
+      caVagas = stripVagasCanceladas(computeVagasExtras(state.turmas, caFaltas, caRepos, caVagas, todayStr(), caAus, config), caAulas);
+      next = { ...state, faltas: caFaltas, reposicoes: caRepos, ausencias: caAus, creditos: caCred, vagas: caVagas, aulasCanceladas: caAulas };
+      const extra = reposAfetadas.length ? `, ${reposAfetadas.length} reposição(ões) desfeita(s)` : '';
+      next.log = addLog(state.log, autor, `Cancelou aula de ${getTurmaLabel(state.turmas, action.turmaId)} em ${fmtBRFull(caData)} — ${novasFaltas.length} ${novasFaltas.length === 1 ? 'aluno' : 'alunos'} marcado(s) como falta${extra}`, action.origem);
+      break;
+    }
+
+    case 'REVERT_AULA_CANCELADA': {
+      const entry = arr(state.aulasCanceladas).find((a) => a.id === action.id);
+      if (!entry) return state;
+      const removidasIds = new Set(state.faltas.filter((f) => f.cancelamentoId === action.id && f.status === 'pendente' && !f.reposicaoId).map((f) => f.id));
+      const newFaltas = state.faltas.filter((f) => !removidasIds.has(f.id));
+      const newAulas = arr(state.aulasCanceladas).filter((a) => a.id !== action.id);
+      let newVagas = state.vagas.filter((v) => !(v.faltaId && removidasIds.has(v.faltaId)));
+      newVagas = stripVagasCanceladas(computeVagasExtras(state.turmas, newFaltas, state.reposicoes, newVagas, todayStr(), state.ausencias, config), newAulas);
+      next = { ...state, faltas: newFaltas, aulasCanceladas: newAulas, vagas: newVagas };
+      next.log = addLog(state.log, autor, `Reativou aula de ${getTurmaLabel(state.turmas, entry.turmaId)} em ${fmtBRFull(entry.data)}`, action.origem);
+      break;
+    }
+
     case 'CLEANUP': {
       // Recalcula vagas extras (roda no load; expiração entra em fatia futura).
-      const vagas = computeVagasExtras(state.turmas, state.faltas, state.reposicoes, state.vagas, todayStr(), state.ausencias, config);
+      const vagas = stripVagasCanceladas(computeVagasExtras(state.turmas, state.faltas, state.reposicoes, state.vagas, todayStr(), state.ausencias, config), state.aulasCanceladas);
       const igual = vagas.length === state.vagas.length && vagas.every((v, i) => v.id === state.vagas[i].id);
       if (igual) return state; // nada mudou → não grava (evita churn no load)
       next = { ...state, vagas };

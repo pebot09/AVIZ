@@ -75,6 +75,14 @@ export function fmtDatesText(datas) {
   return br.slice(0, -1).join(', ') + ' e ' + br[br.length - 1];
 }
 
+// Remove vagas de aulas canceladas (turma+data).
+export function stripVagasCanceladas(vagas, aulasCanceladas) {
+  if (!aulasCanceladas || !aulasCanceladas.length) return vagas;
+  const canc = {};
+  arr(aulasCanceladas).forEach((a) => { canc[a.turmaId + '|' + a.data] = true; });
+  return arr(vagas).filter((v) => !canc[v.turmaId + '|' + v.data]);
+}
+
 // Deslocamento (horas) de abertura da vaga extra antes do início da aula.
 const ABERTURA_HORAS = { vespera: 24, '6h': 6, '12h': 12, '2d': 48, '3d': 72 };
 
