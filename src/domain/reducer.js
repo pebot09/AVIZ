@@ -4,7 +4,7 @@
 
 import { genId, arr, getTurmaLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr } from './helpers.js';
 import { isFeriado, isRecesso } from './calendario.js';
-import { computeVagasExtras } from './reposicao.js';
+import { computeVagasExtras, fmtDatesText } from './reposicao.js';
 
 export const EMPTY_STATE = {
   turmas: [], faltas: [], reposicoes: [], vagas: [],
@@ -158,7 +158,8 @@ export function reducer(state, action, config) {
       next = { ...state, faltas: [...state.faltas, ...novasFaltas], vagas: [...state.vagas, ...novasVagas], reposicoes };
       if (novasFaltas.length) {
         const semAnt = novasFaltas.some((f) => f.semAntecedencia);
-        next.log = addLog(state.log, autor, `Registrou falta${semAnt ? ' sem antecedência' : ''} de ${alunoNome} (${getTurmaLabel(state.turmas, turmaId)})`, action.origem);
+        const datasLbl = fmtDatesText(novasFaltas.map((f) => f.datas[0]));
+        next.log = addLog(state.log, autor, `Registrou falta${semAnt ? ' sem antecedência' : ''} de ${alunoNome} (${getTurmaLabel(state.turmas, turmaId)}) — ${datasLbl}`, action.origem);
       }
       break;
     }
