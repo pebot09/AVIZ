@@ -11,6 +11,7 @@ import {
   reposicaoRights, pickReposicaoRight, rightToActionFields, calcOccupancy, fmtDatesText,
 } from '../domain/reposicao.js';
 import { cap } from '../domain/vocab.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 // Aba Faltas & Reposições — porte do SectionFaltasReposicoes (acordeão de
 // grupos). Nesta fatia, Faltas ▸ Registrar está funcional; os demais entram nas
@@ -22,9 +23,9 @@ export default function FaltasReposicoesTab({ state, dispatch, vocab, config }) 
 
   const groups = [
     { key: 'faltas', label: 'Faltas', color: 'amber', tabs: ['Registrar', 'Cancelar'],
-      content: [<TabRegistrarFalta state={state} dispatch={dispatch} vocab={vocab} config={config} />, <EmBreve />] },
+      content: [<TabRegistrarFalta state={state} dispatch={dispatch} vocab={vocab} config={config} />, <TabCancelarFalta state={state} dispatch={dispatch} vocab={vocab} />] },
     { key: 'reposicoes', label: 'Reposições', color: 'blue', tabs: ['Registrar', 'Cancelar'],
-      content: [<TabRegistrarReposicao state={state} dispatch={dispatch} vocab={vocab} config={config} />, <EmBreve />] },
+      content: [<TabRegistrarReposicao state={state} dispatch={dispatch} vocab={vocab} config={config} />, <TabCancelarReposicao state={state} dispatch={dispatch} vocab={vocab} />] },
     { key: 'ferias', label: 'Férias', color: 'green', tabs: ['Ausência Programada'], content: [<EmBreve />] },
     { key: 'credito', label: 'Crédito Extra', color: 'purple', tabs: ['Dar Crédito'], content: [<EmBreve />] },
     { key: 'cancelarAula', label: `Cancelar ${cap(vocab.turma)}`, color: 'red', tabs: ['Cancelar'], content: [<EmBreve />] },
@@ -387,6 +388,124 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
       {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
 
       <button onClick={handleSubmit} disabled={!canSubmit} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Confirmar Reposição</button>
+    </div>
+  );
+}
+
+function TabCancelarFalta({ state, dispatch, vocab }) {
+  const [turmaId, setTurmaId] = useState('');
+  const [alunoNome, setAlunoNome] = useState('');
+  const [faltaId, setFaltaId] = useState('');
+  const [confirm, setConfirm] = useState(false);
+  const [success, setSuccess] = useState('');
+  const td = todayStr();
+
+  const faltasFuturas = useMemo(() => state.faltas.filter((f) => f.status === 'pendente' && f.datas[0] >= td), [state.faltas, td]);
+  const turmas = useMemo(() => { const ids = new Set(faltasFuturas.map((f) => f.turmaId)); return sortTurmas(state.turmas.filter((t) => ids.has(t.id))); }, [faltasFuturas, state.turmas]);
+  const alunos = useMemo(() => (!turmaId ? [] : [...new Set(faltasFuturas.filter((f) => f.turmaId === turmaId).map((f) => f.alunoNome))].sort((a, b) => a.localeCompare(b, 'pt'))), [turmaId, faltasFuturas]);
+  const faltas = useMemo(() => (!turmaId || !alunoNome ? [] : faltasFuturas.filter((f) => f.turmaId === turmaId && f.alunoNome === alunoNome).sort((a, b) => a.datas[0].localeCompare(b.datas[0]))), [turmaId, alunoNome, faltasFuturas]);
+  const falta = faltas.find((f) => f.id === faltaId);
+  const repoVinc = falta ? state.reposicoes.find((r) => r.vagaConsumedFaltaId === falta.id) : null;
+  const outraVaga = repoVinc ? state.vagas.find((v) => v.turmaId === repoVinc.turmaReposicaoId && v.data === repoVinc.dataReposicao && v.faltaId !== falta.id) : null;
+
+  const handleCancel = () => {
+    dispatch({ type: 'CANCEL_FALTA', id: faltaId });
+    setSuccess(`Falta de ${alunoNome} em ${fmtBRFull(falta.datas[0])} cancelada.`);
+    setTurmaId(''); setAlunoNome(''); setFaltaId(''); setConfirm(false);
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-700">Cancelar Falta</h3>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
+        <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setAlunoNome(''); setFaltaId(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">— Selecione —</option>
+          {turmas.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
+        </select>
+      </div>
+      {turmaId && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.aluno)}</label>
+          <select value={alunoNome} onChange={(e) => { setAlunoNome(e.target.value); setFaltaId(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione —</option>
+            {alunos.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+      )}
+      {alunoNome && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Falta</label>
+          <select value={faltaId} onChange={(e) => setFaltaId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">— Selecione —</option>
+            {faltas.map((f) => <option key={f.id} value={f.id}>{fmtBRFull(f.datas[0])}</option>)}
+          </select>
+        </div>
+      )}
+      {falta && (
+        <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+          <div><span className="font-medium">{cap(vocab.aluno)}:</span> {falta.alunoNome}</div>
+          <div><span className="font-medium">Data:</span> {fmtBRFull(falta.datas[0])}</div>
+          <div><span className="font-medium">{cap(vocab.turma)}:</span> {getTurmaLabel(state.turmas, falta.turmaId)}</div>
+          {repoVinc && (
+            <div className={`mt-1 text-xs px-2 py-1 rounded ${outraVaga ? 'bg-amber-50 text-amber-700' : 'bg-orange-50 text-orange-700'}`}>
+              {outraVaga ? `A reposição de ${repoVinc.alunoNome} em ${fmtBRFull(repoVinc.dataReposicao)} será vinculada a outra vaga.` : `A reposição de ${repoVinc.alunoNome} em ${fmtBRFull(repoVinc.dataReposicao)} ficará sem vaga vinculada.`}
+            </div>
+          )}
+        </div>
+      )}
+      {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
+      <button onClick={() => setConfirm(true)} disabled={!faltaId} className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Cancelar Falta</button>
+      {confirm && falta && <ConfirmModal title="Cancelar falta?" danger message={`Cancelar a falta de ${falta.alunoNome} em ${fmtBRFull(falta.datas[0])}?`} onConfirm={handleCancel} onCancel={() => setConfirm(false)} confirmLabel="Cancelar falta" />}
+    </div>
+  );
+}
+
+function TabCancelarReposicao({ state, dispatch, vocab }) {
+  const [selectedId, setSelectedId] = useState('');
+  const [confirm, setConfirm] = useState(false);
+  const [success, setSuccess] = useState('');
+  const td = todayStr();
+
+  const futuras = useMemo(() => state.reposicoes.filter((r) => !r.realizada && r.dataReposicao >= td).sort((a, b) => {
+    if (a.dataReposicao !== b.dataReposicao) return a.dataReposicao.localeCompare(b.dataReposicao);
+    const ta = state.turmas.find((t) => t.id === a.turmaReposicaoId);
+    const tb = state.turmas.find((t) => t.id === b.turmaReposicaoId);
+    return (ta?.horario || '').localeCompare(tb?.horario || '');
+  }), [state.reposicoes, state.turmas, td]);
+  const repo = futuras.find((r) => r.id === selectedId);
+
+  const handleCancel = () => {
+    dispatch({ type: 'CANCEL_REPOSICAO', id: selectedId });
+    setSuccess(`Reposição de ${repo.alunoNome} em ${fmtBRFull(repo.dataReposicao)} cancelada.`);
+    setSelectedId(''); setConfirm(false);
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-700">Cancelar Reposição</h3>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Reposição agendada</label>
+        <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="">— Selecione —</option>
+          {futuras.map((r) => <option key={r.id} value={r.id}>{r.alunoNome} — {fmtBRFull(r.dataReposicao)} ({getTurmaLabel(state.turmas, r.turmaReposicaoId)}) {r.tipo === 'aula_extra' ? '· Aula extra' : ''}</option>)}
+        </select>
+        {futuras.length === 0 && <p className="text-gray-400 text-sm mt-1">Nenhuma reposição futura agendada.</p>}
+      </div>
+      {repo && (
+        <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+          <div><span className="font-medium">{cap(vocab.aluno)}:</span> {repo.alunoNome}</div>
+          <div><span className="font-medium">Data:</span> {fmtBRFull(repo.dataReposicao)}</div>
+          <div><span className="font-medium">{cap(vocab.turma)}:</span> {getTurmaLabel(state.turmas, repo.turmaReposicaoId)}</div>
+          <div><span className="font-medium">Tipo:</span> {repo.tipo === 'aula_extra' ? 'Aula extra' : 'Reposição'}</div>
+          {repo.tipo !== 'aula_extra' && <div className="text-blue-600">O direito consumido volta e a vaga é reaberta.</div>}
+        </div>
+      )}
+      {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
+      <button onClick={() => setConfirm(true)} disabled={!selectedId} className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Cancelar Reposição</button>
+      {confirm && repo && <ConfirmModal title="Cancelar reposição?" danger message={`Cancelar a reposição de ${repo.alunoNome} em ${fmtBRFull(repo.dataReposicao)}?`} onConfirm={handleCancel} onCancel={() => setConfirm(false)} confirmLabel="Cancelar reposição" />}
     </div>
   );
 }

@@ -20,7 +20,10 @@ export function normalizeState(data) {
     turmas: arr(s.turmas), faltas: arr(s.faltas), reposicoes: arr(s.reposicoes),
     vagas: arr(s.vagas), ausencias: arr(s.ausencias), acessos: arr(s.acessos),
     creditos: arr(s.creditos), notas: arr(s.notas), log: arr(s.log),
-    estatisticas: { faltasExpiradas: arr((s.estatisticas || {}).faltasExpiradas) },
+    estatisticas: {
+      faltasExpiradas: arr((s.estatisticas || {}).faltasExpiradas),
+      reposCanceladas: arr((s.estatisticas || {}).reposCanceladas),
+    },
   };
 }
 
@@ -230,6 +233,103 @@ export function reducer(state, action, config) {
       }
       // Recalcula vagas extras após o agendamento.
       next = { ...next, vagas: computeVagasExtras(next.turmas, next.faltas, next.reposicoes, next.vagas, todayStr(), next.ausencias, config) };
+      break;
+    }
+
+    case 'CANCEL_FALTA': {
+      const falta = state.faltas.find((f) => f.id === action.id);
+      if (!falta) return state;
+      let newVagas = state.vagas.filter((v) => v.faltaId !== falta.id);
+      let newRepos = state.reposicoes;
+      const repoVinc = state.reposicoes.find((r) => r.vagaConsumedFaltaId === falta.id);
+      if (repoVinc) {
+        const outraVaga = newVagas.find((v) => v.turmaId === repoVinc.turmaReposicaoId && v.data === repoVinc.dataReposicao);
+        if (outraVaga) {
+          newRepos = newRepos.map((r) => (r.id === repoVinc.id ? { ...r, vagaConsumedFaltaId: outraVaga.faltaId || null, vagaConsumedAusenciaId: outraVaga.ausenciaId || null, vagaExtra: !!outraVaga.vagaExtra } : r));
+          newVagas = newVagas.filter((v) => v.id !== outraVaga.id);
+        } else {
+          newRepos = newRepos.map((r) => (r.id === repoVinc.id ? { ...r, vagaConsumedFaltaId: null } : r));
+        }
+      }
+      const newFaltas = state.faltas.filter((f) => f.id !== falta.id);
+      const vagasFinal = computeVagasExtras(state.turmas, newFaltas, newRepos, newVagas, todayStr(), state.ausencias, config);
+      next = { ...state, faltas: newFaltas, vagas: vagasFinal, reposicoes: newRepos };
+      next.log = addLog(state.log, autor, `Cancelou falta de ${falta.alunoNome} (${getTurmaLabel(state.turmas, falta.turmaId)}) — ${fmtBRFull(falta.datas[0])}`, action.origem);
+      break;
+    }
+
+    case 'CANCEL_REPOSICAO': {
+      const repo = state.reposicoes.find((r) => r.id === action.id);
+      if (!repo) return state;
+      const registraCancel = (nx) => ({ ...nx, estatisticas: { ...(nx.estatisticas || {}), reposCanceladas: [...arr((nx.estatisticas || {}).reposCanceladas), { alunoNome: repo.alunoNome, turmaId: repo.turmaOrigemId, turmaReposicaoId: repo.turmaReposicaoId, dataReposicao: repo.dataReposicao, semCredito: false, ts: new Date().toISOString() }] } });
+
+      if (repo.tipo === 'reposicao_ferias') {
+        const restRepos = state.reposicoes.filter((r) => r.id !== repo.id);
+        let newVagas = state.vagas;
+        let newAus = state.ausencias;
+        if (repo.ausenciaId) newAus = newAus.map((a) => (a.id === repo.ausenciaId ? { ...a, creditoUsado: false } : a));
+        if (repo.vagaConsumedAusenciaId) {
+          if (!newVagas.some((v) => v.ausenciaId === repo.vagaConsumedAusenciaId && v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao)) newVagas = [...newVagas, { id: genId('vf'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, tipo: 'ferias', ausenciaId: repo.vagaConsumedAusenciaId }];
+        } else if (repo.vagaConsumedFaltaId) {
+          if (!newVagas.some((v) => v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao && v.faltaId === repo.vagaConsumedFaltaId)) newVagas = [...newVagas, { id: genId('v'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, faltaId: repo.vagaConsumedFaltaId }];
+        }
+        next = registraCancel({ ...state, vagas: newVagas, reposicoes: restRepos, ausencias: newAus });
+        next.log = addLog(state.log, autor, `Cancelou reposição (férias) de ${repo.alunoNome} (${getTurmaLabel(state.turmas, repo.turmaOrigemId)}) → ${getTurmaLabel(state.turmas, repo.turmaReposicaoId)} ${fmtBRFull(repo.dataReposicao)}`, action.origem);
+        break;
+      }
+
+      if (repo.tipo === 'reposicao_credito') {
+        const restRepos = state.reposicoes.filter((r) => r.id !== repo.id);
+        let newVagas = state.vagas;
+        let newCred = state.creditos;
+        if (repo.creditoId) newCred = arr(newCred).map((c) => (c.id === repo.creditoId ? { ...c, usado: false } : c));
+        if (repo.vagaConsumedFaltaId && !newVagas.some((v) => v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao && v.faltaId === repo.vagaConsumedFaltaId)) newVagas = [...newVagas, { id: genId('v'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, faltaId: repo.vagaConsumedFaltaId }];
+        next = registraCancel({ ...state, vagas: newVagas, reposicoes: restRepos, creditos: newCred });
+        next.log = addLog(state.log, autor, `Cancelou reposição (crédito extra) de ${repo.alunoNome} (${getTurmaLabel(state.turmas, repo.turmaOrigemId)}) → ${getTurmaLabel(state.turmas, repo.turmaReposicaoId)} ${fmtBRFull(repo.dataReposicao)}`, action.origem);
+        break;
+      }
+
+      const restRepos = state.reposicoes.filter((r) => r.id !== repo.id);
+      const activeRepos = restRepos.filter((r) => r.alunoNome === repo.alunoNome && r.turmaOrigemId === repo.turmaOrigemId && !r.realizada && r.faltaId).sort((a, b) => getFaltaEarliest(a).localeCompare(getFaltaEarliest(b)));
+      const marcadas = state.faltas.filter((f) => f.alunoNome === repo.alunoNome && f.turmaId === repo.turmaOrigemId && f.status === 'marcada').sort((a, b) => getFaltaEarliest(a).localeCompare(getFaltaEarliest(b)));
+      let newFaltas = state.faltas;
+      let newVagas = state.vagas;
+      let newReposicoes = restRepos;
+      marcadas.forEach((falta, i) => {
+        if (i < activeRepos.length) {
+          newFaltas = newFaltas.map((f) => (f.id === falta.id ? { ...f, reposicaoId: activeRepos[i].id } : f));
+          newReposicoes = newReposicoes.map((r) => (r.id === activeRepos[i].id ? { ...r, faltaId: falta.id } : r));
+        } else {
+          newFaltas = newFaltas.map((f) => (f.id === falta.id ? { ...f, status: 'pendente', reposicaoId: undefined, ...(action.converterSemAntecedencia ? { semAntecedencia: true } : {}) } : f));
+          const extra = arr(falta.datas).filter((d) => !newVagas.some((v) => v.turmaId === falta.turmaId && v.data === d && v.faltaId === falta.id)).map((d) => ({ id: genId('v'), turmaId: falta.turmaId, data: d, faltaId: falta.id }));
+          newVagas = [...newVagas, ...extra];
+        }
+      });
+      if (repo.vagaConsumedFaltaId && !newVagas.some((v) => v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao && v.faltaId === repo.vagaConsumedFaltaId)) newVagas = [...newVagas, { id: genId('v'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, faltaId: repo.vagaConsumedFaltaId }];
+      if (repo.vagaConsumedAusenciaId && !newVagas.some((v) => v.ausenciaId === repo.vagaConsumedAusenciaId && v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao)) newVagas = [...newVagas, { id: genId('vf'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, tipo: 'ferias', ausenciaId: repo.vagaConsumedAusenciaId }];
+      next = registraCancel({ ...state, faltas: newFaltas, vagas: newVagas, reposicoes: newReposicoes });
+      next.log = addLog(state.log, autor, `Cancelou reposição de ${repo.alunoNome} (${getTurmaLabel(state.turmas, repo.turmaOrigemId)}) → ${getTurmaLabel(state.turmas, repo.turmaReposicaoId)} ${fmtBRFull(repo.dataReposicao)}${action.converterSemAntecedencia ? ' (crédito convertido p/ sem antecedência)' : ''}`, action.origem);
+      break;
+    }
+
+    case 'CANCEL_REPOSICAO_SEM_CREDITO': {
+      const repo = state.reposicoes.find((r) => r.id === action.id);
+      if (!repo) return state;
+      const restRepos = state.reposicoes.filter((r) => r.id !== repo.id);
+      let newVagas = state.vagas;
+      if (repo.vagaConsumedFaltaId && !newVagas.some((v) => v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao && v.faltaId === repo.vagaConsumedFaltaId)) newVagas = [...newVagas, { id: genId('v'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, faltaId: repo.vagaConsumedFaltaId }];
+      if (repo.vagaConsumedAusenciaId && !newVagas.some((v) => v.ausenciaId === repo.vagaConsumedAusenciaId && v.turmaId === repo.turmaReposicaoId && v.data === repo.dataReposicao)) newVagas = [...newVagas, { id: genId('vf'), turmaId: repo.turmaReposicaoId, data: repo.dataReposicao, tipo: 'ferias', ausenciaId: repo.vagaConsumedAusenciaId }];
+      const faltaVinc = repo.faltaId ? state.faltas.find((f) => f.id === repo.faltaId) : state.faltas.find((f) => f.reposicaoId === repo.id && f.status === 'marcada');
+      let newFaltas = state.faltas;
+      let newExp = arr((state.estatisticas || {}).faltasExpiradas);
+      if (faltaVinc) {
+        newFaltas = state.faltas.filter((f) => f.id !== faltaVinc.id);
+        newVagas = newVagas.filter((v) => v.faltaId !== faltaVinc.id);
+        newExp = [...newExp, { alunoNome: faltaVinc.alunoNome, turmaId: faltaVinc.turmaId, data: faltaVinc.datas[0], expiradaEm: todayStr() }];
+      }
+      next = { ...state, reposicoes: restRepos, vagas: newVagas, faltas: newFaltas };
+      next.log = addLog(state.log, autor, `Cancelou reposição sem crédito — ${repo.alunoNome} (${getTurmaLabel(state.turmas, repo.turmaOrigemId)}) → ${getTurmaLabel(state.turmas, repo.turmaReposicaoId)} ${fmtBRFull(repo.dataReposicao)}`, action.origem);
+      next.estatisticas = { ...(next.estatisticas || {}), faltasExpiradas: newExp, reposCanceladas: [...arr((next.estatisticas || {}).reposCanceladas), { alunoNome: repo.alunoNome, turmaId: repo.turmaOrigemId, turmaReposicaoId: repo.turmaReposicaoId, dataReposicao: repo.dataReposicao, semCredito: true, ts: new Date().toISOString() }] };
       break;
     }
 
