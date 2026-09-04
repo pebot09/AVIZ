@@ -3,7 +3,7 @@ import Modal from './Modal.jsx';
 import { saveConfig, saveTenantPublic } from '../lib/store.js';
 import { feriadosNacionais } from '../domain/calendario.js';
 import { fmtBRFull, arr } from '../domain/helpers.js';
-import { Campo, TextInput, NumberSelect, Select, SimNao, ArtigoNome } from '../onboarding/widgets.jsx';
+import { Campo, TextInput, Select, SimNao, ArtigoNome, Slider } from '../onboarding/widgets.jsx';
 
 // Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
 export default function ConfigScreen({ tenant, config, pub, dispatch, onClose }) {
@@ -116,8 +116,8 @@ function CapacidadesSec({ tenant, config, onDone }) {
   const { salvar, salvando, erro } = useSalvar(() => saveConfig(tenant, mergeRegras(config, { capacidadeNominal: Number(nominal) || 7, capacidadeFisica: Number(fisica) || 8 })), onDone);
   return (
     <div>
-      <Campo label="Máximo por turma (nominal)"><input type="number" min="1" value={nominal} onChange={(e) => setNominal(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-28" /></Campo>
-      <Campo label="Máximo na sala (físico)"><input type="number" min="1" value={fisica} onChange={(e) => setFisica(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-28" /></Campo>
+      <Campo label="Máximo por turma (nominal)"><Slider value={Number(nominal) || 1} onChange={setNominal} min={1} max={30} /></Campo>
+      <Campo label="Máximo na sala (físico)"><Slider value={Number(fisica) || 1} onChange={setFisica} min={1} max={40} /></Campo>
       <Acoes onSalvar={salvar} salvando={salvando} erro={erro} onCancel={onDone} />
     </div>
   );
@@ -139,14 +139,14 @@ function FaltasSec({ tenant, config, onDone }) {
   })), onDone);
   return (
     <div>
-      <Campo label="Antecedência mínima para avisar"><NumberSelect value={antec} onChange={setAntec} options={HORAS_ANTEC} /></Campo>
+      <Campo label="Antecedência mínima para avisar"><Slider value={antec} onChange={setAntec} options={HORAS_ANTEC} /></Campo>
       {antec > 0 && (
         <Campo label="Permitir falta sem antecedência?"><SimNao value={semA} onChange={setSemA} /></Campo>
       )}
       {antec > 0 && semA && (
-        <Campo label="Até quantas horas antes ainda vale (sem antecedência)"><NumberSelect value={janela} onChange={setJanela} options={Array.from({ length: antec }, (_, k) => ({ value: k + 1, label: `${k + 1}h` }))} /></Campo>
+        <Campo label="Até quantas horas antes ainda vale (sem antecedência)"><Slider value={Math.min(Number(janela) || 1, antec)} onChange={setJanela} min={1} max={antec} unit="h" /></Campo>
       )}
-      <Campo label="Validade da falta"><NumberSelect value={validade} onChange={setValidade} options={[{ value: 30, label: '30 dias' }, { value: 45, label: '45 dias' }, { value: 60, label: '60 dias' }, { value: 90, label: '90 dias' }, { value: 0, label: 'Não expira' }]} /></Campo>
+      <Campo label="Validade da falta"><Slider value={validade} onChange={setValidade} options={[{ value: 30, label: '30 dias' }, { value: 45, label: '45 dias' }, { value: 60, label: '60 dias' }, { value: 90, label: '90 dias' }, { value: 0, label: 'Não expira' }]} /></Campo>
       <Acoes onSalvar={salvar} salvando={salvando} erro={erro} onCancel={onDone} />
     </div>
   );
@@ -188,9 +188,9 @@ function FeriasSec({ tenant, config, onDone }) {
       {oferece && <Campo label="Férias dão crédito de reposição?"><SimNao value={credito} onChange={setCredito} /></Campo>}
       {oferece && credito && (
         <>
-          <Campo label="Quantos créditos por período"><NumberSelect value={qtd} onChange={setQtd} options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))} /></Campo>
-          <Campo label="Validade do crédito"><NumberSelect value={validade} onChange={setValidade} options={[30, 45, 60, 90].map((n) => ({ value: n, label: `${n} dias` }))} /></Campo>
-          <Campo label="Limite por ano"><NumberSelect value={limite} onChange={setLimite} options={[{ value: 1, label: '1 vez' }, { value: 2, label: '2 vezes' }, { value: 0, label: 'Sem limite' }]} /></Campo>
+          <Campo label="Quantos créditos por período"><Slider value={Number(qtd) || 1} onChange={setQtd} min={1} max={4} /></Campo>
+          <Campo label="Validade do crédito"><Slider value={validade} onChange={setValidade} options={[30, 45, 60, 90].map((n) => ({ value: n, label: `${n} dias` }))} /></Campo>
+          <Campo label="Limite por ano"><Slider value={limite} onChange={setLimite} options={[{ value: 1, label: '1 vez' }, { value: 2, label: '2 vezes' }, { value: 0, label: 'Sem limite' }]} /></Campo>
         </>
       )}
       <Acoes onSalvar={salvar} salvando={salvando} erro={erro} onCancel={onDone} />

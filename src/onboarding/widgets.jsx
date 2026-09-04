@@ -83,6 +83,44 @@ export function OptionCards({ value, onChange, options, permiteOutro }) {
   );
 }
 
+// Slider de arrastar. Dois modos:
+//  - `options`: encaixa numa lista de {value,label} (a barra anda por índice).
+//  - `min/max/step/unit`: faixa numérica livre.
+export function Slider({ value, onChange, options, min = 0, max = 100, step = 1, unit = '' }) {
+  if (options && options.length) {
+    let idx = options.findIndex((o) => o.value === value);
+    if (idx < 0) idx = 0;
+    return (
+      <div>
+        <div className="text-2xl font-bold text-gray-800 mb-2">{options[idx]?.label}</div>
+        <input
+          type="range" min={0} max={options.length - 1} step={1} value={idx}
+          onChange={(e) => onChange(options[Number(e.target.value)].value)}
+          className="w-full accent-blue-600 h-2 cursor-pointer"
+        />
+        <div className="flex justify-between text-[11px] text-gray-400 mt-1">
+          <span>{options[0].label}</span>
+          <span>{options[options.length - 1].label}</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="text-2xl font-bold text-gray-800 mb-2">{value}{unit ? ` ${unit}` : ''}</div>
+      <input
+        type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-blue-600 h-2 cursor-pointer"
+      />
+      <div className="flex justify-between text-[11px] text-gray-400 mt-1">
+        <span>{min}{unit ? ` ${unit}` : ''}</span>
+        <span>{max}{unit ? ` ${unit}` : ''}</span>
+      </div>
+    </div>
+  );
+}
+
 export function SimNao({ value, onChange }) {
   return (
     <div className="flex gap-2">
