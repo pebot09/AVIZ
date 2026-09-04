@@ -45,7 +45,7 @@ export function reducer(state, action, config) {
       const id = `${diaSemana.slice(0, 3).replace('ç', 'c').replace('á', 'a')}-${hh}${mm}`;
       if (state.turmas.find((t) => t.id === id)) return state; // já existe esse dia+horário
       const horario = formatHorario(hora, minuto);
-      const nova = { id, diaSemana, hora: Number(hora), minuto: Number(minuto) || 0, horario, capacidade: capacidade || 7, observacao: observacao || '', alunos: [] };
+      const nova = { id, diaSemana, hora: Number(hora), minuto: Number(minuto) || 0, horario, capacidade: capacidade || 7, capacidadeFisica: action.capacidadeFisica ? Number(action.capacidadeFisica) : null, observacao: observacao || '', alunos: [] };
       next = { ...state, turmas: [...state.turmas, nova] };
       next.log = addLog(state.log, autor, `Criou turma ${EXTENSO[diaSemana] || diaSemana} ${horario}`);
       break;
@@ -68,7 +68,12 @@ export function reducer(state, action, config) {
       next = {
         ...state,
         turmas: state.turmas.map((t) => t.id === action.id
-          ? { ...t, capacidade: action.capacidade ?? t.capacidade, observacao: action.observacao ?? t.observacao }
+          ? {
+              ...t,
+              capacidade: action.capacidade ?? t.capacidade,
+              observacao: action.observacao ?? t.observacao,
+              capacidadeFisica: action.capacidadeFisica !== undefined ? (action.capacidadeFisica || null) : t.capacidadeFisica,
+            }
           : t),
       };
       break;

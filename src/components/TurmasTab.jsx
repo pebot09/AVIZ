@@ -37,7 +37,7 @@ export default function TurmasTab({ state, dispatch, vocab, config, capacidadePa
       ))}
 
       {showNova && (
-        <NovaTurmaModal dispatch={dispatch} vocab={vocab} existentes={state.turmas} capacidadePadrao={capacidadePadrao} onClose={() => setShowNova(false)} />
+        <NovaTurmaModal dispatch={dispatch} vocab={vocab} existentes={state.turmas} capacidadePadrao={capacidadePadrao} capacidadeFisicaPadrao={config?.regras?.capacidadeFisica} onClose={() => setShowNova(false)} />
       )}
       {gerenciando && (
         <GerenciarAlunoModal
@@ -53,6 +53,7 @@ function TurmaCard({ turma, state, dispatch, vocab, config, exp, onToggle, onGer
   const td = todayStr();
   const in7 = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 7); return dateToStr(d); }, []);
   const [editObs, setEditObs] = useState(undefined);
+  const [editFisica, setEditFisica] = useState(undefined);
   const [addingAluno, setAddingAluno] = useState(false);
   const [novoNome, setNovoNome] = useState('');
   const [erro, setErro] = useState(null);
@@ -95,14 +96,28 @@ function TurmaCard({ turma, state, dispatch, vocab, config, exp, onToggle, onGer
 
       {exp && (
         <div className="border-t border-gray-100 p-4 fade-in">
-          <div className="mb-3 flex gap-2">
-            <input
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-              placeholder="Observação"
-              value={editObs !== undefined ? editObs : (turma.observacao || '')}
-              onChange={(e) => setEditObs(e.target.value)}
-            />
-            <button onClick={() => { dispatch({ type: 'UPDATE_TURMA', id: turma.id, observacao: editObs ?? turma.observacao }); setEditObs(undefined); }} className="px-3 py-1.5 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Salvar</button>
+          <div className="mb-3 space-y-2">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                placeholder="Observação"
+                value={editObs !== undefined ? editObs : (turma.observacao || '')}
+                onChange={(e) => setEditObs(e.target.value)}
+              />
+              <input
+                type="number" min="1"
+                className="w-36 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                placeholder={`sala: herda ${config?.regras?.capacidadeFisica || '—'}`}
+                value={editFisica !== undefined ? editFisica : (turma.capacidadeFisica ?? '')}
+                onChange={(e) => setEditFisica(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={() => {
+                dispatch({ type: 'UPDATE_TURMA', id: turma.id, observacao: editObs ?? turma.observacao, capacidadeFisica: (editFisica !== undefined ? editFisica : (turma.capacidadeFisica ?? '')) });
+                setEditObs(undefined); setEditFisica(undefined);
+              }}
+              className="px-3 py-1.5 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Salvar</button>
           </div>
 
           <div className="space-y-1 mb-3">
@@ -256,11 +271,12 @@ function GerenciarAlunoModal({ turma, state, dispatch, vocab, onClose }) {
   );
 }
 
-function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, onClose }) {
+function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, capacidadeFisicaPadrao, onClose }) {
   const [dia, setDia] = useState('segunda');
   const [hora, setHora] = useState(9);
   const [minuto, setMinuto] = useState(0);
   const [capacidade, setCapacidade] = useState(capacidadePadrao || 7);
+  const [capacidadeFisica, setCapacidadeFisica] = useState('');
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState(null);
 
@@ -269,7 +285,7 @@ function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, onClose
     const mm = String(minuto).padStart(2, '0');
     const id = `${dia.slice(0, 3).replace('ç', 'c').replace('á', 'a')}-${hh}${mm}`;
     if (existentes.find((t) => t.id === id)) { setErro('Já existe uma ' + vocab.turma + ' nesse dia e horário.'); return; }
-    dispatch({ type: 'ADD_TURMA', diaSemana: dia, hora, minuto, capacidade: Number(capacidade) || 7, observacao });
+    dispatch({ type: 'ADD_TURMA', diaSemana: dia, hora, minuto, capacidade: Number(capacidade) || 7, capacidadeFisica: capacidadeFisica ? Number(capacidadeFisica) : null, observacao });
     onClose();
   }
 
@@ -287,8 +303,12 @@ function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, onClose
           <HoraPicker hora={hora} minuto={minuto} onChange={(h, m) => { setHora(h); setMinuto(m); }} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Máx. de {vocab.alunos}</label>
-          <input type="number" min="1" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-24" />
+          <label className="block text-xs font-medium text-gray-500 mb-1">Máx. de {vocab.alunos} (turma)</label>
+          <input type="number" min="1" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-28" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Máx. na sala (opcional)</label>
+          <input type="number" min="1" value={capacidadeFisica} onChange={(e) => setCapacidadeFisica(e.target.value)} placeholder={`herda ${capacidadeFisicaPadrao || '—'}`} className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-32" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Observação (opcional)</label>

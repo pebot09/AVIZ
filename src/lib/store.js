@@ -16,11 +16,17 @@ import { reducer, normalizeState } from '../domain/reducer.js';
 export function useConfig(tid) {
   const [config, setConfig] = useState(undefined);
   useEffect(() => {
-    get(ref(db, paths.config(tid)))
-      .then((snap) => setConfig(snap.exists() ? snap.val() : {}))
-      .catch(() => setConfig({}));
+    const r = ref(db, paths.config(tid));
+    return onValue(r, (snap) => setConfig(snap.exists() ? snap.val() : {}), () => setConfig({}));
   }, [tid]);
   return config;
+}
+
+// Salva o config da escola (só o dono, pelas regras). Merge raso com o atual.
+export async function saveConfig(tid, patch) {
+  const snap = await get(ref(db, paths.config(tid)));
+  const atual = snap.exists() ? snap.val() : {};
+  await set(ref(db, paths.config(tid)), { ...atual, ...patch });
 }
 
 export function useTenantStore(tid, autor, config) {

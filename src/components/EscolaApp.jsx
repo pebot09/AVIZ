@@ -7,6 +7,7 @@ import { makeVocab, cap } from '../domain/vocab.js';
 import { logout } from '../lib/auth.js';
 import TurmasTab from './TurmasTab.jsx';
 import FaltasReposicoesTab from './FaltasReposicoesTab.jsx';
+import ConfigScreen from './ConfigScreen.jsx';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
 // Passarinho: Turmas · Faltas & Reposições · Painel. Por ora, Turmas está
@@ -20,6 +21,7 @@ export default function EscolaApp({ tenant, user, membro }) {
   const { state, dispatch, erro } = useTenantStore(tenant, (membro && membro.nome) || user.email, config);
   const [nomeEscola, setNomeEscola] = useState(tenant);
   const [aba, setAba] = useState('Turmas');
+  const [configAberto, setConfigAberto] = useState(false);
 
   useEffect(() => {
     get(ref(db, paths.tenantPublic(tenant)))
@@ -45,7 +47,10 @@ export default function EscolaApp({ tenant, user, membro }) {
               <div className="text-[10px] tracking-[0.2em] text-gray-300 font-semibold">AVIZ</div>
               <h1 className="text-2xl font-bold text-gray-800 leading-tight">{nomeEscola}</h1>
             </div>
-            <button onClick={() => logout()} className="text-gray-400 hover:text-gray-600 text-sm underline mt-1">sair</button>
+            <div className="flex items-center gap-3 mt-1">
+              <button onClick={() => setConfigAberto(true)} className="text-gray-400 hover:text-gray-600 text-lg" title="Configurações">⚙</button>
+              <button onClick={() => logout()} className="text-gray-400 hover:text-gray-600 text-sm underline">sair</button>
+            </div>
           </div>
           <nav className="flex gap-1 mt-3 -mb-px">
             {ABAS.map((a) => (
@@ -71,6 +76,8 @@ export default function EscolaApp({ tenant, user, membro }) {
       ) : (
         <EmBreve nome={aba} />
       )}
+
+      {configAberto && <ConfigScreen tenant={tenant} config={config} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
     </div>
   );
 }
