@@ -4,7 +4,7 @@
 // aqui os feriados NACIONAIS são calculados por ano (inclusive os móveis, a
 // partir da Páscoa) e os municipais + recessos vêm do config da escola.
 
-import { DIA_JS, parseDate, dateToStr, arr } from './helpers.js';
+import { DIA_JS, parseDate, dateToStr, arr, turmaEncontros } from './helpers.js';
 
 const DIAS_NOMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
@@ -13,44 +13,53 @@ export function getDiaSemanaFromDateStr(dateStr) {
   return DIAS_NOMES[d.getDay()];
 }
 
-// Próximas n ocorrências do dia da turma (inclui feriados — a UI mostra disabled).
-export function getNextOccurrences(diaSemana, n = 8) {
-  const target = DIA_JS[diaSemana];
-  if (target === undefined) return [];
+// Dias-alvo (0..6) de todos os encontros da turma.
+function diasAlvo(turma) {
+  return new Set(turmaEncontros(turma).map((e) => DIA_JS[e.diaSemana]).filter((x) => x !== undefined));
+}
+
+// Próximas n ocorrências da turma (todos os dias de encontro; inclui feriados —
+// a UI mostra disabled).
+export function getNextOccurrences(turma, n = 8) {
+  const alvos = diasAlvo(turma);
+  if (!alvos.size) return [];
   const dates = [];
   const d = new Date();
   d.setHours(0, 0, 0, 0);
-  while (dates.length < n) {
-    if (d.getDay() === target) dates.push(dateToStr(d));
+  for (let i = 0; dates.length < n && i < 400; i++) {
+    if (alvos.has(d.getDay())) dates.push(dateToStr(d));
     d.setDate(d.getDate() + 1);
   }
   return dates;
 }
 
 export function getClassDatesInRange(turma, fromStr, toStr) {
-  const target = DIA_JS[turma.diaSemana];
-  if (target === undefined) return [];
+  const alvos = diasAlvo(turma);
+  if (!alvos.size) return [];
   const dates = [];
   const d = new Date(fromStr + 'T00:00:00');
   const end = new Date(toStr + 'T00:00:00');
   while (d <= end) {
-    if (d.getDay() === target) dates.push(dateToStr(d));
+    if (alvos.has(d.getDay())) dates.push(dateToStr(d));
     d.setDate(d.getDate() + 1);
   }
   return dates;
 }
 
-// Momento de início da aula. Usa hora/minuto estruturados (AVIZ); cai no parse
-// do horário textual para turmas antigas.
+// Momento de início da aula naquela data: acha o encontro cujo dia bate com a
+// data (turma pode ter horários diferentes por dia).
 export function getClassDatetime(turmaId, date, turmas) {
   const turma = arr(turmas).find((t) => t.id === turmaId);
   if (!turma) return null;
+  const enc = turmaEncontros(turma);
+  const wd = parseDate(date).getDay();
+  const slot = enc.find((e) => DIA_JS[e.diaSemana] === wd) || enc[0];
+  if (!slot) return null;
   const dt = parseDate(date);
-  let hora = turma.hora;
-  let minuto = turma.minuto || 0;
+  let hora = slot.hora;
+  let minuto = slot.minuto || 0;
   if (hora === undefined || hora === null) {
-    // Fallback para turmas sem hora/minuto estruturados: parse "HHhMM" (ex.: 19h20, 09h).
-    const [hh, mm] = String(turma.horario || '09h').split('h');
+    const [hh, mm] = String(slot.horario || '09h').split('h');
     hora = parseInt(hh, 10) || 0;
     minuto = parseInt(mm, 10) || 0;
   }

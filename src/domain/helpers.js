@@ -16,24 +16,48 @@ export function genId(prefix = 'id') {
 
 export function arr(v) { return Array.isArray(v) ? v : []; }
 
-export function getTurmaLabel(turmas, id) {
-  const t = arr(turmas).find((x) => x.id === id);
-  if (!t) return '?';
-  if (t.id === TURMA_EXTRA_ID) return 'Extra';
-  return `${EXTENSO[t.diaSemana] || t.diaSemana} ${t.horario}`;
-}
-
-export function turmaShortLabel(t) {
-  if (!t) return '?';
-  if (t.id === TURMA_EXTRA_ID) return 'Extra';
-  return `${ABREV[t.diaSemana]} ${t.horario}`;
-}
-
 // Formata hora/minuto (24h) no estilo do Passarinho: 19h20, 09h.
 export function formatHorario(hora, minuto) {
   const h = String(hora).padStart(2, '0');
   const m = Number(minuto) || 0;
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+}
+
+// Encontros da turma (dia + horário). Uma turma pode se encontrar em vários dias
+// da semana, com horários diferentes. Normaliza turmas antigas (um só dia).
+export function turmaEncontros(t) {
+  if (t && Array.isArray(t.encontros) && t.encontros.length) return t.encontros;
+  if (!t) return [];
+  return [{ diaSemana: t.diaSemana, hora: t.hora, minuto: t.minuto || 0, horario: t.horario }];
+}
+
+function encHorario(e) { return e.horario || formatHorario(e.hora, e.minuto); }
+
+// Agrupa os encontros por horário: "Ter/Qui 09h" (mesmo horário) ou
+// "Ter 09h · Qui 18h" (horários diferentes). `diaMap` = ABREV ou EXTENSO.
+function labelEncontros(t, diaMap, sepDias) {
+  const enc = turmaEncontros(t);
+  const porHora = [];
+  enc.forEach((e) => {
+    const h = encHorario(e);
+    const grupo = porHora.find((g) => g.h === h);
+    const dia = diaMap[e.diaSemana] || e.diaSemana;
+    if (grupo) grupo.dias.push(dia); else porHora.push({ h, dias: [dia] });
+  });
+  return porHora.map((g) => `${g.dias.join(sepDias)} ${g.h}`).join(' · ');
+}
+
+export function getTurmaLabel(turmas, id) {
+  const t = arr(turmas).find((x) => x.id === id);
+  if (!t) return '?';
+  if (t.id === TURMA_EXTRA_ID) return 'Extra';
+  return labelEncontros(t, EXTENSO, ' e ');
+}
+
+export function turmaShortLabel(t) {
+  if (!t) return '?';
+  if (t.id === TURMA_EXTRA_ID) return 'Extra';
+  return labelEncontros(t, ABREV, '/');
 }
 
 // ---- Datas (portado do Passarinho) ----
@@ -107,11 +131,17 @@ export function corDoAutor(nome) {
 }
 
 export function sortTurmas(turmas) {
+  const primeiro = (t) => {
+    const enc = turmaEncontros(t);
+    const ord = [...enc].sort((x, y) => DIAS_ORDER.indexOf(x.diaSemana) - DIAS_ORDER.indexOf(y.diaSemana));
+    const e = ord[0] || {};
+    return { d: DIAS_ORDER.indexOf(e.diaSemana), h: encHorario(e) };
+  };
   return [...arr(turmas)].sort((a, b) => {
     if (a.id === TURMA_EXTRA_ID) return 1;
     if (b.id === TURMA_EXTRA_ID) return -1;
-    const da = DIAS_ORDER.indexOf(a.diaSemana), db = DIAS_ORDER.indexOf(b.diaSemana);
-    if (da !== db) return da - db;
-    return (a.horario || '').localeCompare(b.horario || '');
+    const pa = primeiro(a), pb = primeiro(b);
+    if (pa.d !== pb.d) return pa.d - pb.d;
+    return (pa.h || '').localeCompare(pb.h || '');
   });
 }

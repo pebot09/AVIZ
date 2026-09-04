@@ -2,7 +2,7 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr } from './helpers.js';
+import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr } from './helpers.js';
 import { isFeriado, isRecesso, mesEhRecesso, getClassDatesInRange } from './calendario.js';
 import { computeVagasExtras, fmtDatesText, stripVagasCanceladas } from './reposicao.js';
 
@@ -39,15 +39,14 @@ export function reducer(state, action, config) {
 
   switch (action.type) {
     case 'ADD_TURMA': {
-      const { diaSemana, hora, minuto, capacidade, observacao } = action;
-      const hh = String(hora).padStart(2, '0');
-      const mm = String(Number(minuto) || 0).padStart(2, '0');
-      const id = `${diaSemana.slice(0, 3).replace('ç', 'c').replace('á', 'a')}-${hh}${mm}`;
-      if (state.turmas.find((t) => t.id === id)) return state; // já existe esse dia+horário
-      const horario = formatHorario(hora, minuto);
-      const nova = { id, diaSemana, hora: Number(hora), minuto: Number(minuto) || 0, horario, capacidade: capacidade || 7, capacidadeFisica: action.capacidadeFisica ? Number(action.capacidadeFisica) : null, observacao: observacao || '', alunos: [] };
+      const encontros = arr(action.encontros)
+        .filter((e) => e && e.diaSemana)
+        .map((e) => ({ diaSemana: e.diaSemana, hora: Number(e.hora), minuto: Number(e.minuto) || 0, horario: formatHorario(e.hora, e.minuto) }));
+      if (!encontros.length) return state;
+      const id = genId('turma');
+      const nova = { id, encontros, capacidade: action.capacidade || 7, capacidadeFisica: action.capacidadeFisica ? Number(action.capacidadeFisica) : null, observacao: action.observacao || '', alunos: [] };
       next = { ...state, turmas: [...state.turmas, nova] };
-      next.log = addLog(state.log, autor, `Criou turma ${EXTENSO[diaSemana] || diaSemana} ${horario}`);
+      next.log = addLog(state.log, autor, `Criou turma ${turmaShortLabel(nova)}`);
       break;
     }
 

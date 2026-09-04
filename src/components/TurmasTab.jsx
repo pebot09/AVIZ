@@ -79,7 +79,7 @@ function TurmaCard({ turma, state, dispatch, vocab, config, exp, onToggle, onGer
       <div className="flex items-center justify-between p-4 cursor-pointer" onClick={onToggle}>
         <div>
           <div className="font-semibold text-gray-800 flex items-center gap-2">
-            {EXTENSO[turma.diaSemana] || turma.diaSemana} {turma.horario}
+            {getTurmaLabel(state.turmas, turma.id)}
             {turma.observacao && <span className="text-gray-400 font-normal text-sm">({turma.observacao})</span>}
           </div>
           <div className="text-sm text-gray-500 mt-0.5">
@@ -272,35 +272,54 @@ function GerenciarAlunoModal({ turma, state, dispatch, vocab, onClose }) {
 }
 
 function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, capacidadeFisicaPadrao, onClose }) {
-  const [dia, setDia] = useState('segunda');
-  const [hora, setHora] = useState(9);
-  const [minuto, setMinuto] = useState(0);
+  // Uma turma pode se encontrar em mais de um dia da semana (ex.: Yoga Ter/Qui
+  // 09h). Cada encontro tem seu próprio horário.
+  const [encontros, setEncontros] = useState([{ dia: 'segunda', hora: 9, minuto: 0 }]);
   const [capacidade, setCapacidade] = useState(capacidadePadrao || 7);
   const [capacidadeFisica, setCapacidadeFisica] = useState('');
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState(null);
 
+  const setEnc = (i, patch) => setEncontros((es) => es.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+  const addEnc = () => setEncontros((es) => [...es, { dia: 'segunda', hora: 9, minuto: 0 }]);
+  const rmEnc = (i) => setEncontros((es) => es.filter((_, j) => j !== i));
+
   function criar() {
-    const hh = String(hora).padStart(2, '0');
-    const mm = String(minuto).padStart(2, '0');
-    const id = `${dia.slice(0, 3).replace('ç', 'c').replace('á', 'a')}-${hh}${mm}`;
-    if (existentes.find((t) => t.id === id)) { setErro('Já existe uma ' + vocab.turma + ' nesse dia e horário.'); return; }
-    dispatch({ type: 'ADD_TURMA', diaSemana: dia, hora, minuto, capacidade: Number(capacidade) || 7, capacidadeFisica: capacidadeFisica ? Number(capacidadeFisica) : null, observacao });
+    const vistos = new Set();
+    for (const e of encontros) {
+      const chave = `${e.dia}-${e.hora}-${e.minuto}`;
+      if (vistos.has(chave)) { setErro('Há dois encontros no mesmo dia e horário.'); return; }
+      vistos.add(chave);
+    }
+    dispatch({
+      type: 'ADD_TURMA',
+      encontros: encontros.map((e) => ({ diaSemana: e.dia, hora: e.hora, minuto: e.minuto })),
+      capacidade: Number(capacidade) || 7,
+      capacidadeFisica: capacidadeFisica ? Number(capacidadeFisica) : null,
+      observacao,
+    });
     onClose();
   }
 
   return (
     <Modal title={`Nova ${vocab.turma}`} onClose={onClose}>
       <div className="space-y-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Dia da semana</label>
-          <select value={dia} onChange={(e) => setDia(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
-            {DIAS_ORDER.map((d) => <option key={d} value={d}>{EXTENSO[d]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Horário (24h)</label>
-          <HoraPicker hora={hora} minuto={minuto} onChange={(h, m) => { setHora(h); setMinuto(m); }} />
+        <div className="space-y-3">
+          <label className="block text-xs font-medium text-gray-500">Dia e horário</label>
+          {encontros.map((e, i) => (
+            <div key={i} className="space-y-2 bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+              <div className="flex items-center gap-2">
+                <select value={e.dia} onChange={(ev) => setEnc(i, { dia: ev.target.value })} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                  {DIAS_ORDER.map((d) => <option key={d} value={d}>{EXTENSO[d]}</option>)}
+                </select>
+                {encontros.length > 1 && (
+                  <button onClick={() => rmEnc(i)} className="text-red-400 hover:text-red-600 text-sm px-2 py-1 shrink-0" title="Remover dia">✕</button>
+                )}
+              </div>
+              <HoraPicker hora={e.hora} minuto={e.minuto} onChange={(h, m) => setEnc(i, { hora: h, minuto: m })} />
+            </div>
+          ))}
+          <button onClick={addEnc} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Adicionar outro dia</button>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Máx. de {vocab.alunos} (turma)</label>

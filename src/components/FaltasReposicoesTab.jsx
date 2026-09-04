@@ -98,7 +98,7 @@ function TabRegistrarFalta({ state, dispatch, vocab, config }) {
 
   const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
   const turma = state.turmas.find((t) => t.id === turmaId);
-  const occurrences = useMemo(() => (!turma ? [] : getNextOccurrences(turma.diaSemana, 8)), [turma]);
+  const occurrences = useMemo(() => (!turma ? [] : getNextOccurrences(turma, 8)), [turma]);
   const pastOccurrences = useMemo(() => {
     if (!turma) return [];
     const tresMeses = new Date(); tresMeses.setMonth(tresMeses.getMonth() - 3);
@@ -138,7 +138,7 @@ function TabRegistrarFalta({ state, dispatch, vocab, config }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
         <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setAlunoNome(''); setSelectedDates([]); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
           <option value="">— Selecione a {vocab.turma} —</option>
-          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}{t.observacao ? ` (${t.observacao})` : ''}</option>)}
+          {sorted.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}{t.observacao ? ` (${t.observacao})` : ''}</option>)}
         </select>
       </div>
 
@@ -252,9 +252,9 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
       .filter((v) => v.data >= td && v.turmaId !== turmaOrigemId)
       .sort((a, b) => {
         if (a.data !== b.data) return a.data.localeCompare(b.data);
-        const ha = state.turmas.find((t) => t.id === a.turmaId)?.horario || '';
-        const hb = state.turmas.find((t) => t.id === b.turmaId)?.horario || '';
-        return ha.localeCompare(hb);
+        const ta = getClassDatetime(a.turmaId, a.data, state.turmas);
+        const tb = getClassDatetime(b.turmaId, b.data, state.turmas);
+        return (ta ? ta.getTime() : 0) - (tb ? tb.getTime() : 0);
       })
       .filter((v) => { const k = `${v.data}|${v.turmaId}`; if (seen.has(k)) return false; seen.add(k); return true; });
   }, [state.vagas, state.turmas, td, turmaOrigemId]);
@@ -312,7 +312,7 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)} de origem</label>
         <select value={turmaOrigemId} onChange={(e) => { setTurmaOrigemId(e.target.value); setAlunoNome(''); setVagaSel(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
           <option value="">— Selecione a {vocab.turma} —</option>
-          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+          {sorted.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
         </select>
       </div>
 
@@ -359,7 +359,7 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
             <select value={extraTurma} onChange={(e) => setExtraTurma(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">— Selecione a {vocab.turma} —</option>
-              {sorted.filter((t) => t.id !== turmaOrigemId).map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+              {sorted.filter((t) => t.id !== turmaOrigemId).map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
             </select>
           </div>
         </div>
@@ -477,9 +477,9 @@ function TabCancelarReposicao({ state, dispatch, vocab }) {
 
   const futuras = useMemo(() => state.reposicoes.filter((r) => !r.realizada && r.dataReposicao >= td).sort((a, b) => {
     if (a.dataReposicao !== b.dataReposicao) return a.dataReposicao.localeCompare(b.dataReposicao);
-    const ta = state.turmas.find((t) => t.id === a.turmaReposicaoId);
-    const tb = state.turmas.find((t) => t.id === b.turmaReposicaoId);
-    return (ta?.horario || '').localeCompare(tb?.horario || '');
+    const ta = getClassDatetime(a.turmaReposicaoId, a.dataReposicao, state.turmas);
+    const tb = getClassDatetime(b.turmaReposicaoId, b.dataReposicao, state.turmas);
+    return (ta ? ta.getTime() : 0) - (tb ? tb.getTime() : 0);
   }), [state.reposicoes, state.turmas, td]);
   const repo = futuras.find((r) => r.id === selectedId);
 
@@ -555,7 +555,7 @@ function TabAusenciaProgramada({ state, dispatch, vocab, config }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
         <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setAlunoNome(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
           <option value="">— Selecione a {vocab.turma} —</option>
-          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+          {sorted.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
         </select>
       </div>
 
@@ -664,7 +664,7 @@ function TabCreditoExtra({ state, dispatch, vocab }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
         <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setAlunoNome(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
           <option value="">— Selecione a {vocab.turma} —</option>
-          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+          {sorted.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
         </select>
       </div>
       {turma && (
@@ -762,7 +762,7 @@ function TabCancelarAula({ state, dispatch, vocab, config }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
         <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setData(''); }} className="w-full border border-gray-300 rounded-lg px-3 py-2">
           <option value="">— Selecione a {vocab.turma} —</option>
-          {sorted.map((t) => <option key={t.id} value={t.id}>{EXTENSO[t.diaSemana]} {t.horario}</option>)}
+          {sorted.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
         </select>
       </div>
       {turma && (
