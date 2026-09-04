@@ -6,7 +6,7 @@ import { fmtBRFull, arr } from '../domain/helpers.js';
 import { Campo, TextInput, NumberSelect, Select, SimNao, ArtigoNome } from '../onboarding/widgets.jsx';
 
 // Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
-export default function ConfigScreen({ tenant, config, dispatch, onClose }) {
+export default function ConfigScreen({ tenant, config, pub, dispatch, onClose }) {
   const [sec, setSec] = useState(null);
   const secoes = [
     { key: 'identidade', label: 'Identidade', desc: 'Nome e cor da escola', comp: IdentidadeSec },
@@ -36,7 +36,7 @@ export default function ConfigScreen({ tenant, config, dispatch, onClose }) {
       ) : (
         <div>
           <button onClick={() => setSec(null)} className="text-sm text-blue-600 hover:text-blue-800 mb-3">← Voltar</button>
-          <atual.comp tenant={tenant} config={config} dispatch={dispatch} onDone={() => setSec(null)} />
+          <atual.comp tenant={tenant} config={config} pub={pub} dispatch={dispatch} onDone={() => setSec(null)} />
         </div>
       )}
     </Modal>
@@ -71,22 +71,20 @@ function mergeRegras(config, changes) { return { regras: { ...(config?.regras ||
 
 // ---- Seções ----
 
-function IdentidadeSec({ tenant, config, onDone }) {
-  const pub = config?._public || {}; // não temos o public aqui; edita direto
-  const [nome, setNome] = useState('');
-  const [artigo, setArtigo] = useState('o');
-  const [cor, setCor] = useState('#2563eb');
-  const { salvar, salvando, erro } = useSalvar(() => saveTenantPublic(tenant, { nome: nome.trim(), artigo, cor }), onDone);
+function IdentidadeSec({ tenant, pub, onDone }) {
+  const [nome, setNome] = useState(pub?.nome || '');
+  const [artigo, setArtigo] = useState(pub?.artigo || 'o');
+  const [cor, setCor] = useState(pub?.cor || '#2563eb');
+  const { salvar, salvando, erro } = useSalvar(() => saveTenantPublic(tenant, { nome: nome.trim() || (pub?.nome || ''), artigo, cor }), onDone);
   return (
     <div>
-      <p className="text-xs text-gray-500 mb-3">Deixe o nome em branco para não alterar.</p>
       <Campo label="Nome do espaço (e artigo)">
-        <ArtigoNome artigo={artigo} nome={nome} onArtigo={setArtigo} onNome={setNome} placeholder="Novo nome (opcional)" />
+        <ArtigoNome artigo={artigo} nome={nome} onArtigo={setArtigo} onNome={setNome} placeholder="Nome do espaço" />
       </Campo>
       <Campo label="Cor de destaque">
         <input type="color" value={cor} onChange={(e) => setCor(e.target.value)} className="h-9 w-16 rounded border border-gray-300" />
       </Campo>
-      <Acoes onSalvar={() => { if (!nome.trim()) { onDone(); return; } salvar(); }} salvando={salvando} erro={erro} onCancel={onDone} />
+      <Acoes onSalvar={salvar} salvando={salvando} erro={erro} onCancel={onDone} />
     </div>
   );
 }

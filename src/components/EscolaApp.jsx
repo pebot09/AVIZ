@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ref, get } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 import { db } from '../lib/firebase.js';
 import { paths } from '../lib/paths.js';
 import { useTenantStore, useConfig } from '../lib/store.js';
@@ -19,15 +19,12 @@ export default function EscolaApp({ tenant, user, membro }) {
   const config = useConfig(tenant);
   // Autor do log = nome do membro (não o e-mail), para o histórico ficar limpo.
   const { state, dispatch, erro } = useTenantStore(tenant, (membro && membro.nome) || user.email, config);
-  const [nomeEscola, setNomeEscola] = useState(tenant);
+  const [pub, setPub] = useState(null);
   const [aba, setAba] = useState('Turmas');
   const [configAberto, setConfigAberto] = useState(false);
 
-  useEffect(() => {
-    get(ref(db, paths.tenantPublic(tenant)))
-      .then((snap) => { const v = snap.val(); if (v && v.nome) setNomeEscola(v.nome); })
-      .catch(() => {});
-  }, [tenant]);
+  useEffect(() => onValue(ref(db, paths.tenantPublic(tenant)), (snap) => setPub(snap.val() || {})), [tenant]);
+  const nomeEscola = (pub && pub.nome) || tenant;
 
   const vocab = makeVocab(config);
   const carregando = state === undefined || config === undefined;
@@ -77,7 +74,7 @@ export default function EscolaApp({ tenant, user, membro }) {
         <EmBreve nome={aba} />
       )}
 
-      {configAberto && <ConfigScreen tenant={tenant} config={config} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
+      {configAberto && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
     </div>
   );
 }
