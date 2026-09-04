@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  sortTurmas, EXTENSO, ABREV, fmtBR, fmtBRFull, todayStr, dateToStr, parseDate,
+  arr, sortTurmas, EXTENSO, ABREV, fmtBR, fmtBRFull, todayStr, dateToStr, parseDate,
   turmaShortLabel, getTurmaLabel, getFaltaEarliest, getFaltaExpiry, getMesNome, getLastDayOfMonth,
 } from '../domain/helpers.js';
 import {
