@@ -49,8 +49,10 @@ export function getClassDatetime(turmaId, date, turmas) {
   let hora = turma.hora;
   let minuto = turma.minuto || 0;
   if (hora === undefined || hora === null) {
-    hora = parseInt(String(turma.horario || '09h').replace('h', ''), 10) || 0;
-    minuto = 0;
+    // Fallback para turmas sem hora/minuto estruturados: parse "HHhMM" (ex.: 19h20, 09h).
+    const [hh, mm] = String(turma.horario || '09h').split('h');
+    hora = parseInt(hh, 10) || 0;
+    minuto = parseInt(mm, 10) || 0;
   }
   dt.setHours(hora, minuto, 0, 0);
   return dt;
