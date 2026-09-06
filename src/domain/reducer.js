@@ -2,24 +2,41 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr } from './helpers.js';
+import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr, parseDate, TURMA_EXTRA_ID } from './helpers.js';
 import { isFeriado, isRecesso, mesEhRecesso, getClassDatesInRange } from './calendario.js';
 import { computeVagasExtras, fmtDatesText, stripVagasCanceladas } from './reposicao.js';
+import { computeResumoDia } from './resumo.js';
 
 export const EMPTY_STATE = {
   turmas: [], faltas: [], reposicoes: [], vagas: [],
   ausencias: [], acessos: [], creditos: [], notas: [],
-  log: [], aulasCanceladas: [], estatisticas: { faltasExpiradas: [] },
+  log: [], aulasCanceladas: [], snapshots: [], resumosDiarios: {},
+  estatisticas: { faltasExpiradas: [] },
 };
+
+// Tetos de retenção (como no Passarinho: nada cresce sem limite no blob).
+const MAX_SNAPSHOTS = 20;
+const RESUMO_JANELA_DIAS = 15; // congela dias faltantes nesta janela para trás
+const RESUMO_RETENCAO_DIAS = 92; // ~3 meses
+
+// A "turma extra" é o balde de quem não tem turma fixa: alunos avulsos e
+// ex-alunos que ainda têm direito pendente. Não tem dia nem horário — por isso
+// não gera datas de aula, vagas nem resumo do dia. Sempre existe.
+function comTurmaExtra(turmas) {
+  if (turmas.some((t) => t.id === TURMA_EXTRA_ID)) return turmas;
+  return [...turmas, { id: TURMA_EXTRA_ID, encontros: [], capacidade: 99, capacidadeFisica: null, observacao: '', alunos: [] }];
+}
 
 export function normalizeState(data) {
   const s = data && typeof data === 'object' ? data : {};
   return {
     ...EMPTY_STATE,
     ...s,
-    turmas: arr(s.turmas), faltas: arr(s.faltas), reposicoes: arr(s.reposicoes),
+    turmas: comTurmaExtra(arr(s.turmas)), faltas: arr(s.faltas), reposicoes: arr(s.reposicoes),
     vagas: arr(s.vagas), ausencias: arr(s.ausencias), acessos: arr(s.acessos),
     creditos: arr(s.creditos), notas: arr(s.notas), log: arr(s.log), aulasCanceladas: arr(s.aulasCanceladas),
+    snapshots: arr(s.snapshots),
+    resumosDiarios: (s.resumosDiarios && typeof s.resumosDiarios === 'object' && !Array.isArray(s.resumosDiarios)) ? s.resumosDiarios : {},
     estatisticas: {
       faltasExpiradas: arr((s.estatisticas || {}).faltasExpiradas),
       reposCanceladas: arr((s.estatisticas || {}).reposCanceladas),
@@ -58,6 +75,10 @@ export function reducer(state, action, config) {
         faltas: state.faltas.filter((f) => f.turmaId !== action.id),
         vagas: state.vagas.filter((v) => v.turmaId !== action.id),
         ausencias: state.ausencias.filter((a) => a.turmaId !== action.id),
+        // Sem isto sobram notas órfãs e — pior — links de aluno ainda válidos
+        // apontando para uma turma que não existe mais.
+        notas: arr(state.notas).filter((n) => n.turmaId !== action.id),
+        acessos: arr(state.acessos).filter((a) => a.turmaId !== action.id),
       };
       if (turmaDel) next.log = addLog(state.log, autor, `Excluiu turma ${getTurmaLabel(state.turmas, turmaDel.id)}`);
       break;
@@ -120,6 +141,8 @@ export function reducer(state, action, config) {
         turmas: state.turmas.map((t) => t.id === action.turmaId
           ? { ...t, alunos: arr(t.alunos).filter((a) => a !== action.nome) }
           : t),
+        // Tirou o aluno da turma → o link dele para essa turma deixa de valer.
+        acessos: arr(state.acessos).filter((a) => !(a.turmaId === action.turmaId && a.alunoNome === action.nome)),
       };
       break;
     }
@@ -453,6 +476,88 @@ export function reducer(state, action, config) {
       const igual = vagas.length === state.vagas.length && vagas.every((v, i) => v.id === state.vagas[i].id);
       if (igual) return state; // nada mudou → não grava (evita churn no load)
       next = { ...state, vagas };
+      break;
+    }
+
+    // ---- Notas da turma ----
+    case 'ADD_NOTA': {
+      const texto = String(action.texto || '').trim();
+      if (!texto) return state;
+      const nota = { id: genId('nota'), turmaId: action.turmaId, texto, autor: autor || null, ts: new Date().toISOString() };
+      next = { ...state, notas: [...arr(state.notas), nota] };
+      break;
+    }
+
+    case 'DELETE_NOTA': {
+      next = { ...state, notas: arr(state.notas).filter((n) => n.id !== action.id) };
+      break;
+    }
+
+    // ---- Acesso do aluno (link ?c=CÓDIGO) ----
+    case 'GERAR_ACESSO': {
+      const { alunoNome, turmaId } = action;
+      if (arr(state.acessos).some((a) => a.alunoNome === alunoNome && a.turmaId === turmaId)) return state;
+      // Código único: colisão daria o mesmo link a dois alunos.
+      const usados = new Set(arr(state.acessos).map((a) => a.codigo));
+      let codigo;
+      do { codigo = String(Math.floor(100000 + Math.random() * 900000)); } while (usados.has(codigo));
+      next = { ...state, acessos: [...arr(state.acessos), { id: genId('ac'), codigo, alunoNome, turmaId }] };
+      break;
+    }
+
+    case 'REVOGAR_ACESSO': {
+      next = { ...state, acessos: arr(state.acessos).filter((a) => a.id !== action.id) };
+      break;
+    }
+
+    // ---- Painel ----
+    case 'MARK_PAGO': {
+      const repoMp = arr(state.reposicoes).find((r) => r.id === action.id);
+      if (!repoMp) return state;
+      next = { ...state, reposicoes: state.reposicoes.map((r) => (r.id === action.id ? { ...r, pago: !r.pago } : r)) };
+      next.log = addLog(state.log, autor, `Marcou aula extra de ${repoMp.alunoNome} (${getTurmaLabel(state.turmas, repoMp.turmaOrigemId)}) como ${!repoMp.pago ? 'paga' : 'não paga'}`, action.origem);
+      break;
+    }
+
+    case 'CANCEL_VAGAS_SLOT': {
+      next = { ...state, vagas: state.vagas.map((v) => (v.turmaId === action.turmaId && v.data === action.data ? { ...v, cancelada: action.cancelada } : v)) };
+      break;
+    }
+
+    case 'DELETE_LOG_ENTRY':
+      next = { ...state, log: arr(state.log).filter((e) => e.id !== action.id) };
+      break;
+
+    case 'SAVE_SNAPSHOT': {
+      const snap = { id: genId('snap'), ts: new Date().toISOString(), label: action.label || fmtBRFull(todayStr()), dados: action.dados || null };
+      next = { ...state, snapshots: [snap, ...arr(state.snapshots)].slice(0, MAX_SNAPSHOTS) };
+      break;
+    }
+
+    case 'DELETE_SNAPSHOT': {
+      next = { ...state, snapshots: arr(state.snapshots).filter((s) => s.id !== action.id) };
+      break;
+    }
+
+    case 'FREEZE_RESUMOS': {
+      // Congela o resumo dos dias já passados (vira imutável) e poda os antigos.
+      const fzTd = todayStr();
+      const existentes = (state.resumosDiarios && typeof state.resumosDiarios === 'object') ? state.resumosDiarios : {};
+      const novos = { ...existentes };
+      let mudou = false;
+      const ini = parseDate(fzTd); ini.setDate(ini.getDate() - RESUMO_JANELA_DIAS);
+      const fim = parseDate(fzTd);
+      for (const d = new Date(ini); d < fim; d.setDate(d.getDate() + 1)) {
+        const ds = dateToStr(d);
+        if (novos[ds]) continue;
+        const turmasDia = computeResumoDia(state, ds, config);
+        if (turmasDia.length) { novos[ds] = { data: ds, geradoEm: new Date().toISOString(), turmas: turmasDia }; mudou = true; }
+      }
+      const corte = parseDate(fzTd); corte.setDate(corte.getDate() - RESUMO_RETENCAO_DIAS);
+      const corteStr = dateToStr(corte);
+      Object.keys(novos).forEach((k) => { if (k < corteStr) { delete novos[k]; mudou = true; } });
+      if (!mudou) return state;
+      next = { ...state, resumosDiarios: novos };
       break;
     }
 

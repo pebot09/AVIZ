@@ -2,25 +2,40 @@ import { Fragment, useMemo, useState } from 'react';
 import {
   sortTurmas, EXTENSO, DIAS_ORDER, TURMA_EXTRA_ID, arr,
   turmaShortLabel, getTurmaLabel, todayStr, dateToStr, getFaltaExpiry,
+  turmaHasUnseenNotas,
 } from '../domain/helpers.js';
 import { cap } from '../domain/vocab.js';
 import HoraPicker from './HoraPicker.jsx';
 import Modal from './Modal.jsx';
 import HistoricoAluno from './HistoricoAluno.jsx';
+import NotasTurmaModal from './NotasTurmaModal.jsx';
+import GerarLinkModal from './GerarLinkModal.jsx';
 
 // Aba Turmas — porte fiel do SectionTurmas do Passarinho, com vocabulário
 // configurável e o seletor de horário 24h do AVIZ.
-export default function TurmasTab({ state, dispatch, vocab, config, capacidadePadrao }) {
+export default function TurmasTab({ state, dispatch, vocab, config, capacidadePadrao, tenantId, autor }) {
   const sorted = useMemo(() => sortTurmas(state.turmas).filter((t) => t.id !== TURMA_EXTRA_ID), [state.turmas]);
+  const turmaExtra = useMemo(() => state.turmas.find((t) => t.id === TURMA_EXTRA_ID), [state.turmas]);
   const [expandedId, setExpandedId] = useState(null);
   const [gerenciando, setGerenciando] = useState(null);
+  const [notasDe, setNotasDe] = useState(null);
   const [showNova, setShowNova] = useState(false);
+  const [showLink, setShowLink] = useState(false);
+
+  const cardProps = {
+    state, dispatch, vocab, config, tenantId, autor,
+    onNotas: (t) => setNotasDe(t),
+    onGerenciar: (t) => setGerenciando(t),
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-3">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-2 gap-2">
         <h2 className="text-xl font-bold text-gray-800">{cap(vocab.turmas)}</h2>
-        <button onClick={() => setShowNova(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">+ Nova {vocab.turma}</button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowLink(true)} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm">🔗 Link</button>
+          <button onClick={() => setShowNova(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">+ Nova {vocab.turma}</button>
+        </div>
       </div>
 
       {sorted.length === 0 && (
@@ -29,15 +44,32 @@ export default function TurmasTab({ state, dispatch, vocab, config, capacidadePa
 
       {sorted.map((turma) => (
         <TurmaCard
-          key={turma.id} turma={turma} state={state} dispatch={dispatch} vocab={vocab} config={config}
+          key={turma.id} turma={turma} {...cardProps}
           exp={expandedId === turma.id}
           onToggle={() => setExpandedId(expandedId === turma.id ? null : turma.id)}
-          onGerenciar={() => setGerenciando(turma)}
         />
       ))}
 
+      {turmaExtra && (
+        <TurmaCard
+          turma={turmaExtra} {...cardProps} extra
+          exp={expandedId === TURMA_EXTRA_ID}
+          onToggle={() => setExpandedId(expandedId === TURMA_EXTRA_ID ? null : TURMA_EXTRA_ID)}
+        />
+      )}
+
       {showNova && (
-        <NovaTurmaModal dispatch={dispatch} vocab={vocab} existentes={state.turmas} capacidadePadrao={capacidadePadrao} capacidadeFisicaPadrao={config?.regras?.capacidadeFisica} onClose={() => setShowNova(false)} />
+        <NovaTurmaModal dispatch={dispatch} vocab={vocab} capacidadePadrao={capacidadePadrao} onClose={() => setShowNova(false)} />
+      )}
+      {showLink && (
+        <GerarLinkModal state={state} dispatch={dispatch} vocab={vocab} onClose={() => setShowLink(false)} />
+      )}
+      {notasDe && (
+        <NotasTurmaModal
+          turma={state.turmas.find((t) => t.id === notasDe.id) || notasDe}
+          state={state} dispatch={dispatch} tenantId={tenantId} autor={autor}
+          onClose={() => setNotasDe(null)}
+        />
       )}
       {gerenciando && (
         <GerenciarAlunoModal
@@ -49,7 +81,7 @@ export default function TurmasTab({ state, dispatch, vocab, config, capacidadePa
   );
 }
 
-function TurmaCard({ turma, state, dispatch, vocab, config, exp, onToggle, onGerenciar }) {
+function TurmaCard({ turma, state, dispatch, vocab, config, tenantId, autor, extra, exp, onToggle, onGerenciar, onNotas }) {
   const td = todayStr();
   const in7 = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 7); return dateToStr(d); }, []);
   const [editObs, setEditObs] = useState(undefined);
@@ -73,42 +105,59 @@ function TurmaCard({ turma, state, dispatch, vocab, config, exp, onToggle, onGer
 
   const cell = (num, cor) => <span className={`text-center text-xs py-1.5 ${num ? cor : 'text-gray-300'}`}>{num || '·'}</span>;
 
+  const temNotaNova = turmaHasUnseenNotas(tenantId, turma.id, state.notas, autor);
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="flex items-center justify-between p-4 cursor-pointer" onClick={onToggle}>
-        <div>
-          <div className="font-semibold text-gray-800 flex items-center gap-2">
-            {getTurmaLabel(state.turmas, turma.id)}
-            {turma.observacao && <span className="text-gray-400 font-normal text-sm">({turma.observacao})</span>}
+    <div className={`bg-white rounded-xl shadow-sm border ${extra ? 'border-dashed border-gray-300 mt-4' : 'border-gray-200'}`}>
+      <div className="flex items-center justify-between p-4 cursor-pointer gap-2" onClick={onToggle}>
+        <div className="min-w-0">
+          <div className={`font-semibold flex items-center gap-2 ${extra ? 'text-gray-500' : 'text-gray-800'}`}>
+            {extra ? `${cap(vocab.alunos)} extras & ex-${vocab.alunos}` : getTurmaLabel(state.turmas, turma.id)}
+            {!extra && turma.observacao && <span className="text-gray-400 font-normal text-sm">({turma.observacao})</span>}
           </div>
-          <div className="text-sm text-gray-500 mt-0.5">
-            <span className={`font-medium ${over ? 'text-red-600' : almostFull ? 'text-amber-600' : 'text-green-600'}`}>{n}/{turma.capacidade}</span>
-            <span className="ml-1">{vocab.alunos}</span>
+          <div className={`text-sm mt-0.5 ${extra ? 'text-gray-400' : 'text-gray-500'}`}>
+            {extra ? (
+              <span>{n} {n === 1 ? vocab.aluno : vocab.alunos}</span>
+            ) : (
+              <>
+                <span className={`font-medium ${over ? 'text-red-600' : almostFull ? 'text-amber-600' : 'text-green-600'}`}>{n}/{turma.capacidade}</span>
+                <span className="ml-1">{vocab.alunos}</span>
+              </>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={(e) => { e.stopPropagation(); onGerenciar(); }} className="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">Gerenciar</button>
-          {n === 0 && <button onClick={(e) => { e.stopPropagation(); if (confirm('Excluir esta ' + vocab.turma + '?')) dispatch({ type: 'DELETE_TURMA', id: turma.id }); }} className="text-red-400 hover:text-red-600 text-sm px-2">Excluir</button>}
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={(e) => { e.stopPropagation(); onNotas(turma); }}
+            className="relative text-xs font-medium px-2 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+            title="Notas">
+            📋{temNotaNova && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">!</span>
+            )}
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onGerenciar(turma); }} className="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">Gerenciar</button>
+          {!extra && n === 0 && <button onClick={(e) => { e.stopPropagation(); if (confirm('Excluir esta ' + vocab.turma + '?')) dispatch({ type: 'DELETE_TURMA', id: turma.id }); }} className="text-red-400 hover:text-red-600 text-sm px-2">Excluir</button>}
           <span className="text-gray-400 text-lg">{exp ? '▲' : '▼'}</span>
         </div>
       </div>
 
       {exp && (
-        <div className="border-t border-gray-100 p-4 fade-in">
-          <div className="mb-3 flex gap-2">
-            <input
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-              placeholder="Observação"
-              value={editObs !== undefined ? editObs : (turma.observacao || '')}
-              onChange={(e) => setEditObs(e.target.value)}
-            />
-            <button
-              onClick={() => {
-                dispatch({ type: 'UPDATE_TURMA', id: turma.id, observacao: editObs ?? turma.observacao });
-                setEditObs(undefined);
-              }}
-              className="px-3 py-1.5 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Salvar</button>
-          </div>
+        <div className={`border-t p-4 fade-in ${extra ? 'border-dashed border-gray-200' : 'border-gray-100'}`}>
+          {!extra && (
+            <div className="mb-3 flex gap-2">
+              <input
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                placeholder="Observação"
+                value={editObs !== undefined ? editObs : (turma.observacao || '')}
+                onChange={(e) => setEditObs(e.target.value)}
+              />
+              <button
+                onClick={() => {
+                  dispatch({ type: 'UPDATE_TURMA', id: turma.id, observacao: editObs ?? turma.observacao });
+                  setEditObs(undefined);
+                }}
+                className="px-3 py-1.5 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Salvar</button>
+            </div>
+          )}
 
           <div className="space-y-1 mb-3">
             {n === 0 && <p className="text-gray-400 text-sm italic">Nenhum {vocab.aluno} cadastrado</p>}
@@ -228,6 +277,7 @@ function GerenciarAlunoModal({ turma, state, dispatch, vocab, config, onClose })
           </div>
         </div>
       )}
+      {turma.id !== TURMA_EXTRA_ID && (
       <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
         <div className="text-xs font-medium text-gray-500 mb-2">Capacidade</div>
         <div className="flex gap-3 items-end">
@@ -244,6 +294,7 @@ function GerenciarAlunoModal({ turma, state, dispatch, vocab, config, onClose })
           )}
         </div>
       </div>
+      )}
       <div className="space-y-1">
         {sorted.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Nenhum {vocab.aluno} nesta {vocab.turma}.</p>}
         {sorted.map((nome) => {

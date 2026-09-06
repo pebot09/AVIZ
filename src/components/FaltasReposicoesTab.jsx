@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   arr, sortTurmas, EXTENSO, ABREV, fmtBR, fmtBRFull, todayStr, dateToStr, parseDate,
   turmaShortLabel, getTurmaLabel, getFaltaEarliest, getFaltaExpiry, getMesNome, getLastDayOfMonth,
+  TURMA_EXTRA_ID,
 } from '../domain/helpers.js';
 import {
   getNextOccurrences, getClassDatesInRange, getClassDatetime,
@@ -98,13 +99,15 @@ function TabRegistrarFalta({ state, dispatch, vocab, config }) {
 
   const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
   const turma = state.turmas.find((t) => t.id === turmaId);
-  const occurrences = useMemo(() => (!turma ? [] : getNextOccurrences(turma, 8)), [turma]);
+  // A turma extra não tem dia fixo: em vez da grade de ocorrências, a data é digitada.
+  const isExtra = turmaId === TURMA_EXTRA_ID;
+  const occurrences = useMemo(() => (!turma || isExtra ? [] : getNextOccurrences(turma, 8)), [turma, isExtra]);
   const pastOccurrences = useMemo(() => {
-    if (!turma) return [];
+    if (!turma || isExtra) return [];
     const tresMeses = new Date(); tresMeses.setMonth(tresMeses.getMonth() - 3);
     const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
     return getClassDatesInRange(turma, dateToStr(tresMeses), dateToStr(ontem)).reverse();
-  }, [turma]);
+  }, [turma, isExtra]);
 
   const toggleDate = (d) => setSelectedDates((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
 
@@ -153,7 +156,18 @@ function TabRegistrarFalta({ state, dispatch, vocab, config }) {
         </div>
       )}
 
-      {turma && alunoNome && (
+      {turma && alunoNome && isExtra && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data da falta</label>
+          <input
+            type="date" value={selectedDates[0] || ''}
+            onChange={(e) => setSelectedDates(e.target.value ? [e.target.value] : [])}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          />
+        </div>
+      )}
+
+      {turma && alunoNome && !isExtra && (
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-gray-700">Datas da falta (próximas)</label>
@@ -727,7 +741,8 @@ function TabCancelarAula({ state, dispatch, vocab, config }) {
   const [data, setData] = useState('');
   const [confirm, setConfirm] = useState(false);
   const td = todayStr();
-  const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
+  // A turma extra não tem dia nem horário — não há aula dela para cancelar.
+  const sorted = useMemo(() => sortTurmas(state.turmas).filter((t) => t.id !== TURMA_EXTRA_ID), [state.turmas]);
   const turma = state.turmas.find((t) => t.id === turmaId);
 
   const proximasDatas = useMemo(() => {

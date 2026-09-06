@@ -18,6 +18,12 @@ function diasAlvo(turma) {
   return new Set(turmaEncontros(turma).map((e) => DIA_JS[e.diaSemana]).filter((x) => x !== undefined));
 }
 
+// A turma tem encontro nesta data? (considera todos os dias da turma)
+export function turmaOcorreEm(turma, dateStr) {
+  const d = parseDate(dateStr);
+  return d ? diasAlvo(turma).has(d.getDay()) : false;
+}
+
 // Próximas n ocorrências da turma (todos os dias de encontro; inclui feriados —
 // a UI mostra disabled).
 export function getNextOccurrences(turma, n = 8) {

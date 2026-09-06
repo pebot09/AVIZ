@@ -130,6 +130,30 @@ export function corDoAutor(nome) {
   return PALETA_AUTOR[h % PALETA_AUTOR.length];
 }
 
+// ---- Notas da turma: marcador de "tem nota que eu ainda não vi" ----
+// Só no navegador de quem está olhando (é preferência de leitura, não estado da
+// escola). A chave inclui o tenant para não misturar escolas no mesmo browser.
+const NOTAS_SEEN_KEY = 'aviz_notas_vistas';
+
+function getNotasSeenMap() {
+  try { return JSON.parse(localStorage.getItem(NOTAS_SEEN_KEY) || '{}'); } catch { return {}; }
+}
+export function markNotasSeen(tenantId, turmaId) {
+  try {
+    const map = getNotasSeenMap();
+    map[`${tenantId}|${turmaId}`] = Date.now();
+    localStorage.setItem(NOTAS_SEEN_KEY, JSON.stringify(map));
+  } catch { /* navegador sem storage — o marcador só deixa de persistir */ }
+}
+export function turmaHasUnseenNotas(tenantId, turmaId, notas, autor) {
+  const doTurma = arr(notas).filter((n) => n.turmaId === turmaId);
+  if (!doTurma.length) return false;
+  const ultima = doTurma.reduce((a, b) => (a.ts > b.ts ? a : b));
+  if (ultima.autor && ultima.autor === autor) return false; // nota minha não me avisa
+  const visto = getNotasSeenMap()[`${tenantId}|${turmaId}`] || 0;
+  return new Date(ultima.ts).getTime() > visto;
+}
+
 export function sortTurmas(turmas) {
   const primeiro = (t) => {
     const enc = turmaEncontros(t);

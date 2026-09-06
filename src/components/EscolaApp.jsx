@@ -18,7 +18,8 @@ const ABAS = ['Turmas', 'Faltas & Reposições', 'Painel'];
 export default function EscolaApp({ tenant, user, membro }) {
   const config = useConfig(tenant);
   // Autor do log = nome do membro (não o e-mail), para o histórico ficar limpo.
-  const { state, dispatch, erro } = useTenantStore(tenant, (membro && membro.nome) || user.email, config);
+  const autor = (membro && membro.nome) || user.email;
+  const { state, dispatch, erro } = useTenantStore(tenant, autor, config);
   const [pub, setPub] = useState(null);
   const [aba, setAba] = useState('Turmas');
   const [configAberto, setConfigAberto] = useState(false);
@@ -67,7 +68,7 @@ export default function EscolaApp({ tenant, user, membro }) {
       {carregando ? (
         <p className="text-center text-gray-400 text-sm py-10">Carregando…</p>
       ) : aba === 'Turmas' ? (
-        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} config={config} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} />
+        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} config={config} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} tenantId={tenant} autor={autor} />
       ) : aba === 'Faltas & Reposições' ? (
         <FaltasReposicoesTab state={state} dispatch={dispatch} vocab={vocab} config={config} />
       ) : (
