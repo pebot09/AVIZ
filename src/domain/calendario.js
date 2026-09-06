@@ -4,7 +4,7 @@
 // aqui os feriados NACIONAIS são calculados por ano (inclusive os móveis, a
 // partir da Páscoa) e os municipais + recessos vêm do config da escola.
 
-import { DIA_JS, parseDate, dateToStr, arr, turmaEncontros } from './helpers.js';
+import { DIA_JS, parseDate, dateToStr, arr, turmaEncontros, formatHorario } from './helpers.js';
 
 const DIAS_NOMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
@@ -71,6 +71,18 @@ export function getClassDatetime(turmaId, date, turmas) {
   }
   dt.setHours(hora, minuto, 0, 0);
   return dt;
+}
+
+// Horário ("09h", "19h30") da turma naquela data. Turma com encontros em dias
+// diferentes pode ter horário diferente em cada um — por isso depende da data.
+export function horarioNaData(turmaId, date, turmas) {
+  const turma = arr(turmas).find((t) => t.id === turmaId);
+  if (!turma) return '?';
+  const enc = turmaEncontros(turma);
+  const d = parseDate(date);
+  const slot = (d && enc.find((e) => DIA_JS[e.diaSemana] === d.getDay())) || enc[0];
+  if (!slot) return '?';
+  return slot.horario || formatHorario(slot.hora, slot.minuto);
 }
 
 // ---- Feriados nacionais (BR), calculados por ano ----

@@ -7,6 +7,7 @@ import { makeVocab, cap } from '../domain/vocab.js';
 import { logout } from '../lib/auth.js';
 import TurmasTab from './TurmasTab.jsx';
 import FaltasReposicoesTab from './FaltasReposicoesTab.jsx';
+import PainelTab from './PainelTab.jsx';
 import ConfigScreen from './ConfigScreen.jsx';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
@@ -72,21 +73,10 @@ export default function EscolaApp({ tenant, user, membro }) {
       ) : aba === 'Faltas & Reposições' ? (
         <FaltasReposicoesTab state={state} dispatch={dispatch} vocab={vocab} config={config} />
       ) : (
-        <EmBreve nome={aba} />
+        <PainelTab state={state} dispatch={dispatch} vocab={vocab} config={config} podeEditarLog={(membro && membro.role) === 'owner'} />
       )}
 
       {configAberto && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
-    </div>
-  );
-}
-
-function EmBreve({ nome }) {
-  return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-        <p className="text-gray-500 font-medium">{nome}</p>
-        <p className="text-gray-400 text-sm mt-1">Em construção — próxima fatia do porte.</p>
-      </div>
     </div>
   );
 }
