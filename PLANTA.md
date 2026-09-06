@@ -56,7 +56,7 @@ Esta seção descreve o comportamento **comprovado** no Passarinho, que o AVIZ r
 - **Crédito extra** é concedido manualmente pelo professor, com data de validade digitada caso a caso (de propósito — cada caso é um caso).
 - **Expirar = marcar, nunca apagar.** Direito que vence deixa rastro (para o histórico e para as travas de período continuarem funcionando). Nunca remover o registro.
 - **Aula cancelada pela escola:** todos os alunos ganham falta automática (menos quem está de férias ou já faltava); reposições que visitantes tinham marcado para aquela aula são desfeitas **sem punição**; as vagas da data somem.
-- **A falta que nasce de uma aula cancelada não é cancelável individualmente** — nem pelo professor nem pelo aluno. Ela pertence ao cancelamento e só se desfaz **reativando a aula** (que remove todas de uma vez). Na prática: a lista de "cancelar falta" (professor e painel do aluno) exclui faltas com `cancelamentoId`.
+- **A falta que nasce de uma aula cancelada não é cancelável individualmente** — nem pelo professor nem pelo aluno. Ela pertence ao cancelamento e só se desfaz **reativando a aula** (que remove todas de uma vez). Na prática: a aba "cancelar falta" do professor **exclui da lista** as faltas com `cancelamentoId`; no painel do aluno o ✕ aparece **desabilitado com o motivo** (ver a lista de travas em 2.5).
 
 ### 2.3 Calendário
 
@@ -89,7 +89,11 @@ alvo_de_vagas_extras = max(0, capacidadeFísica − alunosEfetivos + faltas − 
 - O aluno acessa por um **link pessoal** (`?c=CÓDIGO`). O código é a credencial — não há senha, não há login para o aluno.
 - Um código por par (aluno, turma). Aluno em duas turmas tem dois links.
 - Pelo painel, o aluno faz **todas as ações dele**: lançar falta, marcar/cancelar reposição, registrar férias, ajustar avisos de vaga. Quais dessas ficam disponíveis é **configurável por escola** (ver 5).
-- **Cancelar a própria falta:** o aluno pode cancelar qualquer falta sua — inclusive as que o professor lançou por ele. A **única** exceção é a falta gerada por aula cancelada pela escola (com `cancelamentoId`), que **não aparece** para cancelar — ver 2.2.
+- **Cancelar a própria falta:** o aluno pode cancelar qualquer falta sua — inclusive as que o professor lançou por ele. Não há trava por autoria. Mas há travas por **estado da falta** (portadas do `getCancelFaltaStatus` do original — todas precisam ser mantidas). O ✕ aparece **desabilitado com o motivo** (não some), e clicar mostra a mensagem:
+  1. **Já tem reposição marcada** (`status: 'marcada'`) → "Você já tem uma reposição marcada para esta falta. Cancele a reposição primeiro."
+  2. **O horário da aula já passou** (`getClassDatetime` da data já é passado) → "O horário desta aula já passou."
+  3. **A vaga já foi ocupada e não há substituta** — a vaga que a falta abriu foi consumida por outro aluno e não existe outra vaga da mesma turma/data para substituir → "Sua vaga já foi ocupada por outro aluno e não há outra disponível para substituir."
+  4. **Aula cancelada pela escola** (`cancelamentoId`) → não é cancelável; só se desfaz reativando a aula (ver 2.2).
 - **Watchlist + notificação:** o aluno marca turmas de interesse e o navegador avisa quando abre vaga. Recurso de destaque do produto. (Se a escola não deixa o aluno marcar reposição sozinho, a notificação simplesmente não faz sentido e some — não é um interruptor à parte.)
 
 ### 2.6 Sincronização e armazenamento
