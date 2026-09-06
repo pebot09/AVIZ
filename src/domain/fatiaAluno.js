@@ -201,6 +201,10 @@ export function vagasParaAluno(fatia, agora = Date.now()) {
   const vistas = new Set();
   return [...fatia.vagas]
     .filter((v) => {
+      // Ninguém repõe na própria turma — é a mesma aula. Sem este filtro a
+      // vaga apareceria, o reducer recusaria em silêncio, e o aluno clicaria
+      // num botão que não faz nada.
+      if (v.turmaId === fatia.aluno.turmaId) return false;
       const inicio = getClassDatetime(v.turmaId, v.data, fatia.turmas);
       if (inicio && inicio.getTime() <= agora) return false;
       // Aula cancelada não recebe reposição.
@@ -252,7 +256,10 @@ export function acaoDoAluno(pedido, acesso, state, config) {
     return { ok: false, erro: 'Ação não permitida.' };
   }
   const { alunoNome, turmaId } = acesso;
-  const base = { ...pedido, alunoNome, origem: 'aluno', professor: alunoNome };
+  // `autor` é o campo que o reducer lê para o histórico — sem ele a ação
+  // entraria no log como "?". `origem: 'aluno'` é o que pinta o registro de
+  // cinza no painel do professor.
+  const base = { ...pedido, alunoNome, origem: 'aluno', autor: alunoNome };
 
   // Só pode mexer no que é dele. Conferimos contra o estado, não contra o que
   // veio no pedido.

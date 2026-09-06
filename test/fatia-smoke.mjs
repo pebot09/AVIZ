@@ -110,6 +110,17 @@ checar('cancelar na última hora não devolve nada', faixaCancelamentoRepo(repoF
 const vagas = vagasParaAluno(fatia);
 const chaves = vagas.map((v) => `${v.data}|${v.turmaId}`);
 checar('uma vaga por turma+data', new Set(chaves).size === chaves.length);
+// O reducer recusa reposição na própria turma. Se a vaga aparecesse, o aluno
+// clicaria num botão que não faz nada — nem sucesso, nem erro.
+checar('não oferece vaga da própria turma do aluno', vagas.every((v) => v.turmaId !== t1.id));
+checar('oferece vagas de outras turmas', vagas.some((v) => v.turmaId === t2.id));
+// Aula cancelada não recebe reposição.
+{
+  const dataCanc = vagas[0] && vagas[0].data;
+  const comCancelada = { ...fatia, aulasCanceladas: [{ turmaId: t2.id, data: dataCanc }] };
+  checar('não oferece vaga de aula cancelada',
+    !vagasParaAluno(comCancelada).some((v) => v.turmaId === t2.id && v.data === dataCanc));
+}
 
 // ---- férias ----
 const meses = mesesDeFeriasDisponiveis(fatia, config);
@@ -123,6 +134,32 @@ checar('ação forjada é reescrita com a identidade do código',
 const faltaDoOutro = s.faltas.find((f) => f.alunoNome === 'Zoroastro');
 const rr = acaoDoAluno({ type: 'CANCEL_FALTA', id: faltaDoOutro.id }, acesso, s, config);
 checar('não cancela falta de outro aluno', !rr.ok, rr.erro);
+
+// ---- autoria no histórico ----
+// O reducer lê action.autor. Se a ação do aluno não carimbar isso, o registro
+// entra no histórico da escola como "?" — o professor não saberia quem agiu.
+{
+  const a = acaoDoAluno({ type: 'ADD_FALTA', datasComTipo: [{ data: prox1[3], semAntecedencia: false }] }, acesso, s, config);
+  const depois = reducer(s, a.acao, config);
+  const entrada = depois.log[0];
+  checar('ação do aluno entra no histórico com o nome dele', entrada && entrada.professor === 'Anaquerida',
+    entrada && entrada.professor);
+  checar('ação do aluno é marcada como origem aluno', entrada && entrada.origem === 'aluno');
+}
+
+// ---- watchlist (avisos de vaga) ----
+{
+  const w = acaoDoAluno({ type: 'SET_ALUNO_WATCHLIST', watchlist: [t2.id, 'turma-que-nao-existe'] }, acesso, s, config);
+  checar('watchlist é aceita como ação do aluno', w.ok);
+  const depois = reducer(s, w.acao, config, 'Anaquerida');
+  const meuAcesso = depois.acessos.find((a) => a.alunoNome === 'Anaquerida' && a.turmaId === t1.id);
+  checar('watchlist é gravada no acesso do aluno', meuAcesso && meuAcesso.watchlist.includes(t2.id),
+    JSON.stringify(meuAcesso && meuAcesso.watchlist));
+  checar('watchlist descarta turma inexistente', meuAcesso && !meuAcesso.watchlist.includes('turma-que-nao-existe'));
+  const outro = depois.acessos.find((a) => a.alunoNome === 'Zoroastro');
+  checar('watchlist não mexe no acesso de outro aluno', outro && !outro.watchlist);
+  checar('fatia entrega a watchlist de volta', fatiaAluno(depois, config, acesso).watchlist.includes(t2.id));
+}
 
 checar('ação fora da lista é recusada', !acaoDoAluno({ type: 'DELETE_TURMA', id: t1.id }, acesso, s, config).ok);
 checar('ação do professor é recusada', !acaoDoAluno({ type: 'CANCEL_AULA', turmaId: t1.id }, acesso, s, config).ok);

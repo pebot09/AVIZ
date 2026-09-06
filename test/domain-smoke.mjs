@@ -1,8 +1,8 @@
 import { reducer, normalizeState, EMPTY_STATE } from '../src/domain/reducer.js';
 import { computeResumoDia } from '../src/domain/resumo.js';
 import { construirDados } from '../src/domain/painel.js';
-import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel } from '../src/domain/helpers.js';
-import { getNextOccurrences, horarioNaData } from '../src/domain/calendario.js';
+import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros } from '../src/domain/helpers.js';
+import { getNextOccurrences, horarioNaData, getClassDatetime } from '../src/domain/calendario.js';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -100,6 +100,23 @@ if (dataResumo) {
   console.log('resumo com férias → presentes:', r2.presentes, '| férias:', r2.ferias);
   console.assert(r2.ferias.includes('Caio'), 'Caio de férias devia aparecer no resumo');
   console.assert(!r2.presentes.includes('Caio'), 'quem está de férias não é presente');
+}
+
+// --- turma sem dia (extra) não inventa horário ---
+{
+  const extra = s.turmas.find(t => t.id === TURMA_EXTRA_ID);
+  console.assert(turmaEncontros(extra).length === 0, 'turma extra não devia ter encontro');
+  console.assert(getClassDatetime(TURMA_EXTRA_ID, '2026-09-10', s.turmas) === null, 'extra não devia ter horário de aula');
+  console.log('turma extra: encontros=%d datetime=%s label=%s',
+    turmaEncontros(extra).length, getClassDatetime(TURMA_EXTRA_ID, '2026-09-10', s.turmas), turmaShortLabel(extra));
+}
+
+// --- turma no formato antigo (antes dos encontros) continua funcionando ---
+{
+  const antiga = { id: 't-velha', diaSemana: 'terça', hora: 9, minuto: 0, horario: '09h', alunos: [] };
+  console.assert(turmaShortLabel(antiga) === 'Ter 09h', 'label da turma antiga quebrou');
+  console.assert(!!getClassDatetime('t-velha', '2026-09-08', [antiga]), 'datetime da turma antiga quebrou');
+  console.log('turma antiga migra sozinha:', turmaShortLabel(antiga));
 }
 
 console.log('\n✅ smoke test passou');

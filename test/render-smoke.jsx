@@ -18,7 +18,7 @@ import NotasTurmaModal from '../src/components/NotasTurmaModal.jsx';
 import GerarLinkModal from '../src/components/GerarLinkModal.jsx';
 import AlunoApp from '../src/components/aluno/AlunoApp.jsx';
 import RegrasModal from '../src/components/aluno/RegrasModal.jsx';
-import { fatiaAluno } from '../src/domain/fatiaAluno.js';
+import { fatiaAluno, vagasParaAluno } from '../src/domain/fatiaAluno.js';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -114,11 +114,18 @@ const diaCongelado = Object.keys(s.resumosDiarios).sort().pop();
 // --- tela do aluno ---
 // A fatia é montada do estado real, então a tela recebe exatamente o que
 // receberia em produção.
+// Uma vaga em OUTRA turma, que sobra para a Bia escolher (a da própria turma
+// dela é filtrada de propósito — ninguém repõe na aula que já frequenta).
+d({ type: 'ADD_ALUNO', turmaId: turma2.id, nome: 'Fabio' });
+const dataFabio = getNextOccurrences(turma2, 8).filter(x => !isDataBloqueada(x, config))[1];
+d({ type: 'ADD_FALTA', alunoNome: 'Fabio', turmaId: turma2.id, datasComTipo: [{ data: dataFabio, semAntecedencia: false }] });
 d({ type: 'GERAR_ACESSO', alunoNome: 'Bia', turmaId: turma.id });
 const acessoBia = s.acessos.find(a => a.alunoNome === 'Bia');
 const fatiaBia = fatiaAluno(s, config, acessoBia);
 const okAcao = async () => true;
 const configMinimo = { regras: { antecedenciaHoras: 0, ferias: false, vagaExtra: false, validadeFaltaDias: 0 }, calendario: { recessos: [] }, vocab: {} };
+console.log('  (aluno: vagas oferecidas=' + vagasParaAluno(fatiaBia).length + ' faltas=' + fatiaBia.faltas.length + ')');
+if (!vagasParaAluno(fatiaBia).length) { console.log('  ERRO fixture sem vaga para o aluno escolher'); falhas++; }
 casos.push(['AlunoApp', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
 casos.push(['AlunoApp (ocupado+erro)', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado erro="Deu ruim" />]);
 casos.push(['AlunoApp (escola sem regras)', <AlunoApp fatia={fatiaBia} config={configMinimo} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);

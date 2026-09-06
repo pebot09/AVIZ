@@ -58,6 +58,17 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
   const emSeis = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 6); return dateToStr(d); }, []);
   const vagasSemana = vagas.filter((v) => v.data <= emSeis);
 
+  // Falta sem antecedência só vira reposição dentro da janela final. Então
+  // "tenho direito" depende de existir alguma vaga nessa janela — senão o
+  // cartão prometeria "Marcar reposição" e todo botão diria "aula extra".
+  const algumaNaJanela = vagas.some((v) => {
+    const inicio = getClassDatetime(v.turmaId, v.data, fatia.turmas);
+    if (!inicio) return false;
+    const h = (inicio.getTime() - Date.now()) / 3600000;
+    return h >= 0 && h <= janela;
+  });
+  const temDireitoUsavel = !!pickReposicaoRight(direitos, algumaNaJanela);
+
   // ---- Registrar falta ----
   const proximasDatas = useMemo(() => (ehExtra ? [] : proximasDatasDoAluno(fatia, config, 8)), [fatia, config, ehExtra]);
   const [datasSel, setDatasSel] = useState([]);
@@ -82,10 +93,10 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
       semVagaOficial: false, vagaSelId: vaga.id,
       ...rightToActionFields(direito),
     });
-    if (ok) {
-      avisar(direito ? 'Reposição marcada!' : `${cap(vocab.aula)} extra marcada!`, 'reposicao');
-      setConfirmar(null);
-    }
+    // Fecha o modal mesmo em caso de erro: senão ele cobre a mensagem que
+    // explica por que não deu.
+    setConfirmar(null);
+    if (ok) avisar(direito ? 'Reposição marcada!' : `${cap(vocab.aula)} extra marcada!`, 'reposicao');
   };
 
   // ---- Minhas reposições ----
@@ -99,8 +110,9 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
     const acao = faixa === 'semCredito'
       ? { type: 'CANCEL_REPOSICAO_SEM_CREDITO', id: repo.id }
       : { type: 'CANCEL_REPOSICAO', id: repo.id, converterSemAntecedencia: faixa === 'semAntecedencia' };
-    const ok = await executar(acao);
-    if (ok) setCancelarRepo(null);
+    // Fecha mesmo em erro, pelo mesmo motivo: o modal cobriria a mensagem.
+    setCancelarRepo(null);
+    await executar(acao);
   };
 
   // ---- Cancelar falta ----
@@ -335,8 +347,8 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
         {/* Marcar reposição / aula extra */}
         <div id="card-reposicao">
           <Cartao
-            icone={direitos.length ? '✅' : '➕'}
-            titulo={direitos.length ? 'Marcar reposição' : `Marcar ${vocab.aula} extra`}
+            icone={temDireitoUsavel ? '✅' : '➕'}
+            titulo={temDireitoUsavel ? 'Marcar reposição' : `Marcar ${vocab.aula} extra`}
             sub={ausenciaCredito && !temPendenteComum ? 'Usando crédito de férias'
               : creditosExtras.length && !temPendenteComum ? 'Usando crédito extra'
                 : 'Escolha uma vaga disponível'}
@@ -523,7 +535,7 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
         <ConfirmModal
           title="Cancelar falta?" danger confirmLabel="Cancelar falta"
           message={`Cancelar a falta de ${fmtBRFull(cancelarFalta.datas[0])}? A vaga volta a ficar disponível.`}
-          onConfirm={async () => { const ok = await executar({ type: 'CANCEL_FALTA', id: cancelarFalta.id }); if (ok) setCancelarFalta(null); }}
+          onConfirm={async () => { const f = cancelarFalta; setCancelarFalta(null); await executar({ type: 'CANCEL_FALTA', id: f.id }); }}
           onCancel={() => setCancelarFalta(null)}
         />
       )}

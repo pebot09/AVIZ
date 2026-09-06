@@ -510,6 +510,20 @@ export function reducer(state, action, config) {
       break;
     }
 
+    // Turmas que o aluno quer ser avisado quando abrir vaga. Fica no acesso
+    // dele, e não no navegador, para valer em qualquer aparelho.
+    case 'SET_ALUNO_WATCHLIST': {
+      const idsValidos = new Set(arr(state.turmas).map((t) => t.id));
+      const lista = arr(action.watchlist).filter((id) => idsValidos.has(id));
+      next = {
+        ...state,
+        acessos: arr(state.acessos).map((a) => (
+          a.alunoNome === action.alunoNome && a.turmaId === action.turmaId ? { ...a, watchlist: lista } : a
+        )),
+      };
+      break;
+    }
+
     // ---- Painel ----
     case 'MARK_PAGO': {
       const repoMp = arr(state.reposicoes).find((r) => r.id === action.id);

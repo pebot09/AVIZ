@@ -27,7 +27,10 @@ export function formatHorario(hora, minuto) {
 // da semana, com horários diferentes. Normaliza turmas antigas (um só dia).
 export function turmaEncontros(t) {
   if (t && Array.isArray(t.encontros) && t.encontros.length) return t.encontros;
-  if (!t) return [];
+  // Turma sem dia (a extra) não tem encontro nenhum. Devolver um encontro vazio
+  // aqui fazia o getClassDatetime inventar uma aula às 09h e o horário sair
+  // como "undefinedh".
+  if (!t || !t.diaSemana) return [];
   return [{ diaSemana: t.diaSemana, hora: t.hora, minuto: t.minuto || 0, horario: t.horario }];
 }
 

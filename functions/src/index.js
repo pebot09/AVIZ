@@ -89,7 +89,8 @@ export const aluno = onRequest({ cors: true, maxInstances: 10 }, async (req, res
     const check = acaoDoAluno(req.body && req.body.acao, acesso, state, config);
     if (!check.ok) return res.status(403).json({ erro: check.erro });
 
-    const proximo = reducer(state, check.acao, config, acesso.alunoNome);
+    // O autor já vem carimbado dentro da ação por acaoDoAluno.
+    const proximo = reducer(state, check.acao, config);
     if (proximo === state) return responder(state); // nada mudou
 
     // Gravação condicional: se a escola mudou depois da leitura, aborta e
