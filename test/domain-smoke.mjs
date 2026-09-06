@@ -70,9 +70,19 @@ const geradas = s.faltas.filter(f => f.cancelamentoId);
 console.log('faltas de aula cancelada:', geradas.length, '| têm cancelamentoId:', geradas.every(f => !!f.cancelamentoId));
 console.assert(geradas.length > 0, 'cancelar aula devia gerar faltas');
 
-// congelar resumos + snapshot de estado
+// congelar resumos: escola nova não deve congelar dia nenhum (seria histórico
+// inventado, já que o resumo sai da lista de alunos de hoje)
 d({ type: 'FREEZE_RESUMOS' });
-console.log('resumosDiarios:', Object.keys(s.resumosDiarios).length);
+console.log('resumosDiarios (escola nova):', Object.keys(s.resumosDiarios).length);
+console.assert(Object.keys(s.resumosDiarios).length === 0, 'escola nova não devia congelar nada');
+
+// já uma escola com histórico congela normalmente
+const ontem10 = (() => { const x = new Date(); x.setDate(x.getDate() - 10); return x.toISOString(); })();
+s = { ...s, log: [...s.log, { id: 'log-antigo', ts: ontem10, professor: 'Ana', descricao: 'uso antigo' }] };
+d({ type: 'FREEZE_RESUMOS' });
+const nCong = Object.keys(s.resumosDiarios).length;
+console.log('resumosDiarios (com histórico de 10 dias):', nCong);
+console.assert(nCong > 0, 'escola com histórico devia congelar dias passados');
 d({ type: 'SAVE_SNAPSHOT', label: 'teste', dados: { faltas: [], turmas: [] } });
 console.log('snapshots:', s.snapshots.length, s.snapshots[0].label);
 

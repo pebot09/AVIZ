@@ -373,7 +373,8 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">{cap(vocab.turma)}</label>
             <select value={extraTurma} onChange={(e) => setExtraTurma(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">— Selecione a {vocab.turma} —</option>
-              {sorted.filter((t) => t.id !== turmaOrigemId).map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
+              {/* A extra pode ser origem (o aluno avulso tem falta), mas nunca destino: não tem data de aula. */}
+              {sorted.filter((t) => t.id !== turmaOrigemId && t.id !== TURMA_EXTRA_ID).map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
             </select>
           </div>
         </div>
@@ -539,7 +540,9 @@ function TabAusenciaProgramada({ state, dispatch, vocab, config }) {
   const [mesAno, setMesAno] = useState('');
   const [success, setSuccess] = useState('');
 
-  const sorted = useMemo(() => sortTurmas(state.turmas), [state.turmas]);
+  // Férias pressupõe dia fixo (é o que libera as vagas do mês). A turma extra
+  // não tem — marcar férias nela não liberaria nada.
+  const sorted = useMemo(() => sortTurmas(state.turmas).filter((t) => t.id !== TURMA_EXTRA_ID), [state.turmas]);
   const turma = state.turmas.find((t) => t.id === turmaId);
   const daCredito = !!config?.regras?.feriasCredito;
   const qtdCredito = Number(config?.regras?.feriasCreditos) || 1;

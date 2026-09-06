@@ -31,10 +31,16 @@ export default function EscolaApp({ tenant, user, membro }) {
   const vocab = makeVocab(config);
   const carregando = state === undefined || config === undefined;
 
-  // Uma vez, após carregar, recalcula as vagas extras (como o Passarinho faz no sync).
+  // Uma vez, após carregar: recalcula as vagas extras e congela o resumo dos
+  // dias já passados — como o Passarinho faz logo depois do sync. Tem que ser
+  // no load, e não ao abrir o Painel: senão, quem passa semanas sem abrir a aba
+  // deixa dias saírem da janela de congelamento sem nunca terem sido salvos.
   const cleanupFeito = useRef(false);
   useEffect(() => {
-    if (!carregando && !cleanupFeito.current) { cleanupFeito.current = true; dispatch({ type: 'CLEANUP' }); }
+    if (carregando || cleanupFeito.current) return;
+    cleanupFeito.current = true;
+    dispatch({ type: 'CLEANUP' });
+    dispatch({ type: 'FREEZE_RESUMOS' });
   }, [carregando]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

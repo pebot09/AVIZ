@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import PainelVisual from './PainelVisual.jsx';
 import PainelRegistro from './PainelRegistro.jsx';
 import ResumoDia from './ResumoDia.jsx';
@@ -14,13 +14,6 @@ export default function PainelTab({ state, dispatch, vocab, config, podeEditarLo
   const [verResumo, setVerResumo] = useState(false);
   const [verSnapshots, setVerSnapshots] = useState(false);
   const abas = ['Lista atual', 'Registro'];
-
-  // Congela o resumo dos dias já passados uma vez por sessão, para o histórico
-  // não mudar quando o cadastro muda depois.
-  const congelou = useRef(false);
-  useEffect(() => {
-    if (!congelou.current) { congelou.current = true; dispatch({ type: 'FREEZE_RESUMOS' }); }
-  }, [dispatch]);
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-3">

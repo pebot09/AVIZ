@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { arr, todayStr, fmtBR, fmtBRFull, turmaShortLabel, getMesNome } from '../domain/helpers.js';
+import { arr, todayStr, dateToStr, fmtBR, fmtBRFull, turmaShortLabel, getMesNome } from '../domain/helpers.js';
 import { horarioNaData } from '../domain/calendario.js';
 import { construirDados } from '../domain/painel.js';
 import Modal from './Modal.jsx';
@@ -13,7 +13,7 @@ export function snapshotFromState(state, config) {
   const dIn7 = new Date(); dIn7.setDate(dIn7.getDate() + 7);
   const d2 = new Date(); d2.setDate(d2.getDate() - 2);
   const { combined, marcadasGrupos, reposAtivas, vagasGrupos, obs } =
-    construirDados(state, config, td, dateStr(dIn7), dateStr(d2));
+    construirDados(state, config, td, dateToStr(dIn7), dateToStr(d2));
 
   const lbl = (id) => turmaShortLabel(arr(state.turmas).find((t) => t.id === id));
 
@@ -37,10 +37,6 @@ export function snapshotFromState(state, config) {
     turmas: arr(state.turmas).map((t) => ({ label: turmaShortLabel(t), alunos: arr(t.alunos).length, capacidade: t.capacidade })),
     obs: obs.map((o) => ({ level: o.level, text: o.text })),
   };
-}
-
-function dateStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // ---- Modal: lista, salva e mostra snapshots ----
@@ -188,7 +184,7 @@ function SnapshotView({ snap, vocab }) {
         ))}
       </Secao>
 
-      <Secao titulo={cap2(vocab.turmas)} count={arr(d.turmas).length}>
+      <Secao titulo={String(vocab.turmas).toUpperCase()} count={arr(d.turmas).length}>
         {arr(d.turmas).map((t, i) => (
           <div key={i} className="px-3 py-1.5 flex justify-between items-center gap-2">
             <span className="text-gray-700">{t.label}</span>
@@ -205,5 +201,3 @@ function SnapshotView({ snap, vocab }) {
     </div>
   );
 }
-
-function cap2(s) { return s ? s.toUpperCase() : ''; }

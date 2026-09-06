@@ -547,8 +547,12 @@ export function reducer(state, action, config) {
       let mudou = false;
       const ini = parseDate(fzTd); ini.setDate(ini.getDate() - RESUMO_JANELA_DIAS);
       const fim = parseDate(fzTd);
+      // Nunca congelar dias anteriores ao primeiro uso da escola: o resumo sai
+      // da lista de alunos de hoje, então antes disso seria histórico inventado.
+      const primeiroUso = arr(state.log).map((e) => String(e.ts || '').slice(0, 10)).filter(Boolean).sort()[0] || fzTd;
       for (const d = new Date(ini); d < fim; d.setDate(d.getDate() + 1)) {
         const ds = dateToStr(d);
+        if (ds < primeiroUso) continue;
         if (novos[ds]) continue;
         const turmasDia = computeResumoDia(state, ds, config);
         if (turmasDia.length) { novos[ds] = { data: ds, geradoEm: new Date().toISOString(), turmas: turmasDia }; mudou = true; }
