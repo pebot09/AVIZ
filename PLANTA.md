@@ -56,6 +56,7 @@ Esta seção descreve o comportamento **comprovado** no Passarinho, que o AVIZ r
 - **Crédito extra** é concedido manualmente pelo professor, com data de validade digitada caso a caso (de propósito — cada caso é um caso).
 - **Expirar = marcar, nunca apagar.** Direito que vence deixa rastro (para o histórico e para as travas de período continuarem funcionando). Nunca remover o registro.
 - **Aula cancelada pela escola:** todos os alunos ganham falta automática (menos quem está de férias ou já faltava); reposições que visitantes tinham marcado para aquela aula são desfeitas **sem punição**; as vagas da data somem.
+- **A falta que nasce de uma aula cancelada não é cancelável individualmente** — nem pelo professor nem pelo aluno. Ela pertence ao cancelamento e só se desfaz **reativando a aula** (que remove todas de uma vez). Na prática: a lista de "cancelar falta" (professor e painel do aluno) exclui faltas com `cancelamentoId`.
 
 ### 2.3 Calendário
 
@@ -88,6 +89,7 @@ alvo_de_vagas_extras = max(0, capacidadeFísica − alunosEfetivos + faltas − 
 - O aluno acessa por um **link pessoal** (`?c=CÓDIGO`). O código é a credencial — não há senha, não há login para o aluno.
 - Um código por par (aluno, turma). Aluno em duas turmas tem dois links.
 - Pelo painel, o aluno faz **todas as ações dele**: lançar falta, marcar/cancelar reposição, registrar férias, ajustar avisos de vaga. Quais dessas ficam disponíveis é **configurável por escola** (ver 5).
+- **Cancelar a própria falta:** só vale para faltas que o aluno mesmo lançou. Faltas geradas por aula cancelada pela escola (com `cancelamentoId`) **não aparecem** para cancelar — ver 2.2.
 - **Watchlist + notificação:** o aluno marca turmas de interesse e o navegador avisa quando abre vaga. Recurso de destaque do produto. (Se a escola não deixa o aluno marcar reposição sozinho, a notificação simplesmente não faz sentido e some — não é um interruptor à parte.)
 
 ### 2.6 Sincronização e armazenamento
