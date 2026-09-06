@@ -407,7 +407,9 @@ function TabCancelarFalta({ state, dispatch, vocab }) {
   const [success, setSuccess] = useState('');
   const td = todayStr();
 
-  const faltasFuturas = useMemo(() => state.faltas.filter((f) => f.status === 'pendente' && f.datas[0] >= td), [state.faltas, td]);
+  // Faltas de aula cancelada (com cancelamentoId) não entram: elas pertencem ao
+  // cancelamento e só se desfazem reativando a aula (não individualmente).
+  const faltasFuturas = useMemo(() => state.faltas.filter((f) => f.status === 'pendente' && !f.cancelamentoId && f.datas[0] >= td), [state.faltas, td]);
   const turmas = useMemo(() => { const ids = new Set(faltasFuturas.map((f) => f.turmaId)); return sortTurmas(state.turmas.filter((t) => ids.has(t.id))); }, [faltasFuturas, state.turmas]);
   const alunos = useMemo(() => (!turmaId ? [] : [...new Set(faltasFuturas.filter((f) => f.turmaId === turmaId).map((f) => f.alunoNome))].sort((a, b) => a.localeCompare(b, 'pt'))), [turmaId, faltasFuturas]);
   const faltas = useMemo(() => (!turmaId || !alunoNome ? [] : faltasFuturas.filter((f) => f.turmaId === turmaId && f.alunoNome === alunoNome).sort((a, b) => a.datas[0].localeCompare(b.datas[0]))), [turmaId, alunoNome, faltasFuturas]);
