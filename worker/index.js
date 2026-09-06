@@ -17,6 +17,7 @@
 
 import { reducer, normalizeState } from '../src/domain/reducer.js';
 import { fatiaAluno, acaoDoAluno } from '../src/domain/fatiaAluno.js';
+import { getAccessToken } from './firebaseAuth.js';
 
 const DB = 'https://aviz-cb3c8-default-rtdb.firebaseio.com';
 const MAX_CORPO = 64 * 1024;
@@ -31,13 +32,28 @@ function json(dados, status = 200) {
   });
 }
 
-// ---- Acesso ao Firebase por REST, usando o segredo do banco ----
-// O segredo (?auth=) dá acesso total, ignorando as regras — é o que um servidor
-// de confiança usa. Ele vive só aqui, nas variáveis do Worker.
+// Há credencial configurada para falar com o banco?
+function temCredencial(env) {
+  return !!(env.FIREBASE_SERVICE_ACCOUNT || env.FIREBASE_DB_SECRET);
+}
+
+// Parâmetro de auth para a REST do Firebase. Preferimos a conta de serviço
+// (jeito atual); o segredo legado só entra se existir (projetos antigos).
+async function paramAuth(env) {
+  if (env.FIREBASE_SERVICE_ACCOUNT) {
+    const token = await getAccessToken(env.FIREBASE_SERVICE_ACCOUNT);
+    return `access_token=${encodeURIComponent(token)}`;
+  }
+  return `auth=${encodeURIComponent(env.FIREBASE_DB_SECRET)}`;
+}
+
+// ---- Acesso ao Firebase por REST ----
+// A credencial dá acesso de administrador (ignora as regras) — é o que um
+// servidor de confiança usa. Ela vive só nas variáveis do Worker.
 function depsFirebase(env) {
-  const auth = `auth=${encodeURIComponent(env.FIREBASE_DB_SECRET)}`;
   return {
     async lerTudo(tid) {
+      const auth = await paramAuth(env);
       const [st, cf, pub] = await Promise.all([
         // X-Firebase-ETag liga o controle de versão: usamos o ETag depois para
         // gravar só se ninguém mexeu no meio (o equivalente REST da transação).
@@ -54,6 +70,7 @@ function depsFirebase(env) {
       };
     },
     async gravar(tid, dados, etag) {
+      const auth = await paramAuth(env);
       const res = await fetch(`${DB}/tenants/${tid}/state.json?${auth}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'if-match': etag || 'null_etag' },
@@ -117,7 +134,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/aluno') {
-      if (!env.FIREBASE_DB_SECRET) {
+      if (!temCredencial(env)) {
         // Ainda não configurado: mensagem clara em vez de erro 500. O app do
         // aluno mostra isto; o app do professor não depende disto para nada.
         return json({ erro: 'O acesso do aluno ainda não foi ativado nesta escola.' }, 503);

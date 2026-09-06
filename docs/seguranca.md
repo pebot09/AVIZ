@@ -59,9 +59,13 @@ Cloudflare (`worker/index.js`), no endpoint `/api/aluno`:
 
 1. o link do aluno leva **escola e código** (`?e=escola&c=codigo`). Levar os
    dois evita um índice global de códigos, que seria enumerável;
-2. o Worker lê o banco com o **segredo do Realtime Database** (`?auth=`), que
-   ignora as regras — é o acesso de um servidor de confiança. O segredo fica
-   numa variável do Worker (`FIREBASE_DB_SECRET`), **nunca** no navegador;
+2. o Worker fala com o banco como **conta de serviço** (Admin SDK): assina um
+   JWT com a chave privada e troca por um `access_token` do Google
+   (`worker/firebaseAuth.js`), que dá acesso de administrador (ignora as
+   regras) — o acesso de um servidor de confiança. A chave fica na variável
+   `FIREBASE_SERVICE_ACCOUNT` do Worker, **nunca** no navegador. (Projetos
+   novos não têm mais o "segredo do Realtime Database" legado; se um projeto
+   antigo tiver, o Worker também aceita `FIREBASE_DB_SECRET`.);
 3. confere o código contra `acessos` e devolve só a **fatia** daquele aluno
    (`src/domain/fatiaAluno.js`) — nunca o estado da escola;
 4. aceita apenas a lista fechada `ACOES_DO_ALUNO`, e **reescreve** a ação com o
@@ -82,17 +86,21 @@ inteira atrás do nome de outro aluno.
 
 ### Publicar
 
-Roda no **plano grátis da Cloudflare** — nada de Blaze nem cartão. Precisa só do
-segredo do banco guardado como secret do Worker (uma vez):
+Roda no **plano grátis da Cloudflare** — nada de Blaze nem cartão. Precisa só da
+chave da conta de serviço guardada como secret do Worker (uma vez):
 
 ```bash
-# 1) pegue o segredo em: Firebase → Configurações do projeto → Contas de
-#    serviço → Segredos do Realtime Database (legado)
-npx wrangler secret put FIREBASE_DB_SECRET   # cole o segredo quando pedir
-
-# 2) publique o app + Worker juntos
+# 1) baixe a chave: Firebase → Configurações do projeto → Contas de serviço →
+#    "Gerar nova chave privada" → baixa um .json
+# 2) guarde o .json como secret do Worker (pipe do arquivo, sem colar à mão):
+npx wrangler secret put FIREBASE_SERVICE_ACCOUNT < caminho/para/a-chave.json
+# 3) publique o app + Worker juntos:
 npm run build && npx wrangler deploy
 ```
+
+> A chave dá acesso de administrador ao banco. Ela vai só como secret do Worker
+> (nunca no Git — o `.gitignore` já barra `*.json` de conta de serviço). Se
+> vazar, revogue em "Gerenciar permissões da conta de serviço" e gere outra.
 
 Enquanto o secret não estiver configurado, `/api/aluno` responde com um aviso
 claro e a tela do aluno o mostra; o app do professor não depende disto.

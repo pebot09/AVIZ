@@ -5,3 +5,8 @@ dist
 .DS_Store
 *.log
 .vite
+.dev.vars
+# Chave da conta de serviço do Firebase — NUNCA versionar. Vai como secret do Worker.
+service-account*.json
+*serviceaccount*.json
+aviz-cb3c8-*.json
