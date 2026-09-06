@@ -292,8 +292,8 @@ Obrigatórios: Termos de Uso + Política de Privacidade no aceite do onboarding;
 ## 9. Hospedagem e passos
 
 **Stack:**
-- **Backend:** Firebase (Realtime Database + Auth + Cloud Functions).
-- **Frontend:** Cloudflare Pages (grátis, comercial OK) ou Vercel (~US$20/mês, DX mais polida). Começa no Cloudflare.
+- **Backend:** Firebase (Realtime Database + Auth) + Cloudflare Worker para a fatia do aluno. A fatia-no-servidor ficou no Worker (plano grátis) em vez de Cloud Function (que exige o Blaze do Firebase, com pré-pagamento e cartão).
+- **Frontend:** Cloudflare Workers (grátis, comercial OK) — app e Worker no mesmo deploy.
 - **Domínio:** `aviz.com.br` (~R$40/ano); cada escola em `escola.aviz.com.br`.
 - GitHub Pages **não serve** (não faz build, função de servidor nem subdomínio por escola).
 

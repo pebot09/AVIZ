@@ -38,9 +38,9 @@ O banco nasce **fechado** (o oposto do Passarinho, que era aberto).
 - **Dono** → Firebase Auth (link mágico) → acessa o banco direto. Funciona no
   plano grátis (Spark).
 - **Professor** (PIN) e **aluno** (link) → **não** têm conta Firebase, então as
-  regras os barram no acesso direto — de propósito. Eles passam pela Cloud
-  Function (fatia-no-servidor), que valida a credencial e escreve com Admin SDK.
-  Isso exige o plano Blaze (pague-o-que-usar, ~grátis no volume inicial).
+  regras os barram no acesso direto — de propósito. Eles passam pelo Worker da
+  Cloudflare (fatia-no-servidor), que valida a credencial e lê/grava o banco com
+  o segredo. Roda no plano grátis da Cloudflare — sem Blaze, sem cartão.
 
 ## Bootstrap do primeiro dono
 
@@ -51,22 +51,25 @@ registro de membro é semeado fora das regras:
    no console (ou via provisionamento com Admin SDK);
 3. a partir daí o dono tem acesso pleno.
 
-## A fatia do aluno (`functions/`)
+## A fatia do aluno (Cloudflare Worker)
 
 O aluno não tem conta no Firebase, então as regras o barram — de propósito. Mas
-ele precisa ver as coisas dele e agir sobre elas. Isso passa pela função
-`aluno` (`functions/src/index.js`), que usa o Admin SDK:
+ele precisa ver as coisas dele e agir sobre elas. Isso passa pelo Worker da
+Cloudflare (`worker/index.js`), no endpoint `/api/aluno`:
 
 1. o link do aluno leva **escola e código** (`?e=escola&c=codigo`). Levar os
    dois evita um índice global de códigos, que seria enumerável;
-2. a função confere o código contra `acessos` no estado da escola;
-3. devolve só a **fatia** daquele aluno (`src/domain/fatiaAluno.js`) — nunca o
-   estado da escola;
+2. o Worker lê o banco com o **segredo do Realtime Database** (`?auth=`), que
+   ignora as regras — é o acesso de um servidor de confiança. O segredo fica
+   numa variável do Worker (`FIREBASE_DB_SECRET`), **nunca** no navegador;
+3. confere o código contra `acessos` e devolve só a **fatia** daquele aluno
+   (`src/domain/fatiaAluno.js`) — nunca o estado da escola;
 4. aceita apenas a lista fechada `ACOES_DO_ALUNO`, e **reescreve** a ação com o
    nome e a turma vindos do código. Sem isso bastaria trocar o `alunoNome` no
    corpo do pedido para agir no lugar de outra pessoa;
-5. grava com transação condicional em `_updatedAt`, para não sobrescrever
-   alteração feita no meio do caminho.
+5. grava condicionalmente por **ETag** (o equivalente REST da transação): se a
+   escola mudou entre a leitura e a escrita, aborta com 409 em vez de
+   sobrescrever.
 
 > A lógica de domínio é **importada** do app, não copiada. Servidor e cliente
 > discordarem sobre as regras seria uma fábrica de bugs.
@@ -79,11 +82,17 @@ inteira atrás do nome de outro aluno.
 
 ### Publicar
 
-Cloud Functions exige o plano **Blaze** (pague-o-que-usar; no volume inicial
-fica praticamente em zero). Enquanto a função não estiver publicada, a tela do
-aluno mostra um aviso em vez de dados.
+Roda no **plano grátis da Cloudflare** — nada de Blaze nem cartão. Precisa só do
+segredo do banco guardado como secret do Worker (uma vez):
 
 ```bash
-cd functions && npm install
-firebase deploy --only functions
+# 1) pegue o segredo em: Firebase → Configurações do projeto → Contas de
+#    serviço → Segredos do Realtime Database (legado)
+npx wrangler secret put FIREBASE_DB_SECRET   # cole o segredo quando pedir
+
+# 2) publique o app + Worker juntos
+npm run build && npx wrangler deploy
 ```
+
+Enquanto o secret não estiver configurado, `/api/aluno` responde com um aviso
+claro e a tela do aluno o mostra; o app do professor não depende disto.

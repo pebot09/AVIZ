@@ -8,8 +8,8 @@ Gestão de faltas e reposições para negócios que funcionam em turmas recorren
 ## Stack
 
 - **Frontend:** React + Vite (build antecipado, sem Babel no navegador).
-- **Backend:** Firebase (Realtime Database + Auth + Cloud Functions). *A plugar.*
-- **Hospedagem:** Cloudflare Pages (grátis) → `aviz.pages.dev` enquanto não houver domínio.
+- **Backend:** Firebase (Realtime Database + Auth) + um Cloudflare Worker para a fatia do aluno (`worker/index.js`).
+- **Hospedagem:** Cloudflare Workers (grátis) — app e Worker no mesmo deploy (`wrangler deploy`).
 
 ## Rodar localmente
 

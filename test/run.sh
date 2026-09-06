@@ -20,6 +20,10 @@ echo "── fatia do aluno ──"
 node test/fatia-smoke.mjs
 
 echo
+echo "── worker do aluno ──"
+node test/worker-smoke.mjs
+
+echo
 echo "── roteamento de entrada ──"
 node test/rota-smoke.mjs
 
