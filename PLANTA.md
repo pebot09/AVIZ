@@ -89,7 +89,7 @@ alvo_de_vagas_extras = max(0, capacidadeFísica − alunosEfetivos + faltas − 
 - O aluno acessa por um **link pessoal** (`?c=CÓDIGO`). O código é a credencial — não há senha, não há login para o aluno.
 - Um código por par (aluno, turma). Aluno em duas turmas tem dois links.
 - Pelo painel, o aluno faz **todas as ações dele**: lançar falta, marcar/cancelar reposição, registrar férias, ajustar avisos de vaga. Quais dessas ficam disponíveis é **configurável por escola** (ver 5).
-- **Cancelar a própria falta:** só vale para faltas que o aluno mesmo lançou. Faltas geradas por aula cancelada pela escola (com `cancelamentoId`) **não aparecem** para cancelar — ver 2.2.
+- **Cancelar a própria falta:** o aluno pode cancelar qualquer falta sua — inclusive as que o professor lançou por ele. A **única** exceção é a falta gerada por aula cancelada pela escola (com `cancelamentoId`), que **não aparece** para cancelar — ver 2.2.
 - **Watchlist + notificação:** o aluno marca turmas de interesse e o navegador avisa quando abre vaga. Recurso de destaque do produto. (Se a escola não deixa o aluno marcar reposição sozinho, a notificação simplesmente não faz sentido e some — não é um interruptor à parte.)
 
 ### 2.6 Sincronização e armazenamento
