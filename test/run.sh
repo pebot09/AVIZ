@@ -12,6 +12,10 @@ echo "── domínio ──"
 node test/domain-smoke.mjs
 
 echo
+echo "── roteamento de entrada ──"
+node test/rota-smoke.mjs
+
+echo
 echo "── travas de perda de dados ──"
 ./node_modules/.bin/esbuild test/store-smoke.jsx \
   --bundle --platform=node --format=cjs --outfile=./.store-smoke.cjs \

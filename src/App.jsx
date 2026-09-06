@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react';
 import { ref, get } from 'firebase/database';
 import { db } from './lib/firebase.js';
 import { paths } from './lib/paths.js';
-import { resolveTenant, resolveAccessCode } from './lib/tenant.js';
+import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, querEscolaNova } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
 import { provisionTenant } from './lib/provision.js';
 import EscolaApp from './components/EscolaApp.jsx';
 import Onboarding from './onboarding/Onboarding.jsx';
 
 export default function App() {
-  const tenant = resolveTenant();
+  const noEndereco = resolveTenant();
+  const novo = querEscolaNova();
+  // Sem escola no endereço, volta para a última acessada neste navegador.
+  const tenant = noEndereco || (novo ? null : ultimoTenant());
   const accessCode = resolveAccessCode();
 
   const [user, setUser] = useState(undefined); // undefined = carregando; null = deslogado
@@ -23,10 +26,35 @@ export default function App() {
 
   if (accessCode) return <Shell><AlunoPlaceholder code={accessCode} /></Shell>;
   if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
-  // Sem escola no endereço → criar uma (fluxo de onboarding).
-  if (!tenant) return <Onboarding user={user || null} />;
+  // Criar escola é sempre um pedido explícito (?novo=1). Nunca o destino de
+  // quem só abriu o app sem endereço — era assim que se criava uma escola
+  // duplicada e vazia sem perceber.
+  if (novo) return <Onboarding user={user || null} />;
+  if (!tenant) return <Shell><Entrada /></Shell>;
   if (!user) return <Shell><Login tenant={tenant} erro={erro} /></Shell>;
   return <Dono tenant={tenant} user={user} />;
+}
+
+// Tela de partida quando não dá para saber a escola: escolher é do usuário,
+// não do app.
+function Entrada() {
+  const [slug, setSlug] = useState('');
+  return (
+    <div>
+      <h2 style={s.h2}>Bem-vindo</h2>
+      <p style={s.p}>Entre no seu espaço ou crie um novo.</p>
+      <form
+        onSubmit={(e) => { e.preventDefault(); const v = slug.trim(); if (v) window.location.href = `/?e=${encodeURIComponent(v)}`; }}
+        style={{ marginTop: 18 }}
+      >
+        <label style={s.dim}>Endereço do seu espaço</label>
+        <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="ex: meu-espaco" style={s.input} />
+        <button type="submit" style={s.btn}>Entrar</button>
+      </form>
+      <p style={{ ...s.dim, textAlign: 'center', margin: '18px 0 8px' }}>ou</p>
+      <button onClick={() => { window.location.href = '/?novo=1'; }} style={s.btnSec}>Criar um espaço novo</button>
+    </div>
+  );
 }
 
 function Login({ tenant, erro }) {
@@ -88,7 +116,10 @@ function Dono({ tenant, user }) {
         }
       } catch { /* ignore */ }
       const snap = await get(ref(db, paths.member(tenant, user.uid))).catch(() => null);
-      if (vivo) setMembro(snap && snap.exists() ? snap.val() : null);
+      const m = snap && snap.exists() ? snap.val() : null;
+      // Só lembra a escola em que o acesso foi confirmado.
+      if (m) lembrarTenant(tenant);
+      if (vivo) setMembro(m);
     }
     checar();
     return () => { vivo = false; };
@@ -157,6 +188,7 @@ const s = {
   dim: { margin: '6px 0', fontSize: 13, color: '#9ca3af', lineHeight: 1.5 },
   input: { width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 15, border: '1px solid #d1d5db', borderRadius: 8, margin: '12px 0' },
   btn: { width: '100%', padding: '10px 12px', fontSize: 15, fontWeight: 600, color: '#fff', background: '#2563eb', border: 'none', borderRadius: 8, cursor: 'pointer' },
+  btnSec: { width: '100%', padding: '10px 12px', fontSize: 15, fontWeight: 600, color: '#374151', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer' },
   link: { background: 'none', border: 'none', color: '#6b7280', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' },
   err: { color: '#dc2626', fontSize: 13, marginTop: 10 },
   aviso: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14, marginTop: 12 },

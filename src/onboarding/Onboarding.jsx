@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
-import { slugify, slugDisponivelAuto, provisionTenant } from '../lib/provision.js';
+import { slugify, slugDisponivel, slugDisponivelAuto, provisionTenant } from '../lib/provision.js';
 import { sendLoginLink } from '../lib/auth.js';
 
 const VOC_ALUNO = [
@@ -59,6 +59,7 @@ export default function Onboarding({ user }) {
   const [email, setEmail] = useState(user?.email || '');
   const [saibaMais, setSaibaMais] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [duplicado, setDuplicado] = useState(null); // endereço já usado, aguardando decisão
   const set = (patch) => setR((prev) => ({ ...prev, ...patch }));
 
   const A = r.vAluno || 'aluno', As = plural(r.vAluno, VOC_ALUNO);
@@ -130,11 +131,19 @@ export default function Onboarding({ user }) {
     };
   }
 
-  async function finalizar() {
+  async function finalizar(confirmandoDuplicado = false) {
     setErro(null); setSalvando(true);
     try {
       const base = slugify(r.nomeEscola);
       if (!base) throw new Error('Nome do espaço inválido.');
+      // Nome já usado? Pergunta antes de criar. Sem isto o endereço virava um
+      // "-2" em silêncio, e quem só queria voltar ao seu espaço terminava num
+      // espaço novo e vazio, achando que os dados tinham sumido.
+      if (!confirmandoDuplicado && !(await slugDisponivel(base))) {
+        setDuplicado(base);
+        setSalvando(false);
+        return;
+      }
       const slug = await slugDisponivelAuto(base);
       const config = montarConfig();
       const payload = { slug, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), donoGenero: r.donoArtigo || 'o', config };
@@ -160,6 +169,38 @@ export default function Onboarding({ user }) {
       <Card>
         <h2 className="text-xl font-bold text-gray-800 mb-2">Quase lá!</h2>
         <p className="text-sm text-gray-600">Mandamos um link para <b>{email}</b>. Clique nele para entrar e o seu app será criado.</p>
+      </Card>
+    );
+  }
+
+  if (duplicado) {
+    return (
+      <Card>
+        <div className="text-[10px] tracking-[0.2em] text-gray-300 font-semibold mb-5">AVIZ</div>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">Já existe um espaço com esse endereço</h2>
+        <p className="text-sm text-gray-600 mb-1">
+          O endereço <b>/?e={duplicado}</b> já está em uso.
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          Se esse espaço é seu, <b>entre nele</b> — todos os seus dados continuam lá.
+          Criar outro aqui faria um espaço <b>novo e vazio</b>, num endereço diferente.
+        </p>
+        <div className="space-y-2">
+          <button
+            onClick={() => { window.location.href = `/?e=${duplicado}`; }}
+            className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
+          >Entrar no espaço existente</button>
+          <button
+            onClick={() => { setDuplicado(null); finalizar(true); }}
+            disabled={salvando}
+            className="w-full py-2.5 border border-gray-300 text-gray-600 rounded-lg font-medium text-sm hover:bg-gray-50 disabled:opacity-50"
+          >{salvando ? 'Criando…' : 'Mesmo assim, criar um espaço novo'}</button>
+          <button
+            onClick={() => setDuplicado(null)}
+            className="w-full py-2 text-gray-400 text-sm hover:text-gray-600"
+          >Voltar e mudar o nome</button>
+        </div>
+        {erro && <p className="text-red-600 text-xs mt-3">{erro}</p>}
       </Card>
     );
   }
@@ -326,8 +367,10 @@ export default function Onboarding({ user }) {
 
       <div className="flex justify-between items-center mt-6">
         <button onClick={voltar} disabled={i === 0} className="text-sm text-gray-500 disabled:opacity-30">← Voltar</button>
+        {/* A arrow importa: onClick={finalizar} passaria o evento do clique
+            como confirmandoDuplicado, pulando o aviso de endereço repetido. */}
         {ehUltimo ? (
-          <button onClick={finalizar} disabled={salvando || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
+          <button onClick={() => finalizar()} disabled={salvando || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
             {salvando ? 'Criando…' : 'Criar meu app'}
           </button>
         ) : (
