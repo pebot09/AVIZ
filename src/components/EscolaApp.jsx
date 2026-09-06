@@ -9,6 +9,7 @@ import TurmasTab from './TurmasTab.jsx';
 import FaltasReposicoesTab from './FaltasReposicoesTab.jsx';
 import PainelTab from './PainelTab.jsx';
 import ConfigScreen from './ConfigScreen.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
 // Passarinho: Turmas · Faltas & Reposições · Painel. Por ora, Turmas está
@@ -24,6 +25,7 @@ export default function EscolaApp({ tenant, user, membro }) {
   const [pub, setPub] = useState(null);
   const [aba, setAba] = useState('Turmas');
   const [configAberto, setConfigAberto] = useState(false);
+  const [confirmarSair, setConfirmarSair] = useState(false);
 
   useEffect(() => onValue(ref(db, paths.tenantPublic(tenant)), (snap) => setPub(snap.val() || {})), [tenant]);
   const nomeEscola = (pub && pub.nome) || tenant;
@@ -54,7 +56,9 @@ export default function EscolaApp({ tenant, user, membro }) {
             </div>
             <div className="flex items-center gap-3 mt-1">
               <button onClick={() => setConfigAberto(true)} className="text-gray-400 hover:text-gray-600 text-lg" title="Configurações">⚙</button>
-              <button onClick={() => logout()} className="text-gray-400 hover:text-gray-600 text-sm underline">sair</button>
+              {/* Sair pede confirmação: era um clique só, fácil de acertar sem
+                  querer, e voltar exige o link mágico por e-mail. */}
+              <button onClick={() => setConfirmarSair(true)} className="text-gray-300 hover:text-gray-500 text-xs" title="Sair da conta">sair</button>
             </div>
           </div>
           <nav className="flex gap-1 mt-3 -mb-px">
@@ -70,7 +74,22 @@ export default function EscolaApp({ tenant, user, membro }) {
         </div>
       </header>
 
-      {erro && <p className="max-w-4xl mx-auto px-4 pt-3 text-red-600 text-sm">{erro}</p>}
+      {erro && (
+        <div className="max-w-4xl mx-auto px-4 pt-3">
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm flex items-start justify-between gap-3">
+            <span>{erro}</span>
+            <button onClick={() => window.location.reload()} className="shrink-0 underline font-medium">Recarregar</button>
+          </div>
+        </div>
+      )}
+
+      {confirmarSair && (
+        <ConfirmModal
+          title="Sair da conta?" danger
+          message={`Você vai precisar do link de acesso por e-mail para entrar de novo em ${nomeEscola}. Os dados da escola não são apagados.`}
+          confirmLabel="Sair" onConfirm={() => logout()} onCancel={() => setConfirmarSair(false)}
+        />
+      )}
 
       {carregando ? (
         <p className="text-center text-gray-400 text-sm py-10">Carregando…</p>

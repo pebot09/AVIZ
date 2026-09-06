@@ -5,7 +5,7 @@ import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel } from '../src/dom
 import { getNextOccurrences, horarioNaData } from '../src/domain/calendario.js';
 
 const config = {
-  regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true },
+  regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
   calendario: { recessos: [], feriadosMunicipais: [], feriadosIgnorados: [] },
   vocab: {},
 };
@@ -90,5 +90,16 @@ console.log('snapshots:', s.snapshots.length, s.snapshots[0].label);
 d({ type: 'REMOVE_ALUNO', turmaId: turma.id, nome: 'Bia' });
 console.log('acessos após remover Bia:', s.acessos.length);
 console.assert(s.acessos.length === 0, 'acesso devia ser revogado');
+
+// --- resumo do dia mostra quem está de férias ---
+const mesAtual = todayStr().slice(0, 7);
+d({ type: 'ADD_AUSENCIA', alunoNome: 'Caio', turmaId: turma.id, mesAno: mesAtual });
+const dataResumo = proximas.find(x => x.slice(0, 7) === mesAtual);
+if (dataResumo) {
+  const r2 = computeResumoDia(s, dataResumo, config)[0];
+  console.log('resumo com férias → presentes:', r2.presentes, '| férias:', r2.ferias);
+  console.assert(r2.ferias.includes('Caio'), 'Caio de férias devia aparecer no resumo');
+  console.assert(!r2.presentes.includes('Caio'), 'quem está de férias não é presente');
+}
 
 console.log('\n✅ smoke test passou');

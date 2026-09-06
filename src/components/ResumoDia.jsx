@@ -67,6 +67,7 @@ export default function ResumoDia({ state, vocab, config }) {
               const titulo = turma ? turmaShortLabel(turma) : getTurmaLabel(state.turmas, item.turmaId);
               const presentes = item.presentes || [];
               const faltaram = item.faltaram || [];
+              const emFerias = item.ferias || []; // resumos congelados antigos não têm este campo
               const repondo = item.repondo || [];
               return (
                 <div key={item.turmaId || idx} className="px-4 py-3 space-y-0.5">
@@ -81,6 +82,9 @@ export default function ResumoDia({ state, vocab, config }) {
                   )}
                   {faltaram.length > 0 && (
                     <div className="text-sm text-red-600"><span className="text-red-400 text-xs">Faltam&nbsp;&nbsp;</span>{faltaram.join(', ')}</div>
+                  )}
+                  {emFerias.length > 0 && (
+                    <div className="text-sm text-teal-600"><span className="text-teal-400 text-xs">🏖️ Férias&nbsp;&nbsp;</span>{emFerias.join(', ')}</div>
                   )}
                   {repondo.length > 0 && (
                     <div className="text-sm text-blue-600"><span className="text-blue-400 text-xs">Repondo&nbsp;&nbsp;</span>{repondo.map(repondoLabel).join(', ')}</div>

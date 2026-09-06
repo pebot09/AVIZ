@@ -12,10 +12,20 @@ echo "── domínio ──"
 node test/domain-smoke.mjs
 
 echo
+echo "── travas de perda de dados ──"
+./node_modules/.bin/esbuild test/store-smoke.jsx \
+  --bundle --platform=node --format=cjs --outfile=./.store-smoke.cjs \
+  --loader:.jsx=jsx --jsx=automatic --log-level=error \
+  --alias:firebase/database=./test/fake-firebase.js \
+  --alias:firebase/app=./test/fake-firebase.js \
+  --alias:firebase/auth=./test/fake-firebase.js
+node ./.store-smoke.cjs
+
+echo
 echo "── render ──"
 # O esbuild precisa rodar de dentro do projeto para resolver react/react-dom.
 ./node_modules/.bin/esbuild test/render-smoke.jsx \
   --bundle --platform=node --format=cjs --outfile=./.render-smoke.cjs \
   --loader:.jsx=jsx --jsx=automatic --log-level=error
-trap 'rm -f ./.render-smoke.cjs' EXIT
+trap 'rm -f ./.render-smoke.cjs ./.store-smoke.cjs' EXIT
 node ./.render-smoke.cjs

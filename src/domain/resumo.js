@@ -23,12 +23,16 @@ export function computeResumoDia(state, date, config) {
       const ferias = arr(state.ausencias)
         .filter((a) => a.turmaId === turma.id && a.mesAno === mes)
         .map((a) => a.alunoNome);
+      // Quem está de férias sai dos presentes — e aparece na própria linha, para
+      // o professor não ficar procurando um nome que sumiu da lista.
+      const emFerias = arr(turma.alunos).filter((a) => ferias.includes(a));
       const presentes = arr(turma.alunos).filter((a) => !faltaram.includes(a) && !ferias.includes(a));
       return {
         turmaId: turma.id,
         cancelada: canceladas.has(turma.id),
         presentes,
         faltaram,
+        ferias: emFerias,
         repondo: repos.map((r) => ({ nome: r.alunoNome, origemTurmaId: r.turmaOrigemId })),
         esperados: presentes.length + visitantes.length,
       };

@@ -80,8 +80,10 @@ function Dono({ tenant, user }) {
         if (raw) {
           const p = JSON.parse(raw);
           if (p && p.slug === tenant) {
-            await provisionTenant({ ...p, uid: user.uid });
+            // Limpa ANTES de provisionar: se a criação falhar no meio, a chave
+            // não pode ficar presa e reprovisionar a cada login daí em diante.
             localStorage.removeItem('aviz_pending_onboarding');
+            await provisionTenant({ ...p, uid: user.uid });
           }
         }
       } catch { /* ignore */ }
