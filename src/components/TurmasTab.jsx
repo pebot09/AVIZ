@@ -62,7 +62,7 @@ export default function TurmasTab({ state, dispatch, vocab, config, capacidadePa
         <NovaTurmaModal dispatch={dispatch} vocab={vocab} capacidadePadrao={capacidadePadrao} onClose={() => setShowNova(false)} />
       )}
       {showLink && (
-        <GerarLinkModal state={state} dispatch={dispatch} vocab={vocab} onClose={() => setShowLink(false)} />
+        <GerarLinkModal state={state} dispatch={dispatch} vocab={vocab} tenantId={tenantId} onClose={() => setShowLink(false)} />
       )}
       {notasDe && (
         <NotasTurmaModal

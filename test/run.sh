@@ -8,8 +8,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+echo "── imports ──"
+node test/audit-imports.mjs
+
+echo
 echo "── domínio ──"
 node test/domain-smoke.mjs
+
+echo
+echo "── fatia do aluno ──"
+node test/fatia-smoke.mjs
 
 echo
 echo "── roteamento de entrada ──"

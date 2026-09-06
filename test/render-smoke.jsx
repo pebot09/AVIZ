@@ -16,6 +16,9 @@ import TurmasTab from '../src/components/TurmasTab.jsx';
 import FaltasReposicoesTab from '../src/components/FaltasReposicoesTab.jsx';
 import NotasTurmaModal from '../src/components/NotasTurmaModal.jsx';
 import GerarLinkModal from '../src/components/GerarLinkModal.jsx';
+import AlunoApp from '../src/components/aluno/AlunoApp.jsx';
+import RegrasModal from '../src/components/aluno/RegrasModal.jsx';
+import { fatiaAluno } from '../src/domain/fatiaAluno.js';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -61,6 +64,10 @@ React.useState = function (init) {
   if (init && typeof init === 'object' && !Array.isArray(init) && 'faltas' in init && 'vagas' in init) {
     return _useState(Object.fromEntries(Object.keys(init).map((k) => [k, true])));
   }
+  // acordeões da tela do aluno
+  if (init && typeof init === 'object' && !Array.isArray(init) && 'falta' in init && 'reposicao' in init) {
+    return _useState(Object.fromEntries(Object.keys(init).map((k) => [k, true])));
+  }
   // força a data do ResumoDia, para cair num dia com aulas
   if (typeof init === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(init) && globalThis.__DATA_FORCADA__) {
     return _useState(globalThis.__DATA_FORCADA__);
@@ -104,6 +111,20 @@ for (const [nome, det] of detCasos) {
 // ResumoDia num dia futuro com aulas, e num dia passado congelado
 const diaComAula = getNextOccurrences(turma, 6).find(x => !isDataBloqueada(x, config));
 const diaCongelado = Object.keys(s.resumosDiarios).sort().pop();
+// --- tela do aluno ---
+// A fatia é montada do estado real, então a tela recebe exatamente o que
+// receberia em produção.
+d({ type: 'GERAR_ACESSO', alunoNome: 'Bia', turmaId: turma.id });
+const acessoBia = s.acessos.find(a => a.alunoNome === 'Bia');
+const fatiaBia = fatiaAluno(s, config, acessoBia);
+const okAcao = async () => true;
+const configMinimo = { regras: { antecedenciaHoras: 0, ferias: false, vagaExtra: false, validadeFaltaDias: 0 }, calendario: { recessos: [] }, vocab: {} };
+casos.push(['AlunoApp', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
+casos.push(['AlunoApp (ocupado+erro)', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado erro="Deu ruim" />]);
+casos.push(['AlunoApp (escola sem regras)', <AlunoApp fatia={fatiaBia} config={configMinimo} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
+casos.push(['RegrasModal', <RegrasModal config={config} vocab={vocab} onClose={noop} />]);
+casos.push(['RegrasModal (sem regras)', <RegrasModal config={configMinimo} vocab={vocab} onClose={noop} />]);
+
 casos.push(['ResumoDia: ' + diaComAula, <ResumoDia state={s} vocab={vocab} config={config} />]);
 if (diaCongelado) casos.push(['ResumoDia: ' + diaCongelado, <ResumoDia state={s} vocab={vocab} config={config} />]);
 let falhas = 0;

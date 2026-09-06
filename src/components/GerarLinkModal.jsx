@@ -7,7 +7,7 @@ import Modal from './Modal.jsx';
 // Link pessoal do aluno (?c=CÓDIGO). O código é a credencial — não há senha.
 // Porte do GerarLinkModal do Passarinho; o QR é gerado localmente (o original
 // chamava uma API externa, o que vazaria o link do aluno para terceiros).
-export default function GerarLinkModal({ state, dispatch, vocab, onClose }) {
+export default function GerarLinkModal({ state, dispatch, vocab, tenantId, onClose }) {
   const [turmaId, setTurmaId] = useState('');
   const [alunoNome, setAlunoNome] = useState('');
   const [copiado, setCopiado] = useState(false);
@@ -17,7 +17,11 @@ export default function GerarLinkModal({ state, dispatch, vocab, onClose }) {
   const turma = state.turmas.find((t) => t.id === turmaId);
   const alunos = turma ? [...arr(turma.alunos)].sort((a, b) => a.localeCompare(b, 'pt')) : [];
   const acesso = arr(state.acessos).find((a) => a.alunoNome === alunoNome && a.turmaId === turmaId);
-  const link = acesso ? `${window.location.origin}${window.location.pathname}?c=${acesso.codigo}` : '';
+  // O link leva escola E código: é assim que o servidor sabe onde procurar,
+  // sem precisar de um índice global de códigos (que seria enumerável).
+  const link = acesso
+    ? `${window.location.origin}${window.location.pathname}?e=${encodeURIComponent(tenantId)}&c=${acesso.codigo}`
+    : '';
 
   const copiar = () => {
     navigator.clipboard.writeText(link).then(() => {

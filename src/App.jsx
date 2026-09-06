@@ -6,6 +6,7 @@ import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, querEsco
 import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
 import { provisionTenant } from './lib/provision.js';
 import EscolaApp from './components/EscolaApp.jsx';
+import AlunoRoot from './components/aluno/AlunoRoot.jsx';
 import Onboarding from './onboarding/Onboarding.jsx';
 
 export default function App() {
@@ -24,7 +25,11 @@ export default function App() {
     return watchAuth(setUser);
   }, []);
 
-  if (accessCode) return <Shell><AlunoPlaceholder code={accessCode} /></Shell>;
+  // Link do aluno: precisa de escola + código. O link é gerado com os dois.
+  if (accessCode) {
+    if (!tenant) return <Shell><LinkIncompleto /></Shell>;
+    return <AlunoRoot tenant={tenant} codigo={accessCode} />;
+  }
   if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
   // Criar escola é sempre um pedido explícito (?novo=1). Nunca o destino de
   // quem só abriu o app sem endereço — era assim que se criava uma escola
@@ -146,14 +151,13 @@ function Dono({ tenant, user }) {
   return <EscolaApp tenant={tenant} user={user} membro={membro} />;
 }
 
-function AlunoPlaceholder({ code }) {
+function LinkIncompleto() {
   return (
     <div>
-      <h2 style={s.h2}>Painel do aluno</h2>
-      <p style={s.p}>Código: <code style={s.code}>{code}</code></p>
-      <p style={s.dim}>Este painel vai ler os dados por uma função no servidor
-        (fatia-no-servidor), em construção. Acesso direto ao banco fica bloqueado
-        de propósito.</p>
+      <h2 style={s.h2}>Link incompleto</h2>
+      <p style={s.p}>Este link não diz de qual espaço ele é.</p>
+      <p style={s.dim}>Peça o link completo para quem dá a aula — ele tem o
+        endereço do espaço e o seu código.</p>
     </div>
   );
 }
