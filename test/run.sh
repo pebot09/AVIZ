@@ -16,6 +16,10 @@ echo "── domínio ──"
 node test/domain-smoke.mjs
 
 echo
+echo "── backup automático ──"
+node test/backup-smoke.mjs
+
+echo
 echo "── fatia do aluno ──"
 node test/fatia-smoke.mjs
 

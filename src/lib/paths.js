@@ -5,7 +5,8 @@
 //   /tenants/{tid}/config        regras do onboarding (seção 5 da PLANTA)
 //   /tenants/{tid}/state         turmas, faltas, reposicoes, vagas, ausencias, acessos, log, estatisticas
 //   /tenants/{tid}/members/{uid} equipe: { role: 'owner' | 'professor', nome }
-//   /tenants/{tid}/snapshots     backup automático por escola
+//   /tenants/{tid}/snapshots     "fotos" da lista salvas à mão pelo professor
+//   /tenants/{tid}/backups       backup automático do estado (anel das últimas N)
 //   /billing/{tid}               plano/status/vencimento — só super-admin
 
 export const paths = {
@@ -15,5 +16,6 @@ export const paths = {
   members: (tid) => `tenants/${tid}/members`,
   member: (tid, uid) => `tenants/${tid}/members/${uid}`,
   snapshots: (tid) => `tenants/${tid}/snapshots`,
+  backups: (tid) => `tenants/${tid}/backups`,
   billing: (tid) => `billing/${tid}`,
 };

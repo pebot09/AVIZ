@@ -22,6 +22,9 @@
         },
         "snapshots": {
           ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid).exists()"
+        },
+        "backups": {
+          ".write": "auth != null && root.child('tenants/' + $tid + '/members/' + auth.uid).exists()"
         }
       }
     },

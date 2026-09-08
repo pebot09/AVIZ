@@ -42,6 +42,20 @@ O banco nasce **fechado** (o oposto do Passarinho, que era aberto).
   Cloudflare (fatia-no-servidor), que valida a credencial e lê/grava o banco com
   o segredo. Roda no plano grátis da Cloudflare — sem Blaze, sem cartão.
 
+## Backup automático
+
+O estado inteiro é gravado de uma vez, então uma escrita ruim pode, na pior das
+hipóteses, estragar a escola. Rede de segurança: a cada carregamento (uma vez
+por sessão, com intervalo mínimo de 6h), o app copia o estado bom para um anel
+em `tenants/{tid}/backups`, guardando as **últimas 10** versões e podando as
+antigas. É best-effort — se falhar, não atrapalha o uso.
+
+Restaurar (enquanto não há botão na tela): no console do Realtime Database,
+abra `tenants/{tid}/backups`, ache a versão desejada pelo `ts`/`resumo`, copie o
+conteúdo de `dados` e cole em `tenants/{tid}/state`. Em código, `restaurarBackup`
+e `listarBackups` (em `src/lib/store.js`) fazem isso — base para uma tela de
+restauração de um clique.
+
 ## Bootstrap do primeiro dono
 
 Como só o dono pode escrever em `members`, e no começo não há dono, o primeiro

@@ -8,10 +8,28 @@
 // Também expõe o config da escola (/tenants/{tid}/config), só-leitura aqui.
 
 import { useEffect, useRef, useState } from 'react';
-import { ref, onValue, set, get, runTransaction } from 'firebase/database';
+import { ref, onValue, set, get, remove, runTransaction } from 'firebase/database';
 import { db } from './firebase.js';
 import { paths } from './paths.js';
 import { reducer, normalizeState } from '../domain/reducer.js';
+import { deveFazerBackup, chavesParaPodar, montarBackup, estadoTemConteudo } from '../domain/backup.js';
+
+// Backup automático: uma vez por sessão, ao carregar um estado com conteúdo,
+// guarda uma cópia no anel de backups (respeitando o intervalo mínimo) e poda
+// os antigos. Best-effort — se falhar, nunca atrapalha o uso do app.
+async function manterBackup(tid, state) {
+  try {
+    if (!estadoTemConteudo(state)) return;
+    const snap = await get(ref(db, paths.backups(tid)));
+    const backups = snap.val() || {};
+    const agora = Date.now();
+    if (!deveFazerBackup(backups, agora)) return;
+    await set(ref(db, `${paths.backups(tid)}/${agora}`), montarBackup(state, agora));
+    for (const chave of chavesParaPodar({ ...backups, [agora]: { ts: agora } })) {
+      await remove(ref(db, `${paths.backups(tid)}/${chave}`));
+    }
+  } catch { /* backup é rede de segurança; silencioso de propósito */ }
+}
 
 export function useConfig(tid) {
   const [config, setConfig] = useState(undefined);
@@ -20,6 +38,19 @@ export function useConfig(tid) {
     return onValue(r, (snap) => setConfig(snap.exists() ? snap.val() : {}), () => setConfig({}));
   }, [tid]);
   return config;
+}
+
+// Lê os backups automáticos (mais novo primeiro), para uma tela de restauração.
+export async function listarBackups(tid) {
+  const snap = await get(ref(db, paths.backups(tid)));
+  const obj = snap.val() || {};
+  return Object.values(obj).sort((a, b) => (Number(b && b.ts) || 0) - (Number(a && a.ts) || 0));
+}
+
+// Restaura um backup por cima do estado atual. É uma escrita deliberada do
+// dono, então vence a versão do servidor (mas registra _updatedAt novo).
+export async function restaurarBackup(tid, dados) {
+  await runTransaction(ref(db, paths.state(tid)), () => ({ ...dados, _updatedAt: Date.now() }));
 }
 
 // Salva o config da escola (só o dono, pelas regras). Merge raso com o atual.
@@ -43,6 +74,7 @@ export function useTenantStore(tid, autor, config) {
   // a escola na primeira ação.
   const stateRef = useRef(null);
   const carregadoRef = useRef(false);
+  const backupFeitoRef = useRef(false); // backup só uma vez por sessão
   const versaoRef = useRef(0); // _updatedAt do que temos em mãos
   const configRef = useRef(config);
   configRef.current = config;
@@ -60,6 +92,7 @@ export function useTenantStore(tid, autor, config) {
 
   useEffect(() => {
     carregadoRef.current = false;
+    backupFeitoRef.current = false;
     stateRef.current = null;
     versaoRef.current = 0;
     setState(undefined);
@@ -78,6 +111,11 @@ export function useTenantStore(tid, autor, config) {
         }
         aplicarServidor(raw);
         setErro(null);
+        // Rede de segurança: guarda uma cópia do estado bom, uma vez por sessão.
+        if (raw != null && !backupFeitoRef.current) {
+          backupFeitoRef.current = true;
+          manterBackup(tid, normalizeState(raw));
+        }
       },
       (e) => setErro(e.message),
     );

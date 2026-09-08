@@ -40,6 +40,11 @@ export async function get(r) {
   return { val: () => val, exists: () => val != null };
 }
 
+export async function remove(r) {
+  nos.delete(r.caminho);
+  entregar(r.caminho);
+}
+
 export async function runTransaction(r, fn) {
   const atual = nos.has(r.caminho) ? nos.get(r.caminho) : null;
   const novo = fn(atual);
