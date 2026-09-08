@@ -48,6 +48,16 @@ export function useTenantStore(tid, autor, config) {
   configRef.current = config;
   const [erro, setErro] = useState(null);
 
+  // Aplica a verdade do servidor no estado local (usado no load e ao
+  // reconciliar depois de uma gravação que não confirmou).
+  function aplicarServidor(raw) {
+    const s = normalizeState(raw);
+    versaoRef.current = Number(raw && raw._updatedAt) || 0;
+    stateRef.current = s;
+    carregadoRef.current = true;
+    setState(s);
+  }
+
   useEffect(() => {
     carregadoRef.current = false;
     stateRef.current = null;
@@ -61,17 +71,12 @@ export function useTenantStore(tid, autor, config) {
         const raw = snap.val();
         // Sumiço: já tínhamos dados e agora vem vazio. Isso não é "a escola
         // ficou vazia" — é perda de acesso (saiu da conta, token expirou,
-        // regras). Adotar esse vazio mostraria a escola zerada e, na primeira
-        // ação, gravaria o zero por cima de tudo.
-        if (raw == null && carregadoRef.current) {
+        // regras). Não adotamos esse vazio (mostraria a escola zerada).
+        if (raw == null && carregadoRef.current && versaoRef.current > 0) {
           setErro('Perdemos o acesso aos dados desta escola. Recarregue a página e entre de novo — nada foi alterado.');
           return;
         }
-        const s = normalizeState(raw);
-        versaoRef.current = Number(raw && raw._updatedAt) || 0;
-        stateRef.current = s;
-        carregadoRef.current = true;
-        setState(s);
+        aplicarServidor(raw);
         setErro(null);
       },
       (e) => setErro(e.message),
@@ -79,35 +84,53 @@ export function useTenantStore(tid, autor, config) {
   }, [tid]);
 
   function dispatch(action) {
-    // Sem dados carregados não se grava: seria escrever vazio sobre a escola.
-    if (!carregadoRef.current || !stateRef.current) {
+    // Sem ter carregado ainda não dá para agir com segurança.
+    if (!carregadoRef.current) {
       setErro('Os dados ainda estão carregando. Tente de novo em um instante.');
       return;
     }
+    const acaoCompleta = { ...action, autor };
+
+    // 1) UI otimista: aplica já sobre o que temos, para a tela responder na
+    // hora. Não é o que persiste — só o que o usuário vê enquanto grava.
     const atual = stateRef.current;
-    const next = reducer(atual, { ...action, autor }, configRef.current);
-    if (next === atual) return;
+    const previa = reducer(atual, acaoCompleta, configRef.current);
+    if (previa === atual) return; // ação sem efeito
+    stateRef.current = previa;
+    setState(previa);
+    setErro(null);
 
-    const base = versaoRef.current;
-    const versao = Date.now();
-    stateRef.current = next;
-    versaoRef.current = versao;
-    setState(next); // otimista
-
-    // Gravação condicional: se o servidor já está numa versão mais nova que a
-    // que usamos de base, aborta em vez de sobrescrever o trabalho de outro
-    // dispositivo. (O Passarinho conferia isso na mão; aqui é transação.)
-    runTransaction(ref(db, paths.state(tid)), (servidor) => {
-      const versaoServidor = Number(servidor && servidor._updatedAt) || 0;
-      if (versaoServidor > base) return undefined; // aborta; o listener traz o mais novo
-      return { ...next, _updatedAt: versao };
-    })
-      .then((res) => {
+    // 2) Gravação autoritativa: aplica o reducer DENTRO da transação, sobre o
+    // valor mais recente do servidor. Assim duas abas/dispositivos editando ao
+    // mesmo tempo se SOMAM (cada ação parte do estado já gravado pela outra),
+    // em vez de uma sobrescrever ou ser descartada em silêncio.
+    (async () => {
+      try {
+        // Puxa a verdade do servidor para o cache antes da transação, para que
+        // ela não rode a primeira vez contra um cache vazio e conclua "nada
+        // mudou" por engano (era assim que uma gravação legítima sumia).
+        await get(ref(db, paths.state(tid)));
+        const res = await runTransaction(ref(db, paths.state(tid)), (servidor) => {
+          const base = normalizeState(servidor);
+          const next = reducer(base, acaoCompleta, configRef.current);
+          if (next === base) return undefined; // no-op real → aborta sem erro
+          return { ...next, _updatedAt: Date.now() };
+        });
         if (!res.committed) {
-          setErro('Esta escola foi alterada em outro lugar ao mesmo tempo. Trouxemos a versão mais recente — confira e refaça se precisar.');
+          // Não confirmou (no-op contra o servidor): re-sincroniza com a verdade
+          // para a tela não ficar mostrando algo que não foi salvo. No caminho
+          // de sucesso não fazemos nada — o listener onValue já reconcilia com o
+          // valor gravado (evita piscar a tela em gravações rápidas seguidas).
+          const snap = await get(ref(db, paths.state(tid)));
+          aplicarServidor(snap.val());
         }
-      })
-      .catch((e) => setErro(e.message));
+      } catch (e) {
+        // Falha real (sem acesso, rede, regras): avisa ALTO e volta para a
+        // verdade do servidor — nunca deixa a tela fingir que salvou.
+        setErro('Não consegui salvar. Recarregue a página para conferir o que está salvo antes de refazer. (' + (e.message || 'erro') + ')');
+        try { const snap = await get(ref(db, paths.state(tid))); aplicarServidor(snap.val()); } catch { /* mantém o aviso */ }
+      }
+    })();
   }
 
   return { state, dispatch, erro };
