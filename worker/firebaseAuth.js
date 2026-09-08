@@ -11,14 +11,16 @@
 
 const ESCOPO = 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email';
 
-function base64urlDeString(str) {
-  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
 function base64urlDeBytes(buf) {
   let bin = '';
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+// Sem `unescape` (global legado que pode não existir no runtime da Cloudflare):
+// codifica a string em bytes UTF-8 e reaproveita o base64url de bytes.
+function base64urlDeString(str) {
+  return base64urlDeBytes(new TextEncoder().encode(str));
 }
 
 async function importarChave(pemPkcs8) {

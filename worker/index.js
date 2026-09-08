@@ -142,7 +142,10 @@ export default {
       try {
         return await criarHandlerAluno(depsFirebase(env))(request, url);
       } catch (e) {
-        return json({ erro: 'Erro no servidor.' }, 500);
+        // Mostra o motivo real (ajuda a diagnosticar em produção; a mensagem é
+        // curta e técnica, tipo "firebase read 401", sem dado sensível).
+        console.error('[aluno]', e && e.stack ? e.stack : e);
+        return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
       }
     }
 
