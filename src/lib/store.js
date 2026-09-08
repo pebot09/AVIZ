@@ -14,6 +14,24 @@ import { paths } from './paths.js';
 import { reducer, normalizeState } from '../domain/reducer.js';
 import { deveFazerBackup, chavesParaPodar, montarBackup, estadoTemConteudo } from '../domain/backup.js';
 
+// O Firebase recusa QUALQUER `undefined` num write — o runTransaction lança
+// "Data returned contains undefined in property ...". Algumas ações deixam
+// campos assim de propósito (ex.: cancelar reposição faz `reposicaoId:
+// undefined` para desligar a falta da reposição). No Passarinho o PUT via REST
+// engolia esses campos (JSON.stringify descarta undefined); aqui precisamos
+// limpá-los à mão antes de gravar. Recursivo e barato — roda uma vez por save.
+function limparUndefined(v) {
+  if (Array.isArray(v)) return v.map(limparUndefined);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v)) {
+      if (v[k] !== undefined) out[k] = limparUndefined(v[k]);
+    }
+    return out;
+  }
+  return v;
+}
+
 // Backup automático: uma vez por sessão, ao carregar um estado com conteúdo,
 // guarda uma cópia no anel de backups (respeitando o intervalo mínimo) e poda
 // os antigos. Best-effort — se falhar, nunca atrapalha o uso do app.
@@ -24,7 +42,7 @@ async function manterBackup(tid, state) {
     const backups = snap.val() || {};
     const agora = Date.now();
     if (!deveFazerBackup(backups, agora)) return;
-    await set(ref(db, `${paths.backups(tid)}/${agora}`), montarBackup(state, agora));
+    await set(ref(db, `${paths.backups(tid)}/${agora}`), limparUndefined(montarBackup(state, agora)));
     for (const chave of chavesParaPodar({ ...backups, [agora]: { ts: agora } })) {
       await remove(ref(db, `${paths.backups(tid)}/${chave}`));
     }
@@ -50,7 +68,7 @@ export async function listarBackups(tid) {
 // Restaura um backup por cima do estado atual. É uma escrita deliberada do
 // dono, então vence a versão do servidor (mas registra _updatedAt novo).
 export async function restaurarBackup(tid, dados) {
-  await runTransaction(ref(db, paths.state(tid)), () => ({ ...dados, _updatedAt: Date.now() }));
+  await runTransaction(ref(db, paths.state(tid)), () => limparUndefined({ ...dados, _updatedAt: Date.now() }));
 }
 
 // Salva o config da escola (só o dono, pelas regras). Merge raso com o atual.
@@ -152,7 +170,7 @@ export function useTenantStore(tid, autor, config) {
           const base = normalizeState(servidor);
           const next = reducer(base, acaoCompleta, configRef.current);
           if (next === base) return undefined; // no-op real → aborta sem erro
-          return { ...next, _updatedAt: Date.now() };
+          return limparUndefined({ ...next, _updatedAt: Date.now() });
         });
         if (!res.committed) {
           // Não confirmou (no-op contra o servidor): re-sincroniza com a verdade
