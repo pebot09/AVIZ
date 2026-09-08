@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   arr, sortTurmas, EXTENSO, ABREV, fmtBR, fmtBRFull, todayStr, dateToStr, parseDate,
   turmaShortLabel, getTurmaLabel, getFaltaEarliest, getFaltaExpiry, getMesNome, getLastDayOfMonth,
-  TURMA_EXTRA_ID,
+  TURMA_EXTRA_ID, faltasDoMes,
 } from '../domain/helpers.js';
 import {
   getNextOccurrences, getClassDatesInRange, getClassDatetime,
@@ -551,8 +551,16 @@ function TabAusenciaProgramada({ state, dispatch, vocab, config }) {
 
   useEffect(() => { const d = new Date(); setMesAno(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }, []);
 
+  // Faltas ativas do aluno no mês escolhido: se houver, não dá para marcar
+  // férias (as duas coisas abririam vaga no mesmo dia para a mesma pessoa).
+  const faltasNoMes = useMemo(
+    () => (alunoNome && turmaId && mesAno ? faltasDoMes(state.faltas, alunoNome, turmaId, mesAno) : []),
+    [state.faltas, alunoNome, turmaId, mesAno],
+  );
+  const bloqueadoPorFalta = faltasNoMes.length > 0;
+
   const handleSubmit = () => {
-    if (!turmaId || !alunoNome || !mesAno) return;
+    if (!turmaId || !alunoNome || !mesAno || bloqueadoPorFalta) return;
     dispatch({ type: 'ADD_AUSENCIA', alunoNome, turmaId, tipo: 'ferias', mesAno });
     setSuccess(`Férias de ${alunoNome} em ${getMesNome(mesAno)} registradas.`);
     setAlunoNome('');
@@ -599,9 +607,16 @@ function TabAusenciaProgramada({ state, dispatch, vocab, config }) {
         </div>
       )}
 
+      {bloqueadoPorFalta && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          {alunoNome} tem falta marcada em {getMesNome(mesAno)} ({faltasNoMes.flatMap((f) => f.datas).map(fmtBR).join(', ')}).
+          Cancele {faltasNoMes.length > 1 ? 'essas faltas' : 'essa falta'} antes de marcar as férias — senão a mesma pessoa abriria duas vagas no mesmo dia.
+        </div>
+      )}
+
       {success && <div className="bg-green-50 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">{success}</div>}
 
-      <button onClick={handleSubmit} disabled={!turmaId || !alunoNome || !mesAno} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Registrar Ausência</button>
+      <button onClick={handleSubmit} disabled={!turmaId || !alunoNome || !mesAno || bloqueadoPorFalta} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Registrar Ausência</button>
 
       {state.ausencias.length > 0 && (
         <div className="mt-4 border-t border-gray-200 pt-4">

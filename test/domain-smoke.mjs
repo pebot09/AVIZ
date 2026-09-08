@@ -2,7 +2,7 @@ import { reducer, normalizeState, EMPTY_STATE } from '../src/domain/reducer.js';
 import { computeResumoDia } from '../src/domain/resumo.js';
 import { construirDados } from '../src/domain/painel.js';
 import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros } from '../src/domain/helpers.js';
-import { getNextOccurrences, horarioNaData, getClassDatetime } from '../src/domain/calendario.js';
+import { getNextOccurrences, horarioNaData, getClassDatetime, isDataBloqueada } from '../src/domain/calendario.js';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -92,14 +92,17 @@ console.log('acessos após remover Bia:', s.acessos.length);
 console.assert(s.acessos.length === 0, 'acesso devia ser revogado');
 
 // --- resumo do dia mostra quem está de férias ---
+// Nina é nova e sem faltas — assim as férias não esbarram na trava
+// "férias com falta no mesmo mês" (testada logo abaixo).
 const mesAtual = todayStr().slice(0, 7);
-d({ type: 'ADD_AUSENCIA', alunoNome: 'Caio', turmaId: turma.id, mesAno: mesAtual });
+d({ type: 'ADD_ALUNO', turmaId: turma.id, nome: 'Nina' });
+d({ type: 'ADD_AUSENCIA', alunoNome: 'Nina', turmaId: turma.id, mesAno: mesAtual });
 const dataResumo = proximas.find(x => x.slice(0, 7) === mesAtual);
 if (dataResumo) {
   const r2 = computeResumoDia(s, dataResumo, config)[0];
   console.log('resumo com férias → presentes:', r2.presentes, '| férias:', r2.ferias);
-  console.assert(r2.ferias.includes('Caio'), 'Caio de férias devia aparecer no resumo');
-  console.assert(!r2.presentes.includes('Caio'), 'quem está de férias não é presente');
+  console.assert(r2.ferias.includes('Nina'), 'Nina de férias devia aparecer no resumo');
+  console.assert(!r2.presentes.includes('Nina'), 'quem está de férias não é presente');
 }
 
 // --- turma sem dia (extra) não inventa horário ---
@@ -117,6 +120,30 @@ if (dataResumo) {
   console.assert(turmaShortLabel(antiga) === 'Ter 09h', 'label da turma antiga quebrou');
   console.assert(!!getClassDatetime('t-velha', '2026-09-08', [antiga]), 'datetime da turma antiga quebrou');
   console.log('turma antiga migra sozinha:', turmaShortLabel(antiga));
+}
+
+// --- férias travada quando há falta no mesmo mês (bug do Carlos) ---
+{
+  let s2 = normalizeState({});
+  const dd = (a) => { s2 = reducer(s2, a, config, 'Prof'); };
+  dd({ type: 'ADD_TURMA', encontros: [{ diaSemana: 'quarta', hora: 9, minuto: 0 }], capacidade: 7 });
+  const tq = s2.turmas.find(t => t.id !== TURMA_EXTRA_ID);
+  dd({ type: 'ADD_ALUNO', turmaId: tq.id, nome: 'Carlos' });
+  const dataQua = getNextOccurrences(tq, 8).find(x => !isDataBloqueada(x, config));
+  const mes = dataQua.slice(0, 7);
+  dd({ type: 'ADD_FALTA', alunoNome: 'Carlos', turmaId: tq.id, datasComTipo: [{ data: dataQua, semAntecedencia: false }] });
+  const vagasAntes = s2.vagas.length;
+  const ausAntes = s2.ausencias.length;
+  dd({ type: 'ADD_AUSENCIA', alunoNome: 'Carlos', turmaId: tq.id, tipo: 'ferias', mesAno: mes });
+  console.log('férias com falta no mês → ausencias:', s2.ausencias.length, '(esperado', ausAntes + ')');
+  console.assert(s2.ausencias.length === ausAntes, 'férias NÃO devia ter sido criada com falta no mês');
+  console.assert(s2.vagas.length === vagasAntes, 'férias bloqueada não devia abrir vagas');
+  // cancelando a falta, aí sim as férias entram
+  const f = s2.faltas.find(x => x.alunoNome === 'Carlos');
+  dd({ type: 'CANCEL_FALTA', id: f.id });
+  dd({ type: 'ADD_AUSENCIA', alunoNome: 'Carlos', turmaId: tq.id, tipo: 'ferias', mesAno: mes });
+  console.assert(s2.ausencias.length === ausAntes + 1, 'sem a falta, as férias deviam entrar');
+  console.log('após cancelar a falta, férias entram: ok');
 }
 
 console.log('\n✅ smoke test passou');

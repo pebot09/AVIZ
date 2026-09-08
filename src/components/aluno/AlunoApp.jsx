@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   arr, fmtBR, fmtBRFull, todayStr, dateToStr, parseDate,
-  turmaShortLabel, getTurmaLabel, getFaltaExpiry, getMesNome, MESES_PT, TURMA_EXTRA_ID,
+  turmaShortLabel, getTurmaLabel, getFaltaExpiry, getMesNome, MESES_PT, TURMA_EXTRA_ID, faltasDoMes,
 } from '../../domain/helpers.js';
 import { getClassDatetime, getDiaSemanaFromDateStr, feriadoNome, recessoNome } from '../../domain/calendario.js';
 import { pickReposicaoRight, rightToActionFields, ausenciaExpiry } from '../../domain/reposicao.js';
@@ -122,8 +122,14 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
   // ---- Férias ----
   const [mesFerias, setMesFerias] = useState('');
   const mesesFerias = useMemo(() => mesesDeFeriasDisponiveis(fatia, config), [fatia, config]);
+  // Falta no mês escolhido trava as férias (abriria vaga dobrada). O aluno tem
+  // que cancelar a falta antes.
+  const faltasNoMesFerias = useMemo(
+    () => (mesFerias ? faltasDoMes(fatia.faltas, alunoNome, turmaId, mesFerias) : []),
+    [fatia.faltas, alunoNome, turmaId, mesFerias],
+  );
   const registrarFerias = async () => {
-    if (!mesFerias) return;
+    if (!mesFerias || faltasNoMesFerias.length) return;
     const ok = await executar({ type: 'ADD_AUSENCIA', tipo: 'ferias', mesAno: mesFerias });
     if (ok) { setMesFerias(''); avisar('Férias registradas!', 'ferias'); }
   };
@@ -504,7 +510,13 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
                       return <option key={m} value={m}>{MESES_PT[mo - 1]} {y}</option>;
                     })}
                   </select>
-                  <button onClick={registrarFerias} disabled={!mesFerias || ocupado}
+                  {faltasNoMesFerias.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                      Você tem falta marcada nesse mês ({faltasNoMesFerias.flatMap((f) => f.datas).map((x) => fmtBR(x)).join(', ')}).
+                      Cancele {faltasNoMesFerias.length > 1 ? 'essas faltas' : 'essa falta'} (lá em "Minhas faltas") antes de marcar férias nesse mês.
+                    </div>
+                  )}
+                  <button onClick={registrarFerias} disabled={!mesFerias || ocupado || faltasNoMesFerias.length > 0}
                     className="w-full py-2 bg-teal-500 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
                     {ocupado ? 'Enviando…' : 'Confirmar férias'}
                   </button>

@@ -2,7 +2,7 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr, parseDate, TURMA_EXTRA_ID } from './helpers.js';
+import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr, parseDate, TURMA_EXTRA_ID, faltasDoMes } from './helpers.js';
 import { isFeriado, isRecesso, mesEhRecesso, getClassDatesInRange } from './calendario.js';
 import { computeVagasExtras, fmtDatesText, stripVagasCanceladas } from './reposicao.js';
 import { computeResumoDia } from './resumo.js';
@@ -364,6 +364,11 @@ export function reducer(state, action, config) {
       const { alunoNome, turmaId, tipo, mesAno } = action;
       // Duplicata: mesmo aluno/turma/mês.
       if (state.ausencias.some((a) => a.alunoNome === alunoNome && a.turmaId === turmaId && a.mesAno === mesAno)) return state;
+      // Trava: não marcar férias num mês em que o aluno já tem falta ativa —
+      // senão a mesma pessoa abriria duas vagas no mesmo dia (uma da falta,
+      // outra das férias). É preciso cancelar a(s) falta(s) primeiro. Vale como
+      // rede de segurança; a mensagem clara vem da tela (professor e aluno).
+      if (faltasDoMes(state.faltas, alunoNome, turmaId, mesAno).length) return state;
       // Limite por ano — POR ALUNO (decisão do AVIZ), config.regras.feriasLimiteAno (0 = ilimitado).
       const ano = mesAno.slice(0, 4);
       const limite = Number(config?.regras?.feriasLimiteAno) || 0;

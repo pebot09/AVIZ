@@ -157,6 +157,15 @@ export function turmaHasUnseenNotas(tenantId, turmaId, notas, autor) {
   return new Date(ultima.ts).getTime() > visto;
 }
 
+// Faltas ativas (pendente/marcada) do aluno naquela turma num mês (YYYY-MM).
+// Marcar férias num mês em que o aluno já tem falta abriria DUAS vagas para a
+// mesma pessoa no mesmo dia — por isso é bloqueado (ver ADD_AUSENCIA).
+export function faltasDoMes(faltas, alunoNome, turmaId, mesAno) {
+  return arr(faltas).filter((f) => f.alunoNome === alunoNome && f.turmaId === turmaId
+    && (f.status === 'pendente' || f.status === 'marcada')
+    && arr(f.datas).some((d) => String(d).slice(0, 7) === mesAno));
+}
+
 export function sortTurmas(turmas) {
   const primeiro = (t) => {
     const enc = turmaEncontros(t);

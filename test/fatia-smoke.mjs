@@ -50,9 +50,13 @@ d({ type: 'ADD_NOTA', turmaId: t1.id, texto: 'Zoroastro anda sumido' });
 d({ type: 'GERAR_ACESSO', alunoNome: 'Anaquerida', turmaId: t1.id });
 d({ type: 'GERAR_ACESSO', alunoNome: 'Zoroastro', turmaId: t1.id });
 
-// A nossa aluna falta e tira férias.
-d({ type: 'ADD_FALTA', alunoNome: 'Anaquerida', turmaId: t1.id, datasComTipo: [{ data: prox1[1], semAntecedencia: false }] });
-d({ type: 'ADD_AUSENCIA', alunoNome: 'Anaquerida', turmaId: t1.id, mesAno: todayStr().slice(0, 7) });
+// A nossa aluna falta e tira férias. A falta precisa cair num mês diferente
+// do das férias: marcar férias num mês em que o aluno já falta é bloqueado
+// (abriria duas vagas para a mesma pessoa — ver ADD_AUSENCIA).
+const mesFerias = todayStr().slice(0, 7);
+const dataFaltaAna = prox1.find((x) => x.slice(0, 7) !== mesFerias) || prox1[1];
+d({ type: 'ADD_FALTA', alunoNome: 'Anaquerida', turmaId: t1.id, datasComTipo: [{ data: dataFaltaAna, semAntecedencia: false }] });
+d({ type: 'ADD_AUSENCIA', alunoNome: 'Anaquerida', turmaId: t1.id, mesAno: mesFerias });
 
 const acesso = { alunoNome: 'Anaquerida', turmaId: t1.id };
 const fatia = fatiaAluno(s, config, acesso);
