@@ -1,0 +1,37 @@
+name: Deploy no Cloudflare
+
+# Sobe a versão nova sozinho toda vez que o código muda na branch de trabalho.
+# Não precisa mais rodar nada no terminal.
+on:
+  push:
+    branches:
+      - claude/app-commercial-strategy-3rwewq
+  workflow_dispatch: {} # permite disparar o deploy na mão pela aba Actions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar os testes
+        run: npm test
+
+      - name: Compilar o app
+        run: npm run build
+
+      - name: Publicar no Cloudflare
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
