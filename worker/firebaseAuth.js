@@ -57,7 +57,14 @@ let cache = { token: null, expira: 0 };
 
 export async function getAccessToken(saJson, fetchImpl = fetch, nowMs = Date.now()) {
   if (cache.token && nowMs < cache.expira) return cache.token;
-  const sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
+  let sa;
+  try { sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson; }
+  catch { throw new Error('FIREBASE_SERVICE_ACCOUNT não é um JSON válido.'); }
+  // Erro claro se guardaram o arquivo errado (ex.: o export do banco no lugar da
+  // chave da conta de serviço) — em vez de estourar num ".replace" enigmático.
+  if (!sa || !sa.private_key || !sa.client_email) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT sem private_key/client_email — use o arquivo firebase-adminsdk (chave da conta de serviço), não o export do banco.');
+  }
   const jwt = await criarJwt(sa, nowMs);
   const resp = await fetchImpl(sa.token_uri || 'https://oauth2.googleapis.com/token', {
     method: 'POST',
