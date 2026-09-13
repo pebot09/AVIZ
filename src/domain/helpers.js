@@ -4,7 +4,7 @@
 
 export const DIAS_ORDER = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 export const ABREV = { segunda: 'Seg', terça: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sábado: 'Sáb' };
-export const EXTENSO = { segunda: 'Segunda-feira', terça: 'Terça-feira', quarta: 'Quarta-feira', quinta: 'Quinta-feira', sexta: 'Sexta-feira', sábado: 'Sábado' };
+export const EXTENSO = { segunda: 'Segunda', terça: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sábado: 'Sábado' };
 export const DIA_JS = { segunda: 1, terça: 2, quarta: 3, quinta: 4, sexta: 5, sábado: 6 };
 export const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 

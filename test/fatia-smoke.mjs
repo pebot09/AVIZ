@@ -55,6 +55,10 @@ d({ type: 'GERAR_ACESSO', alunoNome: 'Zoroastro', turmaId: t1.id });
 // (abriria duas vagas para a mesma pessoa — ver ADD_AUSENCIA).
 const mesFerias = todayStr().slice(0, 7);
 const dataFaltaAna = prox1.find((x) => x.slice(0, 7) !== mesFerias) || prox1[1];
+// Uma segunda data livre (fora do mês de férias e diferente da falta acima).
+// O teste de autoria mais abaixo marca uma nova falta e precisa de uma data em
+// que a Anaquerida ainda não falte — senão a ação vira no-op e não vai ao log.
+const dataAutoria = prox1.filter((x) => x.slice(0, 7) !== mesFerias && x !== dataFaltaAna)[0] || prox1[2];
 d({ type: 'ADD_FALTA', alunoNome: 'Anaquerida', turmaId: t1.id, datasComTipo: [{ data: dataFaltaAna, semAntecedencia: false }] });
 d({ type: 'ADD_AUSENCIA', alunoNome: 'Anaquerida', turmaId: t1.id, mesAno: mesFerias });
 
@@ -143,7 +147,7 @@ checar('não cancela falta de outro aluno', !rr.ok, rr.erro);
 // O reducer lê action.autor. Se a ação do aluno não carimbar isso, o registro
 // entra no histórico da escola como "?" — o professor não saberia quem agiu.
 {
-  const a = acaoDoAluno({ type: 'ADD_FALTA', datasComTipo: [{ data: prox1[3], semAntecedencia: false }] }, acesso, s, config);
+  const a = acaoDoAluno({ type: 'ADD_FALTA', datasComTipo: [{ data: dataAutoria, semAntecedencia: false }] }, acesso, s, config);
   const depois = reducer(s, a.acao, config);
   const entrada = depois.log[0];
   checar('ação do aluno entra no histórico com o nome dele', entrada && entrada.professor === 'Anaquerida',
