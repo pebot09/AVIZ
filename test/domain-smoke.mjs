@@ -146,4 +146,17 @@ if (dataResumo) {
   console.log('após cancelar a falta, férias entram: ok');
 }
 
+// --- log antigo com "-feira" é limpo no load (migração de exibição) ---
+{
+  const sujo = normalizeState({
+    log: [
+      { id: 'l1', ts: '2026-01-01T10:00:00Z', professor: 'Ana', descricao: 'Criou turma Segunda-feira e Quarta-feira 09h' },
+      { id: 'l2', ts: '2026-01-01T10:01:00Z', professor: 'Ana', descricao: 'Feriado: Sexta-feira Santa' },
+    ],
+  });
+  console.log('log limpo:', JSON.stringify(sujo.log.map((e) => e.descricao)));
+  console.assert(sujo.log[0].descricao === 'Criou turma Segunda e Quarta 09h', 'log antigo devia perder "-feira"');
+  console.assert(sujo.log[1].descricao === 'Feriado: Sexta-feira Santa', 'nome de feriado não devia mudar');
+}
+
 console.log('\n✅ smoke test passou');

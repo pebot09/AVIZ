@@ -27,6 +27,25 @@ function comTurmaExtra(turmas) {
   return [...turmas, { id: TURMA_EXTRA_ID, encontros: [], capacidade: 99, capacidadeFisica: null, observacao: '', alunos: [] }];
 }
 
+// Migração de exibição do log: entradas antigas guardaram o dia por extenso com
+// "-feira" (ex.: "Segunda-feira e Quarta-feira"). Os rótulos de turma agora saem
+// sem isso, então tanto o texto exibido quanto os filtros que casam o rótulo
+// dentro da descrição (histórico do aluno) precisam bater. Removemos "-feira"
+// das descrições já salvas, preservando "Sexta-feira Santa" (nome de feriado).
+// Roda no load e é persistido no próximo write.
+const RE_FEIRA = /(Segunda|Terça|Quarta|Quinta|Sexta)-feira(?! Santa)/g;
+function limparFeiraLog(log) {
+  let mudou = false;
+  const out = arr(log).map((e) => {
+    if (e && typeof e.descricao === 'string' && e.descricao.includes('-feira')) {
+      const novo = e.descricao.replace(RE_FEIRA, '$1');
+      if (novo !== e.descricao) { mudou = true; return { ...e, descricao: novo }; }
+    }
+    return e;
+  });
+  return mudou ? out : arr(log);
+}
+
 export function normalizeState(data) {
   const s = data && typeof data === 'object' ? data : {};
   return {
@@ -34,7 +53,7 @@ export function normalizeState(data) {
     ...s,
     turmas: comTurmaExtra(arr(s.turmas)), faltas: arr(s.faltas), reposicoes: arr(s.reposicoes),
     vagas: arr(s.vagas), ausencias: arr(s.ausencias), acessos: arr(s.acessos),
-    creditos: arr(s.creditos), notas: arr(s.notas), log: arr(s.log), aulasCanceladas: arr(s.aulasCanceladas),
+    creditos: arr(s.creditos), notas: arr(s.notas), log: limparFeiraLog(s.log), aulasCanceladas: arr(s.aulasCanceladas),
     snapshots: arr(s.snapshots),
     resumosDiarios: (s.resumosDiarios && typeof s.resumosDiarios === 'object' && !Array.isArray(s.resumosDiarios)) ? s.resumosDiarios : {},
     estatisticas: {
