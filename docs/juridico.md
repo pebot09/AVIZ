@@ -62,7 +62,9 @@ estes itens precisam existir (ou sair do texto):
 
 `planoExclusao` (em `src/domain/dadosEscola.js`) apaga na ordem que as regras
 do banco permitem: primeiro os outros membros (ninguém mais grava enquanto a
-escola é apagada), depois estado, fotos e backups, depois config e vitrine
-(exigem ser dono) e, por último, o próprio dono. Se parar no meio, o erro diz
+escola é apagada), depois estado, fotos e backups, depois os hashes e as
+tentativas de PIN do professor (ficam fora de `/tenants`; as regras deixam o
+dono só apagá-los, nunca gravar), depois config e vitrine (exigem ser dono) e,
+por último, o próprio dono. Se parar no meio, o erro diz
 onde, e repetir termina o serviço. Coberto por `test/dados-smoke.jsx`, que
 confere cada passo contra as regras.

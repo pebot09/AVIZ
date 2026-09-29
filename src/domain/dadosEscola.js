@@ -10,8 +10,10 @@ import { paths } from '../lib/paths.js';
 export const FORMATO_EXPORTACAO = 'aviz-exportacao';
 export const VERSAO_EXPORTACAO = 1;
 
-// Tudo o que a escola tem no AVIZ, num arquivo só e legível. Os backups
-// automáticos ficam de fora: são cópias antigas do mesmo `dados`.
+// Tudo o que a escola tem no AVIZ, num arquivo só e legível. Ficam de fora:
+// os backups automáticos (cópias antigas do mesmo `dados`), os hashes de PIN
+// (credencial, não dado da escola) e as tentativas de PIN (registro de
+// segurança do Worker).
 export function montarExportacao({ tenant, pub, config, state, members, snapshots }, agora = Date.now()) {
   const dados = { ...(state || {}) };
   delete dados._updatedAt; // controle interno de gravação, não é dado da escola
@@ -39,7 +41,8 @@ export function nomeArquivoExportacao(tenant, agora = Date.now()) {
 //   1. os outros membros primeiro — assim ninguém mais consegue gravar no
 //      `state` enquanto ele é apagado (e recriar a escola pela metade);
 //   2. estado, fotos e backups (qualquer membro pode; o dono ainda é membro);
-//   3. config e vitrine pública (exigem ser dono — o dono ainda é);
+//   3. hashes de PIN e tentativas de PIN (com IPs), que vivem fora de
+//      /tenants; config e vitrine pública (exigem ser dono — o dono ainda é);
 //   4. o próprio dono por último: depois disso ele não escreve mais nada.
 // `/billing` não entra: só o operador mexe lá, com o Admin SDK.
 export function planoExclusao(tid, uidsMembros, uidDono) {
@@ -49,6 +52,8 @@ export function planoExclusao(tid, uidsMembros, uidDono) {
     paths.state(tid),
     paths.snapshots(tid),
     paths.backups(tid),
+    paths.pinsProfessor(tid),
+    paths.pinTentativas(tid),
     paths.config(tid),
     paths.tenantPublic(tid),
     paths.member(tid, uidDono),

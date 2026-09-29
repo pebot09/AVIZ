@@ -28,6 +28,16 @@
         }
       }
     },
+    "pinsProfessor": {
+      "$tid": {
+        ".write": "auth != null && !newData.exists() && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
+      }
+    },
+    "pinTentativas": {
+      "$tid": {
+        ".write": "auth != null && !newData.exists() && root.child('tenants/' + $tid + '/members/' + auth.uid + '/role').val() == 'owner'"
+      }
+    },
     "billing": {
       ".read": false,
       ".write": false

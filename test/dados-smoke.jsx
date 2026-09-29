@@ -51,6 +51,8 @@ function semear() {
     fake.semearServidor(paths.snapshots(tid), { s1: { label: 'foto' } });
     fake.semearServidor(paths.backups(tid), { 1: { ts: 1, dados: STATE } });
     fake.semearServidor(paths.billing(tid), { status: 'ativo' });
+    fake.semearServidor(paths.pinsProfessor(tid), { [PROF]: { hash: 'h', sal: 's' } });
+    fake.semearServidor(paths.pinTentativas(tid), { '1_2_3_4': { n: 2 } });
   }
 }
 
@@ -63,6 +65,7 @@ function donoPodeRemover(caminho, tid, uid) {
   const ehDono = ehMembro && members[uid].role === 'owner';
   if (caminho === paths.state(tid) || caminho === paths.snapshots(tid) || caminho === paths.backups(tid)) return ehMembro;
   if (caminho === paths.config(tid) || caminho === paths.tenantPublic(tid)) return ehDono;
+  if (caminho === paths.pinsProfessor(tid) || caminho === paths.pinTentativas(tid)) return ehDono; // só apagar
   if (caminho.startsWith(paths.members(tid) + '/')) return ehDono;
   return false; // qualquer outro caminho (o $tid inteiro, /billing) não tem .write para cliente
 }
@@ -83,6 +86,7 @@ async function main() {
     checar('exportação traz o resumo', exp.resumo.alunos === 2 && exp.resumo.faltas === 1, JSON.stringify(exp.resumo));
     checar('exportação não mistura outra escola', !JSON.stringify(exp).includes('Zeca'));
     checar('exportação não traz cobrança', !JSON.stringify(exp).includes('ativo'));
+    checar('exportação não traz hash de PIN nem tentativas', !/"hash"|1_2_3_4/.test(JSON.stringify(exp)));
     checar('exportação vira JSON', JSON.parse(JSON.stringify(exp)).escola === TID);
     checar('nome do arquivo tem escola e data', nomeArquivoExportacao(TID, agora) === 'aviz-escola-a-2026-09-29.json');
     const vazia = montarExportacao({ tenant: 'nova' });
@@ -120,15 +124,16 @@ async function main() {
   {
     semear();
     await excluirEscola(TID, DONO);
-    const sobrou = [paths.tenantPublic(TID), paths.config(TID), paths.state(TID), paths.snapshots(TID), paths.backups(TID)]
+    const sobrou = [paths.tenantPublic(TID), paths.config(TID), paths.state(TID), paths.snapshots(TID), paths.backups(TID), paths.pinsProfessor(TID), paths.pinTentativas(TID)]
       .filter((c) => fake.lerServidor(c) != null);
-    checar('apaga vitrine, config, estado, fotos e backups', sobrou.length === 0, sobrou.join(', '));
+    checar('apaga vitrine, config, estado, fotos, backups e PINs', sobrou.length === 0, sobrou.join(', '));
     const equipe = fake.lerServidor(paths.members(TID)) || {};
     checar('apaga a equipe inteira', Object.keys(equipe).length === 0, Object.keys(equipe).join(','));
     checar('outra escola fica intacta',
       fake.lerServidor(paths.state(OUTRA)).turmas[0].alunos[0] === 'Zeca'
       && Object.keys(fake.lerServidor(paths.members(OUTRA))).length === 2
-      && fake.lerServidor(paths.backups(OUTRA)) != null);
+      && fake.lerServidor(paths.backups(OUTRA)) != null
+      && fake.lerServidor(paths.pinsProfessor(OUTRA)) != null && fake.lerServidor(paths.pinTentativas(OUTRA)) != null);
     checar('cobrança não é tocada pelo cliente', fake.lerServidor(paths.billing(TID)).status === 'ativo');
   }
 
