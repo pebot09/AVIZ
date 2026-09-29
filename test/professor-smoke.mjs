@@ -187,6 +187,13 @@ const corpoDe = async (r) => JSON.parse(await r.text());
   r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '739184' }, '8.8.8.8'));
   checar('removido não entra mais', r.status === 403);
 
+  // Escola inexistente ou excluída: nada é gravado
+  r = await h(post({ op: 'entrar', e: 'apagada', id: idAna, pin: '000001' }, '6.6.6.6'));
+  checar('entrar em escola inexistente = 403', r.status === 403);
+  checar('entrar em escola inexistente não grava tentativas', !deps.banco.pinTentativas.apagada && !deps.banco.tenants.apagada);
+  r = await h(post({ op: 'salvar', e: 'apagada', idToken: TOKEN_DONO, nome: 'Zé', pin: '739184' }));
+  checar('salvar em escola inexistente = 403 e não grava', r.status === 403 && !deps.banco.tenants.apagada && !deps.banco.pinsProfessor.apagada);
+
   // Encanamento
   checar('GET = 405', (await h({ method: 'GET', headers: ip('1') })).status === 405);
   checar('escola inválida = 400', (await h(post({ op: 'listar', e: 'Escola!' }))).status === 400);

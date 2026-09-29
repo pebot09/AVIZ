@@ -64,6 +64,11 @@ export function criarHandlerProfessor(deps) {
     },
 
     async entrar(tid, corpo, request) {
+      // Escola sem membros não existe (ou foi excluída): responde igual a PIN
+      // errado e NÃO grava nada. Sem isso, o registro de tentativas recriaria
+      // um nó para uma escola apagada — ou para qualquer slug inventado.
+      const membros = await deps.lerMembros(tid);
+      if (!membros || !Object.keys(membros).length) return json({ erro: 'PIN incorreto.' }, 403);
       const chave = await chaveDoIp(request.headers && request.headers.get && request.headers.get('CF-Connecting-IP'));
       const t = await deps.lerTentativa(tid, chave);
       if (estaBloqueado(t, agora())) {
@@ -73,8 +78,8 @@ export function criarHandlerProfessor(deps) {
       const pin = corpo.pin;
       let ok = false;
       if (ehUidProfessor(id) && pinValido(pin)) {
-        const [membros, registro] = await Promise.all([deps.lerMembros(tid), deps.lerPin(tid, id)]);
-        const m = membros && membros[id];
+        const registro = await deps.lerPin(tid, id);
+        const m = membros[id];
         ok = !!(m && m.role === 'professor' && await conferePin(pin, registro));
       }
       if (!ok) {
