@@ -44,6 +44,12 @@ export function lembrarTenant(slug) {
   try { localStorage.setItem(ULTIMO_KEY, slug); } catch { /* navegador sem storage */ }
 }
 
+// Esquece a escola lembrada (ex.: depois de excluí-la), para o navegador não
+// voltar sozinho para um endereço que não existe mais.
+export function esquecerTenant(slug) {
+  try { if (localStorage.getItem(ULTIMO_KEY) === slug) localStorage.removeItem(ULTIMO_KEY); } catch { /* ignore */ }
+}
+
 export function ultimoTenant() {
   try { return localStorage.getItem(ULTIMO_KEY) || null; } catch { return null; }
 }

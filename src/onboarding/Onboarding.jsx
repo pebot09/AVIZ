@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
 import { slugify, slugDisponivel, slugDisponivelAuto, provisionTenant } from '../lib/provision.js';
 import { sendLoginLink } from '../lib/auth.js';
+import { VERSAO_TEXTOS } from '../legal/operador.js';
+import { LINK_TERMOS, LINK_PRIVACIDADE } from '../legal/rota.js';
 
 const VOC_ALUNO = [
   { value: 'aluno', label: 'aluno', plural: 'alunos' },
@@ -60,6 +62,7 @@ export default function Onboarding({ user }) {
   const [saibaMais, setSaibaMais] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [duplicado, setDuplicado] = useState(null); // endereço já usado, aguardando decisão
+  const [aceito, setAceito] = useState(false); // Termos + Privacidade (PLANTA, seção 7)
   const set = (patch) => setR((prev) => ({ ...prev, ...patch }));
 
   const A = r.vAluno || 'aluno', As = plural(r.vAluno, VOC_ALUNO);
@@ -128,11 +131,15 @@ export default function Onboarding({ user }) {
         feriasLimiteAno: r.feriasCredito ? r.feriasLimiteAno : null,
       },
       criadoEm: new Date().toISOString(),
+      // Qual versão dos Termos e da Política a escola aceitou, e quando.
+      aceite: { versao: VERSAO_TEXTOS, em: new Date().toISOString() },
     };
   }
 
   async function finalizar(confirmandoDuplicado = false) {
-    setErro(null); setSalvando(true);
+    setErro(null);
+    if (!aceito) { setErro('Para criar o app, aceite os Termos de Uso e a Política de Privacidade.'); return; }
+    setSalvando(true);
     try {
       const base = slugify(r.nomeEscola);
       if (!base) throw new Error('Nome do espaço inválido.');
@@ -359,6 +366,14 @@ export default function Onboarding({ user }) {
             {!user && (
               <Campo label="Seu e-mail (para entrar e receber o acesso)"><TextInput value={email} onChange={setEmail} placeholder="voce@email.com" /></Campo>
             )}
+            <label className="flex items-start gap-2 text-sm text-gray-600 mt-4">
+              <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} className="mt-0.5 rounded" />
+              <span>
+                Li e aceito os <a href={LINK_TERMOS} target="_blank" rel="noreferrer" className="text-blue-600 underline">Termos de Uso</a> e
+                a <a href={LINK_PRIVACIDADE} target="_blank" rel="noreferrer" className="text-blue-600 underline">Política de Privacidade</a>,
+                e declaro que posso cadastrar os nomes que vou inserir.
+              </span>
+            </label>
           </Passo>
         )}
       </div>
@@ -370,7 +385,7 @@ export default function Onboarding({ user }) {
         {/* A arrow importa: onClick={finalizar} passaria o evento do clique
             como confirmandoDuplicado, pulando o aviso de endereço repetido. */}
         {ehUltimo ? (
-          <button onClick={() => finalizar()} disabled={salvando || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
+          <button onClick={() => finalizar()} disabled={salvando || !aceito || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
             {salvando ? 'Criando…' : 'Criar meu app'}
           </button>
         ) : (
