@@ -21,6 +21,8 @@ export default function EscolaApp({ tenant, user, membro }) {
   const config = useConfig(tenant);
   // Autor do log = nome do membro (não o e-mail), para o histórico ficar limpo.
   const autor = (membro && membro.nome) || user.email;
+  // Regras, equipe e identidade são do dono; o professor (PIN) só opera o dia a dia.
+  const ehDono = (membro && membro.role) === 'owner';
   const { state, dispatch, erro } = useTenantStore(tenant, autor, config);
   const [pub, setPub] = useState(null);
   const [aba, setAba] = useState('Turmas');
@@ -55,9 +57,9 @@ export default function EscolaApp({ tenant, user, membro }) {
               <h1 className="text-2xl font-bold text-gray-800 leading-tight">{nomeEscola}</h1>
             </div>
             <div className="flex items-center gap-3 mt-1">
-              <button onClick={() => setConfigAberto(true)} className="text-gray-400 hover:text-gray-600 text-lg" title="Configurações">⚙</button>
+              {ehDono && <button onClick={() => setConfigAberto(true)} className="text-gray-400 hover:text-gray-600 text-lg" title="Configurações">⚙</button>}
               {/* Sair pede confirmação: era um clique só, fácil de acertar sem
-                  querer, e voltar exige o link mágico por e-mail. */}
+                  querer, e voltar exige o link mágico por e-mail (ou o PIN). */}
               <button onClick={() => setConfirmarSair(true)} className="text-gray-300 hover:text-gray-500 text-xs" title="Sair da conta">sair</button>
             </div>
           </div>
@@ -86,7 +88,9 @@ export default function EscolaApp({ tenant, user, membro }) {
       {confirmarSair && (
         <ConfirmModal
           title="Sair da conta?" danger
-          message={`Você vai precisar do link de acesso por e-mail para entrar de novo em ${nomeEscola}. Os dados da escola não são apagados.`}
+          message={ehDono
+            ? `Você vai precisar do link de acesso por e-mail para entrar de novo em ${nomeEscola}. Os dados da escola não são apagados.`
+            : `Para entrar de novo em ${nomeEscola}, escolha seu nome e digite seu PIN. Os dados da escola não são apagados.`}
           confirmLabel="Sair" onConfirm={() => logout()} onCancel={() => setConfirmarSair(false)}
         />
       )}
@@ -98,10 +102,10 @@ export default function EscolaApp({ tenant, user, membro }) {
       ) : aba === 'Faltas & Reposições' ? (
         <FaltasReposicoesTab state={state} dispatch={dispatch} vocab={vocab} config={config} />
       ) : (
-        <PainelTab state={state} dispatch={dispatch} vocab={vocab} config={config} podeEditarLog={(membro && membro.role) === 'owner'} />
+        <PainelTab state={state} dispatch={dispatch} vocab={vocab} config={config} podeEditarLog={ehDono} />
       )}
 
-      {configAberto && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
+      {configAberto && ehDono && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
     </div>
   );
 }

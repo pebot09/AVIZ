@@ -19,6 +19,8 @@ import GerarLinkModal from '../src/components/GerarLinkModal.jsx';
 import AlunoApp from '../src/components/aluno/AlunoApp.jsx';
 import RegrasModal from '../src/components/aluno/RegrasModal.jsx';
 import { fatiaAluno, vagasParaAluno } from '../src/domain/fatiaAluno.js';
+import { EquipeView } from '../src/components/EquipeSec.jsx';
+import { LoginPin } from '../src/App.jsx';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -129,6 +131,12 @@ if (!vagasParaAluno(fatiaBia).length) { console.log('  ERRO fixture sem vaga par
 casos.push(['AlunoApp', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
 casos.push(['AlunoApp (ocupado+erro)', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado erro="Deu ruim" />]);
 casos.push(['AlunoApp (escola sem regras)', <AlunoApp fatia={fatiaBia} config={configMinimo} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
+// --- equipe e login por PIN ---
+const profs = [{ id: 'prof-aaaaaaaaaaaaaaaaaaaa', nome: 'Ana' }, { id: 'prof-bbbbbbbbbbbbbbbbbbbb', nome: 'Beto' }];
+casos.push(['EquipeView', <EquipeView tenant="t1" vocab={vocab} professores={profs} carregando={false} salvar={okAcao} remover={okAcao} onDone={noop} />]);
+casos.push(['EquipeView (vazia)', <EquipeView tenant="t1" vocab={vocab} professores={[]} carregando={false} salvar={okAcao} remover={okAcao} onDone={noop} />]);
+casos.push(['LoginPin', <LoginPin tenant="t1" inicial={profs} />]);
+casos.push(['LoginPin (sem equipe)', <LoginPin tenant="t1" inicial={[]} />]);
 casos.push(['RegrasModal', <RegrasModal config={config} vocab={vocab} onClose={noop} />]);
 casos.push(['RegrasModal (sem regras)', <RegrasModal config={configMinimo} vocab={vocab} onClose={noop} />]);
 
