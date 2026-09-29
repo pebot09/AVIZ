@@ -8,6 +8,8 @@ import { provisionTenant } from './lib/provision.js';
 import EscolaApp from './components/EscolaApp.jsx';
 import AlunoRoot from './components/aluno/AlunoRoot.jsx';
 import Onboarding from './onboarding/Onboarding.jsx';
+import PaginaLegal from './legal/PaginaLegal.jsx';
+import { paginaLegal, LINK_TERMOS, LINK_PRIVACIDADE } from './legal/rota.js';
 
 export default function App() {
   const noEndereco = resolveTenant();
@@ -24,6 +26,10 @@ export default function App() {
     completeLoginIfPresent().catch((e) => setErro(e.message));
     return watchAuth(setUser);
   }, []);
+
+  // Termos e Privacidade abrem para qualquer um, logado ou não.
+  const legal = paginaLegal();
+  if (legal) return <PaginaLegal qual={legal} />;
 
   // Link do aluno: precisa de escola + código. O link é gerado com os dois.
   if (accessCode) {
@@ -178,12 +184,15 @@ function Shell({ children }) {
         <div style={s.logo}>AVIZ</div>
         {children}
       </div>
+      <p style={s.rodape}>
+        <a href={LINK_TERMOS} style={s.rodapeLink}>Termos de Uso</a> · <a href={LINK_PRIVACIDADE} style={s.rodapeLink}>Privacidade</a>
+      </p>
     </main>
   );
 }
 
 const s = {
-  wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf9f7', padding: 24, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' },
+  wrap: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#faf9f7', padding: 24, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' },
   card: { background: '#fff', borderRadius: 16, padding: '28px 26px', boxShadow: '0 1px 3px rgba(0,0,0,.08)', maxWidth: 420, width: '100%' },
   logo: { fontSize: 22, letterSpacing: 2, color: '#1f2937', fontWeight: 700, marginBottom: 18 },
   h2: { margin: '0 0 6px', fontSize: 20, color: '#111827' },
@@ -197,5 +206,7 @@ const s = {
   err: { color: '#dc2626', fontSize: 13, marginTop: 10 },
   aviso: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14, marginTop: 12 },
   ok: { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 14, marginTop: 12 },
+  rodape: { fontSize: 12, color: '#9ca3af', marginTop: 14 },
+  rodapeLink: { color: '#9ca3af' },
   code: { background: '#f3f4f6', padding: '1px 6px', borderRadius: 4, fontSize: 12, wordBreak: 'break-all' },
 };

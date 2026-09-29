@@ -12,6 +12,7 @@ import {
 import { cap } from '../../domain/vocab.js';
 import ConfirmModal from '../ConfirmModal.jsx';
 import RegrasModal from './RegrasModal.jsx';
+import { LINK_PRIVACIDADE } from '../../legal/rota.js';
 
 // Tela do aluno — porte do AlunoView do Passarinho.
 //
@@ -532,7 +533,10 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
 
         {sucesso && <div className="bg-green-50 text-green-700 rounded-xl px-4 py-3 text-sm font-medium">{sucesso}</div>}
 
-        <div className="text-center text-xs text-gray-400 py-4">Qualquer coisa, fale com {nomeEscola} 💬</div>
+        <div className="text-center text-xs text-gray-400 py-4">
+          Qualquer coisa, fale com {nomeEscola} 💬
+          <div className="mt-2"><a href={LINK_PRIVACIDADE} target="_blank" rel="noreferrer" className="underline">Privacidade</a></div>
+        </div>
       </div>
 
       {/* ---- Modais ---- */}

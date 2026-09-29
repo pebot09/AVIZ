@@ -7,6 +7,7 @@
 # e abrem os acordeões e modais, que é onde esse tipo de erro se esconde.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+trap 'rm -f ./.render-smoke.cjs ./.store-smoke.cjs ./.dados-smoke.cjs' EXIT
 
 echo "── imports ──"
 node test/audit-imports.mjs
@@ -46,10 +47,19 @@ echo "── travas de perda de dados ──"
 node ./.store-smoke.cjs
 
 echo
+echo "── dados e LGPD (exportar, excluir, termos) ──"
+./node_modules/.bin/esbuild test/dados-smoke.jsx \
+  --bundle --platform=node --format=cjs --outfile=./.dados-smoke.cjs \
+  --loader:.jsx=jsx --jsx=automatic --log-level=error \
+  --alias:firebase/database=./test/fake-firebase.js \
+  --alias:firebase/app=./test/fake-firebase.js \
+  --alias:firebase/auth=./test/fake-firebase.js
+node ./.dados-smoke.cjs
+
+echo
 echo "── render ──"
 # O esbuild precisa rodar de dentro do projeto para resolver react/react-dom.
 ./node_modules/.bin/esbuild test/render-smoke.jsx \
   --bundle --platform=node --format=cjs --outfile=./.render-smoke.cjs \
   --loader:.jsx=jsx --jsx=automatic --log-level=error
-trap 'rm -f ./.render-smoke.cjs ./.store-smoke.cjs' EXIT
 node ./.render-smoke.cjs

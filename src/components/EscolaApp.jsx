@@ -101,7 +101,7 @@ export default function EscolaApp({ tenant, user, membro }) {
         <PainelTab state={state} dispatch={dispatch} vocab={vocab} config={config} podeEditarLog={(membro && membro.role) === 'owner'} />
       )}
 
-      {configAberto && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} />}
+      {configAberto && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} ehDono={(membro && membro.role) === 'owner'} uid={user.uid} />}
     </div>
   );
 }
