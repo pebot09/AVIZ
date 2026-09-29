@@ -1,16 +1,27 @@
 name: Deploy no Cloudflare
 
-# Sobe a versão nova sozinho toda vez que o código muda na branch de trabalho.
-# Não precisa mais rodar nada no terminal.
+# Produção só sai da branch main. O código chega na main por PR revisado
+# (o workflow "Checagem" roda os testes no PR antes). Branches de trabalho
+# nunca publicam.
 on:
   push:
     branches:
-      - claude/app-commercial-strategy-3rwewq
-  workflow_dispatch: {} # permite disparar o deploy na mão pela aba Actions
+      - main
+  workflow_dispatch: {} # permite disparar o deploy na mão pela aba Actions (só vale na main)
+
+# Um deploy de cada vez; um novo não cancela o que já está no meio.
+concurrency:
+  group: producao
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Barra o disparo manual a partir de outra branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Ambiente "production" no GitHub: dá para exigir aprovação antes de publicar
+    # em Settings → Environments → production.
+    environment: production
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
