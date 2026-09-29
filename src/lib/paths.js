@@ -8,6 +8,8 @@
 //   /tenants/{tid}/snapshots     "fotos" da lista salvas à mão pelo professor
 //   /tenants/{tid}/backups       backup automático do estado (anel das últimas N)
 //   /billing/{tid}               plano/status/vencimento — só super-admin
+//   /pinsProfessor/{tid}/{uid}   hash do PIN do professor — só o Worker (fora das regras)
+//   /pinTentativas/{tid}/{ip}    limite de tentativas de PIN — só o Worker
 
 export const paths = {
   tenantPublic: (tid) => `tenantsPublic/${tid}`,

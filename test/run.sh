@@ -32,6 +32,10 @@ echo "── autenticação (conta de serviço) ──"
 node test/auth-smoke.mjs
 
 echo
+echo "── login do professor por PIN ──"
+node test/professor-smoke.mjs
+
+echo
 echo "── roteamento de entrada ──"
 node test/rota-smoke.mjs
 

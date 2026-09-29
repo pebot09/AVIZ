@@ -5,6 +5,8 @@ import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, querEscolaNova } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
 import { provisionTenant } from './lib/provision.js';
+import { listarProfessores, entrarComPin } from './lib/professorApi.js';
+import { PIN_TAMANHO } from './domain/pin.js';
 import EscolaApp from './components/EscolaApp.jsx';
 import AlunoRoot from './components/aluno/AlunoRoot.jsx';
 import Onboarding from './onboarding/Onboarding.jsx';
@@ -62,7 +64,80 @@ function Entrada() {
   );
 }
 
+// Duas portas: o professor entra com nome + PIN; o responsável, por link
+// mágico no e-mail. Professor primeiro — é quem abre o app todo dia.
 function Login({ tenant, erro }) {
+  const [modo, setModo] = useState('professor');
+  return (
+    <div>
+      <div style={s.abas}>
+        <button onClick={() => setModo('professor')} style={modo === 'professor' ? s.abaOn : s.aba}>Professor</button>
+        <button onClick={() => setModo('dono')} style={modo === 'dono' ? s.abaOn : s.aba}>Responsável</button>
+      </div>
+      {modo === 'professor' ? <LoginPin tenant={tenant} /> : <LoginEmail tenant={tenant} erro={erro} />}
+    </div>
+  );
+}
+
+export function LoginPin({ tenant, inicial }) {
+  const [professores, setProfessores] = useState(inicial); // undefined = carregando
+  const [id, setId] = useState('');
+  const [pin, setPin] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const [falha, setFalha] = useState(null);
+
+  useEffect(() => {
+    if (inicial) return;
+    let vivo = true;
+    listarProfessores(tenant)
+      .then((lista) => { if (vivo) setProfessores(lista); })
+      .catch((e) => { if (vivo) { setProfessores([]); setFalha(e.message); } });
+    return () => { vivo = false; };
+  }, [tenant, inicial]);
+
+  async function entrar(e) {
+    e.preventDefault();
+    setEntrando(true); setFalha(null);
+    // Sucesso: o watchAuth do App percebe a sessão nova e segue sozinho.
+    try { await entrarComPin(tenant, id, pin); }
+    catch (err) { setFalha(err.message); setPin(''); setEntrando(false); }
+  }
+
+  if (professores === undefined) return <p style={s.dim}>Carregando…</p>;
+
+  return (
+    <form onSubmit={entrar}>
+      <h2 style={s.h2}>Entrar — {tenant}</h2>
+      {professores.length === 0 ? (
+        <>
+          <p style={s.p}>Ainda não há professores com PIN nesta escola.</p>
+          <p style={s.dim}>O responsável cadastra a equipe em Configurações → Equipe.</p>
+          {falha && <p style={s.err}>{falha}</p>}
+        </>
+      ) : (
+        <>
+          <p style={s.p}>Escolha seu nome e digite seu PIN.</p>
+          <select value={id} onChange={(e) => setId(e.target.value)} required style={s.input} aria-label="Seu nome">
+            <option value="" disabled>Seu nome…</option>
+            {professores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </select>
+          <input
+            type="password" inputMode="numeric" autoComplete="current-password" required
+            placeholder={'PIN (' + PIN_TAMANHO + ' números)'} value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_TAMANHO))}
+            style={{ ...s.input, marginTop: 0 }} aria-label="PIN"
+          />
+          <button type="submit" disabled={entrando || !id || pin.length !== PIN_TAMANHO} style={s.btn}>
+            {entrando ? 'Entrando…' : 'Entrar'}
+          </button>
+          {falha && <p style={s.err}>{falha}</p>}
+        </>
+      )}
+    </form>
+  );
+}
+
+function LoginEmail({ tenant, erro }) {
   const [email, setEmail] = useState('');
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -139,10 +214,12 @@ function Dono({ tenant, user }) {
           <h2 style={s.h2}>{tenant}</h2>
           <button onClick={() => logout()} style={s.link}>sair</button>
         </div>
-        <p style={s.p}>Logado como <b>{user.email}</b>.</p>
+        {user.email && <p style={s.p}>Logado como <b>{user.email}</b>.</p>}
         <div style={s.aviso}>
           <p style={s.p}>Esta conta não tem acesso à escola <b>{tenant}</b>.</p>
-          <p style={s.dim}>Se você é o responsável, use o link de acesso enviado ao e-mail cadastrado.</p>
+          <p style={s.dim}>{user.email
+            ? 'Se você é o responsável, use o link de acesso enviado ao e-mail cadastrado.'
+            : 'Seu acesso de professor foi removido. Fale com o responsável pela escola.'}</p>
         </div>
       </Shell>
     );
@@ -195,6 +272,9 @@ const s = {
   btnSec: { width: '100%', padding: '10px 12px', fontSize: 15, fontWeight: 600, color: '#374151', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer' },
   link: { background: 'none', border: 'none', color: '#6b7280', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' },
   err: { color: '#dc2626', fontSize: 13, marginTop: 10 },
+  abas: { display: 'flex', gap: 4, background: '#f3f4f6', borderRadius: 10, padding: 4, marginBottom: 18 },
+  aba: { flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 600, color: '#6b7280', background: 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer' },
+  abaOn: { flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 600, color: '#111827', background: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,.08)' },
   aviso: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14, marginTop: 12 },
   ok: { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 14, marginTop: 12 },
   code: { background: '#f3f4f6', padding: '1px 6px', borderRadius: 4, fontSize: 12, wordBreak: 'break-all' },

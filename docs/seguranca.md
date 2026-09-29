@@ -37,10 +37,15 @@ O banco nasce **fechado** (o oposto do Passarinho, que era aberto).
 
 - **Dono** → Firebase Auth (link mágico) → acessa o banco direto. Funciona no
   plano grátis (Spark).
-- **Professor** (PIN) e **aluno** (link) → **não** têm conta Firebase, então as
-  regras os barram no acesso direto — de propósito. Eles passam pelo Worker da
-  Cloudflare (fatia-no-servidor), que valida a credencial e lê/grava o banco com
-  o segredo. Roda no plano grátis da Cloudflare — sem Blaze, sem cartão.
+- **Professor** (PIN) → o Worker confere o PIN e devolve um *custom token* do
+  Firebase; o navegador vira uma sessão normal do Firebase Auth com o `uid` do
+  professor, e as mesmas regras de membro valem para ele (lê a escola, grava
+  `state`/`snapshots`/`backups`; **não** grava `config` nem `members`). Detalhes
+  em "Login do professor por PIN", abaixo.
+- **Aluno** (link) → **não** tem conta Firebase, então as regras o barram no
+  acesso direto — de propósito. Ele passa pelo Worker da Cloudflare
+  (fatia-no-servidor), que valida a credencial e lê/grava o banco com a conta de
+  serviço. Roda no plano grátis da Cloudflare — sem Blaze, sem cartão.
 
 ## Backup automático
 
@@ -64,6 +69,37 @@ registro de membro é semeado fora das regras:
 2. cria-se manualmente `/tenants/{tid}/members/{uid} = { role: "owner", nome }`
    no console (ou via provisionamento com Admin SDK);
 3. a partir daí o dono tem acesso pleno.
+
+## Login do professor por PIN
+
+O professor não tem e-mail. Cada um é um membro (`/tenants/{tid}/members/{uid}`,
+`role: 'professor'`, `uid` com prefixo `prof-`) com um **PIN próprio** de 6
+números, definido pelo dono em Configurações → Equipe. Um PIN por professor (e
+não um da escola) para o log saber quem agiu e para o dono tirar alguém sem
+trocar a senha de todo mundo.
+
+Tudo passa por `/api/professor` no Worker (`worker/professor.js`):
+
+1. **Dono cria/edita/remove** professor mandando o ID token do Firebase dele. O
+   Worker valida o token no Identity Toolkit e confere `role == 'owner'` naquela
+   escola antes de gravar. Remover apaga o membro, e as regras barram na hora a
+   sessão que o professor tinha aberta.
+2. **O PIN nunca fica legível para cliente nenhum.** O Worker guarda só o hash
+   (PBKDF2-SHA256 com sal) em `/pinsProfessor/{tid}/{uid}`. Esse caminho não
+   aparece em `database.rules.json`, e o RTDB nega por padrão o que não é
+   liberado — só a conta de serviço alcança. (Guardar dentro de `/tenants/{tid}`
+   não serviria: a leitura de membro ali é herdada por todos os filhos.)
+3. **Entrar:** a tela de login lista os nomes dos professores; o professor
+   escolhe o seu e digita o PIN. PIN certo → custom token assinado com a chave
+   da conta de serviço → `signInWithCustomToken`.
+4. **Limite de tentativas:** 5 erros em 15 min bloqueiam aquele endereço IP
+   naquela escola até a janela passar (`/pinTentativas/{tid}/{hash do IP}`, também
+   fora das regras). Com 6 dígitos e PINs óbvios recusados (000000, 123456…),
+   o chute às cegas fica inviável.
+
+Precisa da `FIREBASE_SERVICE_ACCOUNT` (a mesma do aluno); o segredo legado não
+assina custom token. Nada a ligar no console do Firebase: login por custom token
+não depende de provedor habilitado. Coberto por `test/professor-smoke.mjs`.
 
 ## A fatia do aluno (Cloudflare Worker)
 

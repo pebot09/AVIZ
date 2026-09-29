@@ -52,6 +52,31 @@ export async function criarJwt(sa, nowMs = Date.now()) {
   return `${semAssinatura}.${base64urlDeBytes(assinatura)}`;
 }
 
+// Token de login personalizado do Firebase Auth (custom token), assinado com a
+// mesma chave da conta de serviço. O navegador entrega isto ao
+// signInWithCustomToken e passa a ter uma conta com esse `uid` — é assim que o
+// professor, que não tem e-mail, vira usuário do Firebase e as regras de membro
+// passam a valer para ele. Vale 1h para ser trocado; a sessão depois disso é
+// a do Firebase Auth, que se renova sozinha.
+export async function criarCustomToken(saJson, uid, claims, nowMs = Date.now()) {
+  const sa = typeof saJson === 'string' ? JSON.parse(saJson) : saJson;
+  const iat = Math.floor(nowMs / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const corpo = {
+    iss: sa.client_email,
+    sub: sa.client_email,
+    aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+    iat,
+    exp: iat + 3600,
+    uid,
+    ...(claims ? { claims } : {}),
+  };
+  const semAssinatura = `${base64urlDeString(JSON.stringify(header))}.${base64urlDeString(JSON.stringify(corpo))}`;
+  const chave = await importarChave(sa.private_key);
+  const assinatura = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', chave, new TextEncoder().encode(semAssinatura));
+  return `${semAssinatura}.${base64urlDeBytes(assinatura)}`;
+}
+
 // Token em cache no módulo — vale ~1h, então não reassinamos a cada requisição.
 let cache = { token: null, expira: 0 };
 
