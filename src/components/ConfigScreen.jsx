@@ -4,6 +4,7 @@ import { saveConfig, saveTenantPublic } from '../lib/store.js';
 import { feriadosNacionais } from '../domain/calendario.js';
 import { fmtBRFull, arr } from '../domain/helpers.js';
 import { Campo, TextInput, Select, SimNao, ArtigoNome, Slider } from '../onboarding/widgets.jsx';
+import EquipeSec from './EquipeSec.jsx';
 import DadosSec from './DadosSec.jsx';
 
 // Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
@@ -17,6 +18,7 @@ export default function ConfigScreen({ tenant, config, pub, dispatch, onClose, e
     { key: 'vagaextra', label: 'Vaga extra', desc: 'Abertura de vagas de reposição', comp: VagaExtraSec },
     { key: 'ferias', label: 'Férias', desc: 'Créditos e limites', comp: FeriasSec },
     { key: 'calendario', label: 'Calendário', desc: 'Recessos e feriados', comp: CalendarioSec },
+    { key: 'equipe', label: 'Equipe', desc: 'Quem entra por PIN', comp: EquipeSec },
     ...(ehDono ? [{ key: 'dados', label: 'Dados e privacidade', desc: 'Baixar ou excluir os dados da escola', comp: DadosSec }] : []),
   ];
   const atual = secoes.find((s) => s.key === sec);

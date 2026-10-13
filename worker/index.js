@@ -1,10 +1,12 @@
 // Cloudflare Worker do AVIZ.
 //
-// Faz duas coisas:
+// Faz três coisas:
 //   1. /api/aluno  → a fatia do aluno (o "servidorzinho" que antes seria uma
 //      Cloud Function). Aqui não precisa do plano Blaze do Firebase: o Worker
 //      já roda junto com o app na Cloudflare, no plano grátis.
-//   2. qualquer outro caminho → o app (arquivos estáticos em ./dist).
+//   2. /api/professor → login do professor por PIN e gestão da equipe pelo
+//      dono (worker/professor.js).
+//   3. qualquer outro caminho → o app (arquivos estáticos em ./dist).
 //
 // Por que existe: o aluno não tem conta no Firebase, e as regras barram quem
 // não tem conta — senão ele leria os dados de todos os outros alunos. O Worker
@@ -17,9 +19,13 @@
 
 import { reducer, normalizeState } from '../src/domain/reducer.js';
 import { fatiaAluno, acaoDoAluno } from '../src/domain/fatiaAluno.js';
-import { getAccessToken } from './firebaseAuth.js';
+import { getAccessToken, criarCustomToken } from './firebaseAuth.js';
+import { criarHandlerProfessor } from './professor.js';
 
 const DB = 'https://aviz-cb3c8-default-rtdb.firebaseio.com';
+// Chave pública do app web (a mesma de src/lib/firebase.js — não é segredo).
+// Usada só para validar o ID token do dono no Identity Toolkit.
+const API_KEY = 'AIzaSyBBJDhIgrar4PlhkqBfrJxttsjJgyQnO6E';
 const MAX_CORPO = 64 * 1024;
 
 const ehSlug = (s) => typeof s === 'string' && /^[a-z0-9-]{1,60}$/.test(s);
@@ -79,6 +85,47 @@ function depsFirebase(env) {
       if (res.status === 412) return { conflito: true };
       if (!res.ok) throw new Error(`firebase write ${res.status}`);
       return { conflito: false };
+    },
+  };
+}
+
+// Acesso ao banco para /api/professor. Os PINs (hash) ficam em
+// /pinsProfessor e as tentativas em /pinTentativas — caminhos que as regras
+// não liberam para cliente nenhum; só esta credencial de servidor alcança.
+function depsProfessor(env) {
+  async function ler(caminho) {
+    const auth = await paramAuth(env);
+    const r = await fetch(`${DB}/${caminho}.json?${auth}`);
+    if (!r.ok) throw new Error(`firebase read ${r.status}`);
+    return r.json();
+  }
+  async function patch(updates) {
+    const auth = await paramAuth(env);
+    const r = await fetch(`${DB}/.json?${auth}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!r.ok) throw new Error(`firebase write ${r.status}`);
+  }
+  return {
+    lerMembros: (tid) => ler(`tenants/${tid}/members`),
+    lerPin: (tid, uid) => ler(`pinsProfessor/${tid}/${uid}`),
+    lerTentativa: (tid, chave) => ler(`pinTentativas/${tid}/${chave}`),
+    gravarTentativa: (tid, chave, valor) => patch({ [`pinTentativas/${tid}/${chave}`]: valor }),
+    atualizar: patch,
+    criarToken: (uid, claims) => criarCustomToken(env.FIREBASE_SERVICE_ACCOUNT, uid, claims),
+    // O Identity Toolkit valida o ID token (assinatura, validade, revogação) e
+    // devolve o dono dele.
+    async uidDoIdToken(idToken) {
+      const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return (d && d.users && d.users[0] && d.users[0].localId) || null;
     },
   };
 }
@@ -145,6 +192,20 @@ export default {
         // Mostra o motivo real (ajuda a diagnosticar em produção; a mensagem é
         // curta e técnica, tipo "firebase read 401", sem dado sensível).
         console.error('[aluno]', e && e.stack ? e.stack : e);
+        return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
+      }
+    }
+
+    if (url.pathname === '/api/professor') {
+      // O login do professor assina um custom token: exige a conta de serviço
+      // (o segredo legado do banco não serve para isso).
+      if (!env.FIREBASE_SERVICE_ACCOUNT) {
+        return json({ erro: 'O acesso por PIN ainda não foi ativado nesta escola.' }, 503);
+      }
+      try {
+        return await criarHandlerProfessor(depsProfessor(env))(request);
+      } catch (e) {
+        console.error('[professor]', e && e.stack ? e.stack : e);
         return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
       }
     }
