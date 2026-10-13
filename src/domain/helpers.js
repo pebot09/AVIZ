@@ -101,6 +101,12 @@ export function getFaltaExpiry(falta, config) {
   d.setDate(d.getDate() + dias);
   return dateToStr(d);
 }
+// Falta pendente cujo prazo de reposição já venceu (validadeFaltaDias). O
+// CLEANUP a expira (remove, registra na estatística e avisa no log) e a fatia
+// do aluno não a mostra. Só vale para pendente; 0/sem validade = nunca expira.
+export function faltaExpirada(falta, config, hoje) {
+  return !!falta && falta.status === 'pendente' && getFaltaExpiry(falta, config) < hoje;
+}
 
 export function getMesNome(mesAno) {
   const [, m] = mesAno.split('-').map(Number);
