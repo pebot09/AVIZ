@@ -17,6 +17,10 @@ permissions:
 
 jobs:
   testes:
+    # O nome do job vira o nome da checagem no GitHub. A regra da main exige
+    # uma checagem chamada "Checagem"; sem este nome, ela se chamaria "testes"
+    # e o merge ficaria esperando para sempre.
+    name: Checagem
     runs-on: ubuntu-latest
     steps:
       - name: Baixar o código
