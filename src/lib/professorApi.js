@@ -51,6 +51,11 @@ export async function salvarProfessor(tenant, { id, nome, pin }) {
   return chamar(corpo);
 }
 
+// O dono cria (ou troca) o próprio PIN. Entra na mesma conta dele, como dono.
+export async function salvarMeuPin(tenant, pin) {
+  return chamar({ op: 'salvar', e: tenant, idToken: await idTokenDoDono(), proprio: true, pin });
+}
+
 export async function removerProfessor(tenant, id) {
   return chamar({ op: 'remover', e: tenant, idToken: await idTokenDoDono(), id });
 }

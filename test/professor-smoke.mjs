@@ -187,6 +187,29 @@ const corpoDe = async (r) => JSON.parse(await r.text());
   r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '739184' }, '8.8.8.8'));
   checar('removido não entra mais', r.status === 403);
 
+  // PIN do próprio dono
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, proprio: true, pin: '111111' }));
+  checar('PIN fraco do dono é recusado', r.status === 400);
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: 'id-token-prof', proprio: true, pin: '582047' }));
+  checar('quem não é dono não cria PIN de dono', r.status === 403);
+  r = await h(post({ op: 'listar', e: 'escola' }));
+  checar('dono sem PIN não aparece no login', !(await corpoDe(r)).professores.some((p) => p.id === DONO));
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, proprio: true, pin: '582047' }));
+  checar('dono cria o próprio PIN', r.status === 200);
+  const membroDono = deps.banco.tenants.escola.members[DONO];
+  checar('dono continua dono, com o mesmo nome', membroDono.role === 'owner' && membroDono.nome === 'Pedro' && membroDono.temPin === true);
+  checar('PIN do dono guardado só como hash', !!deps.banco.pinsProfessor.escola[DONO].hash && !JSON.stringify(deps.banco).includes('582047'));
+  r = await h(post({ op: 'listar', e: 'escola' }));
+  checar('dono com PIN aparece no login', (await corpoDe(r)).professores.some((p) => p.id === DONO && p.nome === 'Pedro'));
+  r = await h(post({ op: 'entrar', e: 'escola', id: DONO, pin: '582047' }, '4.4.4.4'));
+  checar('dono entra com o PIN como dono', r.status === 200 && (await corpoDe(r)).token === `token:${DONO}:owner`);
+  r = await h(post({ op: 'entrar', e: 'escola', id: DONO, pin: '582048' }, '4.4.4.4'));
+  checar('PIN errado do dono = 403', r.status === 403);
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'pedro', pin: '739184' }));
+  checar('professor não pode ter o nome do dono', r.status === 409);
+  r = await h(post({ op: 'entrar', e: 'escola', id: '../billing', pin: '582047' }, '4.4.4.4'));
+  checar('id com caminho é recusado', r.status === 403);
+
   // Escola inexistente ou excluída: nada é gravado
   r = await h(post({ op: 'entrar', e: 'apagada', id: idAna, pin: '000001' }, '6.6.6.6'));
   checar('entrar em escola inexistente = 403', r.status === 403);

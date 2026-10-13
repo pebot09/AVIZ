@@ -89,7 +89,7 @@ export default function EscolaApp({ tenant, user, membro }) {
         <ConfirmModal
           title="Sair da conta?" danger
           message={ehDono
-            ? `Você vai precisar do link de acesso por e-mail para entrar de novo em ${nomeEscola}. Os dados da escola não são apagados.`
+            ? `Para entrar de novo em ${nomeEscola}, use ${membro && membro.temPin ? 'seu PIN ou ' : ''}o link de acesso por e-mail. Os dados da escola não são apagados.`
             : `Para entrar de novo em ${nomeEscola}, escolha seu nome e digite seu PIN. Os dados da escola não são apagados.`}
           confirmLabel="Sair" onConfirm={() => logout()} onCancel={() => setConfirmarSair(false)}
         />

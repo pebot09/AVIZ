@@ -64,15 +64,16 @@ function Entrada() {
   );
 }
 
-// Duas portas: o professor entra com nome + PIN; o responsável, por link
-// mágico no e-mail. Professor primeiro — é quem abre o app todo dia.
+// Duas portas: a equipe (professores e o dono que criou o próprio PIN) entra
+// com nome + PIN; o link mágico no e-mail fica para o responsável. PIN
+// primeiro: é o que se usa todo dia.
 function Login({ tenant, erro }) {
   const [modo, setModo] = useState('professor');
   return (
     <div>
       <div style={s.abas}>
-        <button onClick={() => setModo('professor')} style={modo === 'professor' ? s.abaOn : s.aba}>Professor</button>
-        <button onClick={() => setModo('dono')} style={modo === 'dono' ? s.abaOn : s.aba}>Responsável</button>
+        <button onClick={() => setModo('professor')} style={modo === 'professor' ? s.abaOn : s.aba}>Entrar com PIN</button>
+        <button onClick={() => setModo('dono')} style={modo === 'dono' ? s.abaOn : s.aba}>Link por e-mail</button>
       </div>
       {modo === 'professor' ? <LoginPin tenant={tenant} /> : <LoginEmail tenant={tenant} erro={erro} />}
     </div>
@@ -110,8 +111,8 @@ export function LoginPin({ tenant, inicial }) {
       <h2 style={s.h2}>Entrar — {tenant}</h2>
       {professores.length === 0 ? (
         <>
-          <p style={s.p}>Ainda não há professores com PIN nesta escola.</p>
-          <p style={s.dim}>O responsável cadastra a equipe em Configurações → Equipe.</p>
+          <p style={s.p}>Ainda ninguém tem PIN nesta escola.</p>
+          <p style={s.dim}>O responsável entra pelo link por e-mail e cria os PINs em Configurações → Equipe.</p>
           {falha && <p style={s.err}>{falha}</p>}
         </>
       ) : (

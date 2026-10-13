@@ -133,7 +133,8 @@ casos.push(['AlunoApp (ocupado+erro)', <AlunoApp fatia={fatiaBia} config={config
 casos.push(['AlunoApp (escola sem regras)', <AlunoApp fatia={fatiaBia} config={configMinimo} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
 // --- equipe e login por PIN ---
 const profs = [{ id: 'prof-aaaaaaaaaaaaaaaaaaaa', nome: 'Ana' }, { id: 'prof-bbbbbbbbbbbbbbbbbbbb', nome: 'Beto' }];
-casos.push(['EquipeView', <EquipeView tenant="t1" vocab={vocab} professores={profs} carregando={false} salvar={okAcao} remover={okAcao} onDone={noop} />]);
+casos.push(['EquipeView', <EquipeView tenant="t1" vocab={vocab} professores={profs} carregando={false} meuPin salvarMeuPin={okAcao} salvar={okAcao} remover={okAcao} onDone={noop} />]);
+casos.push(['EquipeView (dono sem PIN)', <EquipeView tenant="t1" vocab={vocab} professores={profs} carregando={false} meuPin={false} salvarMeuPin={okAcao} salvar={okAcao} remover={okAcao} onDone={noop} />]);
 casos.push(['EquipeView (vazia)', <EquipeView tenant="t1" vocab={vocab} professores={[]} carregando={false} salvar={okAcao} remover={okAcao} onDone={noop} />]);
 casos.push(['LoginPin', <LoginPin tenant="t1" inicial={profs} />]);
 casos.push(['LoginPin (sem equipe)', <LoginPin tenant="t1" inicial={[]} />]);

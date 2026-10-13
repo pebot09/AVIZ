@@ -7,10 +7,15 @@
 // para ele — sem mexer em database.rules.json.
 //
 // Operações (sempre POST, corpo JSON com `op` e `e` = escola):
-//   listar   público  → nomes dos professores com PIN (para a tela de login)
+//   listar   público  → nomes de quem tem PIN (para a tela de login)
 //   entrar   público  → { id, pin } → { token }        (com limite de tentativas)
 //   salvar   dono     → { idToken, id?, nome, pin? }   cria ou edita professor
+//            dono     → { idToken, proprio: true, pin } define o PIN do próprio dono
 //   remover  dono     → { idToken, id }
+//
+// O dono também pode ter PIN: ele mesmo cria o dele, e cria o de cada
+// professor. O PIN do dono entra na MESMA conta dele (a do link mágico), então
+// ele continua dono; o link por e-mail segue valendo para quando esquecer o PIN.
 //
 // "dono" = quem manda o ID token do Firebase de um membro com role 'owner'
 // naquela escola. O Worker nunca confia no corpo para saber quem é quem.
@@ -39,8 +44,17 @@ async function chaveDoIp(ip) {
   return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// uid do Firebase Auth: o do dono vem do Auth (28 caracteres), o do professor
+// é gerado aqui (prof-…). Só conferimos que é seguro como pedaço de caminho.
+const ehUid = (s) => typeof s === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(s);
+
 const professoresDe = (membros) => Object.entries(membros || {})
   .filter(([uid, m]) => m && m.role === 'professor' && ehUidProfessor(uid));
+
+// Quem pode entrar por PIN: professores, e o dono depois que criou o dele.
+const podeEntrarComPin = (uid, m) => !!m && !!m.temPin
+  && ((m.role === 'professor' && ehUidProfessor(uid)) || (m.role === 'owner' && ehUid(uid)));
+const comPinDe = (membros) => Object.entries(membros || {}).filter(([uid, m]) => podeEntrarComPin(uid, m));
 
 export function criarHandlerProfessor(deps) {
   const agora = () => (deps.agora ? deps.agora() : Date.now());
@@ -56,9 +70,8 @@ export function criarHandlerProfessor(deps) {
   const ops = {
     async listar(tid) {
       const membros = await deps.lerMembros(tid);
-      const professores = professoresDe(membros)
-        .filter(([, m]) => m.temPin)
-        .map(([id, m]) => ({ id, nome: m.nome }))
+      const professores = comPinDe(membros)
+        .map(([id, m]) => ({ id, nome: m.nome || 'Responsável' }))
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
       return json({ professores });
     },
@@ -77,22 +90,32 @@ export function criarHandlerProfessor(deps) {
       const id = corpo.id;
       const pin = corpo.pin;
       let ok = false;
-      if (ehUidProfessor(id) && pinValido(pin)) {
-        const registro = await deps.lerPin(tid, id);
-        const m = membros[id];
-        ok = !!(m && m.role === 'professor' && await conferePin(pin, registro));
+      const m = ehUid(id) ? membros[id] : null;
+      if (podeEntrarComPin(id, m) && pinValido(pin)) {
+        ok = await conferePin(pin, await deps.lerPin(tid, id));
       }
       if (!ok) {
         await deps.gravarTentativa(tid, chave, registrarErro(t, agora()));
         return json({ erro: 'PIN incorreto.' }, 403);
       }
       if (t) await deps.gravarTentativa(tid, chave, null);
-      return json({ token: await deps.criarToken(id, { tid, role: 'professor' }) });
+      return json({ token: await deps.criarToken(id, { tid, role: m.role }) });
     },
 
     async salvar(tid, corpo) {
       const dono = await exigirDono(tid, corpo.idToken);
       if (!dono) return json({ erro: 'Só o responsável pela escola pode fazer isso.' }, 403);
+
+      // PIN do próprio dono: só o PIN muda; papel e nome ficam como estão.
+      if (corpo.proprio === true) {
+        const problema = problemaDoPin(corpo.pin);
+        if (problema) return json({ erro: problema }, 400);
+        await deps.atualizar({
+          [`tenants/${tid}/members/${dono.uid}/temPin`]: true,
+          [`pinsProfessor/${tid}/${dono.uid}`]: await hashPin(corpo.pin),
+        });
+        return json({ id: dono.uid });
+      }
 
       const novo = !corpo.id;
       const id = novo ? novoUidProfessor() : corpo.id;
@@ -104,7 +127,7 @@ export function criarHandlerProfessor(deps) {
       const nome = corpo.nome === undefined && atual ? atual.nome : corpo.nome;
       if (!nomeProfessorValido(nome)) return json({ erro: 'Informe o nome (até 40 letras).' }, 400);
       const nomeLimpo = nome.trim();
-      const repetido = professoresDe(dono.membros)
+      const repetido = [...professoresDe(dono.membros), ...comPinDe(dono.membros)]
         .some(([uid, m]) => uid !== id && (m.nome || '').trim().toLowerCase() === nomeLimpo.toLowerCase());
       if (repetido) return json({ erro: 'Já existe alguém da equipe com esse nome.' }, 409);
 

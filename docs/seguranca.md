@@ -78,6 +78,11 @@ números, definido pelo dono em Configurações → Equipe. Um PIN por professor
 não um da escola) para o log saber quem agiu e para o dono tirar alguém sem
 trocar a senha de todo mundo.
 
+O **dono também cria o próprio PIN** (Equipe → Seu PIN). Esse PIN entra na
+mesma conta dele (o mesmo `uid` do link mágico), então ele continua dono; o link
+por e-mail segue valendo para quando esquecer o PIN. Por isso o PIN do dono vale
+tanto quanto o e-mail dele: mesmas regras de hash e de limite de tentativas.
+
 Tudo passa por `/api/professor` no Worker (`worker/professor.js`):
 
 1. **Dono cria/edita/remove** professor mandando o ID token do Firebase dele. O
