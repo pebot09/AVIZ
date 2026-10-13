@@ -1,12 +1,13 @@
 name: Checagem
 
-# Roda testes e build em todo PR (e em push nas branches de trabalho), sem
-# publicar nada e sem acesso aos segredos do Cloudflare.
+# Roda testes e build em todo PR (e em push nas outras branches de trabalho),
+# sem publicar nada e sem acesso aos segredos do Cloudflare.
 on:
   pull_request:
   push:
     branches-ignore:
       - main # a main já roda os testes no próprio deploy
+      - claude/app-commercial-strategy-3rwewq # esta já roda os testes no deploy
 
 concurrency:
   group: checagem-${{ github.ref }}
