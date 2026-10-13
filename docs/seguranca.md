@@ -90,9 +90,11 @@ Tudo passa por `/api/professor` no Worker (`worker/professor.js`):
    escola antes de gravar. Remover apaga o membro, e as regras barram na hora a
    sessão que o professor tinha aberta.
 2. **O PIN nunca fica legível para cliente nenhum.** O Worker guarda só o hash
-   (PBKDF2-SHA256 com sal) em `/pinsProfessor/{tid}/{uid}`. Esse caminho não
-   aparece em `database.rules.json`, e o RTDB nega por padrão o que não é
-   liberado — só a conta de serviço alcança. (Guardar dentro de `/tenants/{tid}`
+   (PBKDF2-SHA256 com sal) em `/pinsProfessor/{tid}/{uid}`. Nas regras, esse
+   caminho não tem leitura para ninguém, e o RTDB nega por padrão o que não é
+   liberado — só a conta de serviço lê e grava. A única exceção é o dono
+   **apagar** o nó inteiro ao excluir a escola (`!newData.exists()`), igual
+   para `/pinTentativas` (ver `docs/juridico.md`). (Guardar dentro de `/tenants/{tid}`
    não serviria: a leitura de membro ali é herdada por todos os filhos.)
 3. **Entrar:** a tela de login lista os nomes dos professores; o professor
    escolhe o seu e digita o PIN. PIN certo → custom token assinado com a chave

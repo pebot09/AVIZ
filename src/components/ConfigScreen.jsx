@@ -5,9 +5,10 @@ import { feriadosNacionais } from '../domain/calendario.js';
 import { fmtBRFull, arr } from '../domain/helpers.js';
 import { Campo, TextInput, Select, SimNao, ArtigoNome, Slider } from '../onboarding/widgets.jsx';
 import EquipeSec from './EquipeSec.jsx';
+import DadosSec from './DadosSec.jsx';
 
 // Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
-export default function ConfigScreen({ tenant, config, pub, dispatch, onClose }) {
+export default function ConfigScreen({ tenant, config, pub, dispatch, onClose, ehDono, uid }) {
   const [sec, setSec] = useState(null);
   const secoes = [
     { key: 'identidade', label: 'Identidade', desc: 'Nome e cor da escola', comp: IdentidadeSec },
@@ -18,6 +19,7 @@ export default function ConfigScreen({ tenant, config, pub, dispatch, onClose })
     { key: 'ferias', label: 'Férias', desc: 'Créditos e limites', comp: FeriasSec },
     { key: 'calendario', label: 'Calendário', desc: 'Recessos e feriados', comp: CalendarioSec },
     { key: 'equipe', label: 'Equipe', desc: 'Quem entra por PIN', comp: EquipeSec },
+    ...(ehDono ? [{ key: 'dados', label: 'Dados e privacidade', desc: 'Baixar ou excluir os dados da escola', comp: DadosSec }] : []),
   ];
   const atual = secoes.find((s) => s.key === sec);
 
@@ -38,7 +40,7 @@ export default function ConfigScreen({ tenant, config, pub, dispatch, onClose })
       ) : (
         <div>
           <button onClick={() => setSec(null)} className="text-sm text-blue-600 hover:text-blue-800 mb-3">← Voltar</button>
-          <atual.comp tenant={tenant} config={config} pub={pub} dispatch={dispatch} onDone={() => setSec(null)} />
+          <atual.comp tenant={tenant} uid={uid} config={config} pub={pub} dispatch={dispatch} onDone={() => setSec(null)} />
         </div>
       )}
     </Modal>

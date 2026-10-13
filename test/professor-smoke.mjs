@@ -226,8 +226,18 @@ const corpoDe = async (r) => JSON.parse(await r.text());
 // ---- Regras do Firebase: nenhum cliente lê PIN nem tentativas ----
 {
   const regras = JSON.parse(fs.readFileSync(new URL('../database.rules.json', import.meta.url), 'utf8')).rules;
-  checar('regras não liberam /pinsProfessor', !('pinsProfessor' in regras) && regras['.read'] !== true);
-  checar('regras não liberam /pinTentativas', !('pinTentativas' in regras));
+  // O único acesso de cliente permitido é o dono APAGAR o nó ao excluir a
+  // escola (ver docs/juridico.md): nada de leitura, nada de gravar valor.
+  const soApagar = (no) => {
+    if (!no) return true;
+    const txt = JSON.stringify(no);
+    const w = no.$tid && no.$tid['.write'];
+    return !/"\.read"/.test(txt) && Object.keys(no).every((k) => k === '$tid')
+      && Object.keys(no.$tid || {}).every((k) => k === '.write')
+      && (!w || (w.includes('!newData.exists()') && w.includes("== 'owner'")));
+  };
+  checar('regras não liberam /pinsProfessor', soApagar(regras.pinsProfessor) && regras['.read'] !== true);
+  checar('regras não liberam /pinTentativas', soApagar(regras.pinTentativas));
 }
 
 console.log(falhas ? `\n❌ ${falhas} falha(s) no login por PIN` : '\n✅ login por PIN ok');
