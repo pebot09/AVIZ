@@ -9,7 +9,7 @@
 // (onde a fatia é montada e as ações são validadas) e nos testes. A tela do
 // aluno consome só a fatia — nunca o estado da escola.
 
-import { arr, todayStr, turmaShortLabel, getTurmaLabel, TURMA_EXTRA_ID } from './helpers.js';
+import { arr, todayStr, turmaShortLabel, getTurmaLabel, faltaExpirada, TURMA_EXTRA_ID } from './helpers.js';
 import { getClassDatetime, getClassDatesInRange, turmaOcorreEm, isFeriado, isRecesso } from './calendario.js';
 import { reposicaoRights, ausenciaExpiry } from './reposicao.js';
 
@@ -45,7 +45,9 @@ export function fatiaAluno(state, config, acesso) {
       ...(minhasAusenciasIds.has(v.ausenciaId) ? { ausenciaId: v.ausenciaId } : {}),
     }));
 
-  const faltas = arr(state.faltas).filter(meuFiltro).map((f) => ({
+  // Falta pendente com prazo vencido não é mostrada (o CLEANUP do professor a
+  // remove e registra no log; aqui garantimos que o aluno não a veja antes).
+  const faltas = arr(state.faltas).filter((f) => meuFiltro(f) && !faltaExpirada(f, config, td)).map((f) => ({
     id: f.id, alunoNome: f.alunoNome, turmaId: f.turmaId, datas: arr(f.datas),
     status: f.status, semAntecedencia: !!f.semAntecedencia,
     reposicaoId: f.reposicaoId || null,

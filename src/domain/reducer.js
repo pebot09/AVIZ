@@ -2,7 +2,7 @@
 // Turmas e Alunos. Novas ações (faltas, reposições, ausências…) entram nas
 // próximas fatias, reaproveitando o código original.
 
-import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, fmtBRFull, todayStr, getMesNome, dateToStr, parseDate, TURMA_EXTRA_ID, faltasDoMes } from './helpers.js';
+import { genId, arr, getTurmaLabel, turmaShortLabel, EXTENSO, formatHorario, getFaltaEarliest, getFaltaExpiry, faltaExpirada, fmtBR, fmtBRFull, todayStr, getMesNome, dateToStr, parseDate, TURMA_EXTRA_ID, faltasDoMes } from './helpers.js';
 import { isFeriado, isRecesso, mesEhRecesso, getClassDatesInRange } from './calendario.js';
 import { computeVagasExtras, fmtDatesText, stripVagasCanceladas } from './reposicao.js';
 import { computeResumoDia } from './resumo.js';
@@ -518,11 +518,34 @@ export function reducer(state, action, config) {
     }
 
     case 'CLEANUP': {
-      // Recalcula vagas extras (roda no load; expiração entra em fatia futura).
-      const vagas = stripVagasCanceladas(computeVagasExtras(state.turmas, state.faltas, state.reposicoes, state.vagas, todayStr(), state.ausencias, config), state.aulasCanceladas);
-      const igual = vagas.length === state.vagas.length && vagas.every((v, i) => v.id === state.vagas[i].id);
+      const td = todayStr();
+      // Expira faltas pendentes cujo prazo de reposição já venceu (igual ao app
+      // original): tira da lista ativa, fecha a vaga aberta delas, registra na
+      // estatística e avisa no log. (Marcar reposição passada como realizada e
+      // limpar falta marcada já acontece no normalizeState.)
+      const expiradas = arr(state.faltas).filter((f) => faltaExpirada(f, config, td));
+      const expIds = new Set(expiradas.map((f) => f.id));
+      const faltas = expiradas.length ? state.faltas.filter((f) => !expIds.has(f.id)) : state.faltas;
+      const vagasBase = expiradas.length ? state.vagas.filter((v) => !(v.faltaId && expIds.has(v.faltaId))) : state.vagas;
+      // Recalcula vagas extras sobre a lista já sem as faltas expiradas.
+      const vagas = stripVagasCanceladas(computeVagasExtras(state.turmas, faltas, state.reposicoes, vagasBase, td, state.ausencias, config), state.aulasCanceladas);
+      const igual = !expiradas.length && vagas.length === state.vagas.length && vagas.every((v, i) => v.id === state.vagas[i].id);
       if (igual) return state; // nada mudou → não grava (evita churn no load)
-      next = { ...state, vagas };
+      next = { ...state, faltas, vagas };
+      if (expiradas.length) {
+        next.estatisticas = {
+          ...state.estatisticas,
+          faltasExpiradas: [
+            ...arr(state.estatisticas && state.estatisticas.faltasExpiradas),
+            ...expiradas.map((f) => ({ alunoNome: f.alunoNome, turmaId: f.turmaId, data: arr(f.datas)[0], expiradaEm: getFaltaExpiry(f, config) })),
+          ],
+        };
+        let log = state.log;
+        expiradas.forEach((f) => {
+          log = addLog(log, 'Sistema', `⏰ Expirou: falta pendente de ${f.alunoNome} (${getTurmaLabel(state.turmas, f.turmaId)}) — ${fmtBR(arr(f.datas)[0])}`, 'sistema');
+        });
+        next.log = log;
+      }
       break;
     }
 

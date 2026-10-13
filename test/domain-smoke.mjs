@@ -3,6 +3,7 @@ import { computeResumoDia } from '../src/domain/resumo.js';
 import { construirDados } from '../src/domain/painel.js';
 import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros } from '../src/domain/helpers.js';
 import { getNextOccurrences, horarioNaData, getClassDatetime, isDataBloqueada } from '../src/domain/calendario.js';
+import { fatiaAluno } from '../src/domain/fatiaAluno.js';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -182,6 +183,35 @@ if (dataResumo) {
   console.assert(ids.includes('fB'), 'falta com reposição futura devia ficar');
   console.assert(lim.reposicoes.find((r) => r.id === 'rA').realizada === true, 'reposição passada vira realizada');
   console.assert(lim.reposicoes.find((r) => r.id === 'rB').realizada !== true, 'reposição futura não é realizada');
+}
+
+// --- falta pendente expira depois do prazo e avisa no log (como no original) ---
+{
+  // validadeFaltaDias: 30. Falta pendente de ~40 dias atrás deve expirar; uma
+  // recente não. A falta "velha" sai da lista, entra na estatística e no log.
+  const d40 = (() => { const x = new Date(); x.setDate(x.getDate() - 40); return dateToStr(x); })();
+  const d5 = (() => { const x = new Date(); x.setDate(x.getDate() - 5); return dateToStr(x); })();
+  const bruto = {
+    turmas: [{ id: 'tq', diaSemana: 'quarta', hora: 9, minuto: 0, alunos: ['Rui'] }],
+    faltas: [
+      { id: 'velha', alunoNome: 'Rui', turmaId: 'tq', datas: [d40], status: 'pendente' },
+      { id: 'nova', alunoNome: 'Rui', turmaId: 'tq', datas: [d5], status: 'pendente' },
+    ],
+    vagas: [{ id: 'v-velha', turmaId: 'tq', data: d40, faltaId: 'velha' }],
+  };
+  let sx = normalizeState(bruto);
+  sx = reducer(sx, { type: 'CLEANUP' }, config, 'Ana');
+  const ids = sx.faltas.map((f) => f.id);
+  console.log('após CLEANUP → faltas:', JSON.stringify(ids), '| expiradas:', sx.estatisticas.faltasExpiradas.length, '| log[0]:', sx.log[0] && sx.log[0].descricao);
+  console.assert(!ids.includes('velha'), 'falta pendente vencida devia expirar');
+  console.assert(ids.includes('nova'), 'falta pendente dentro do prazo devia ficar');
+  console.assert(sx.estatisticas.faltasExpiradas.some((e) => e.alunoNome === 'Rui'), 'expiração devia entrar na estatística');
+  console.assert(sx.log.some((e) => e.origem === 'sistema' && /Expirou/.test(e.descricao)), 'expiração devia avisar no log');
+  console.assert(!sx.vagas.some((v) => v.faltaId === 'velha'), 'vaga da falta expirada devia fechar');
+  // a fatia do aluno não mostra a falta vencida nem antes do CLEANUP
+  const fatiaX = fatiaAluno(normalizeState(bruto), config, { alunoNome: 'Rui', turmaId: 'tq' });
+  console.assert(!fatiaX.faltas.some((f) => f.id === 'velha'), 'aluno não devia ver falta vencida');
+  console.assert(fatiaX.faltas.some((f) => f.id === 'nova'), 'aluno devia ver a falta no prazo');
 }
 
 console.log('\n✅ smoke test passou');
