@@ -10,6 +10,9 @@
 //   /billing/{tid}               plano/status/vencimento — só super-admin
 //   /pinsProfessor/{tid}/{uid}   hash do PIN do professor — só o Worker (fora das regras)
 //   /pinTentativas/{tid}/{ip}    limite de tentativas de PIN — só o Worker
+//   /escolasPendentes/{tid}      escola criada no onboarding, esperando o dono
+//                                entrar com o e-mail informado — só o Worker
+//   /limiteCriacao/{ip}          limite de escolas criadas por IP — só o Worker
 
 export const paths = {
   tenantPublic: (tid) => `tenantsPublic/${tid}`,

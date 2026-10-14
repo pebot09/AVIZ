@@ -3,8 +3,8 @@ import { ref, get } from 'firebase/database';
 import { db } from './lib/firebase.js';
 import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, querEscolaNova } from './lib/tenant.js';
-import { sendLoginLink, completeLoginIfPresent, watchAuth, logout } from './lib/auth.js';
-import { provisionTenant } from './lib/provision.js';
+import { sendLoginLink, completeLoginIfPresent, linkPedeEmail, watchAuth, logout } from './lib/auth.js';
+import { assumirEscola } from './lib/escolaApi.js';
 import { listarProfessores, entrarComPin } from './lib/professorApi.js';
 import { PIN_TAMANHO } from './domain/pin.js';
 import EscolaApp from './components/EscolaApp.jsx';
@@ -22,6 +22,7 @@ export default function App() {
 
   const [user, setUser] = useState(undefined); // undefined = carregando; null = deslogado
   const [erro, setErro] = useState(null);
+  const [pedeEmail, setPedeEmail] = useState(() => linkPedeEmail());
 
   useEffect(() => {
     // Fecha o login se caímos aqui vindos de um link mágico.
@@ -38,6 +39,7 @@ export default function App() {
     if (!tenant) return <Shell><LinkIncompleto /></Shell>;
     return <AlunoRoot tenant={tenant} codigo={accessCode} />;
   }
+  if (pedeEmail) return <Shell><ConfirmarEmail onPronto={() => setPedeEmail(false)} /></Shell>;
   if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
   // Criar escola é sempre um pedido explícito (?novo=1). Nunca o destino de
   // quem só abriu o app sem endereço — era assim que se criava uma escola
@@ -185,25 +187,23 @@ function LoginEmail({ tenant, erro }) {
 
 function Dono({ tenant, user }) {
   const [membro, setMembro] = useState(undefined);
+  const [falhaAssumir, setFalhaAssumir] = useState(null);
 
   useEffect(() => {
     let vivo = true;
     async function checar() {
-      // Volta do link de onboarding? Provisiona a escola pendente antes de checar.
-      try {
-        const raw = localStorage.getItem('aviz_pending_onboarding');
-        if (raw) {
-          const p = JSON.parse(raw);
-          if (p && p.slug === tenant) {
-            // Limpa ANTES de provisionar: se a criação falhar no meio, a chave
-            // não pode ficar presa e reprovisionar a cada login daí em diante.
-            localStorage.removeItem('aviz_pending_onboarding');
-            await provisionTenant({ ...p, uid: user.uid });
-          }
-        }
-      } catch { /* ignore */ }
-      const snap = await get(ref(db, paths.member(tenant, user.uid))).catch(() => null);
-      const m = snap && snap.exists() ? snap.val() : null;
+      const lerMembro = async () => {
+        const snap = await get(ref(db, paths.member(tenant, user.uid))).catch(() => null);
+        return snap && snap.exists() ? snap.val() : null;
+      };
+      let m = await lerMembro();
+      // Escola recém-criada no onboarding (salva no servidor, presa ao
+      // e-mail): quem entra com aquele e-mail vira o dono — em qualquer
+      // aparelho, sem depender do navegador onde o formulário foi preenchido.
+      if (!m && user.email) {
+        try { if (await assumirEscola(tenant)) m = await lerMembro(); }
+        catch (e) { if (vivo) setFalhaAssumir(e.message); }
+      }
       // Só lembra a escola em que o acesso foi confirmado.
       if (m) lembrarTenant(tenant);
       if (vivo) setMembro(m);
@@ -227,12 +227,37 @@ function Dono({ tenant, user }) {
           <p style={s.dim}>{user.email
             ? 'Se você é o responsável, use o link de acesso enviado ao e-mail cadastrado.'
             : 'Seu acesso de professor foi removido. Fale com o responsável pela escola.'}</p>
+          {falhaAssumir && <p style={s.err}>{falhaAssumir}</p>}
         </div>
       </Shell>
     );
   }
 
   return <EscolaApp tenant={tenant} user={user} membro={membro} />;
+}
+
+// Link de login aberto noutro aparelho: o Firebase exige o mesmo e-mail para
+// fechar o login. Antes era um window.prompt — que parece golpe e some fácil.
+function ConfirmarEmail({ onPronto }) {
+  const [email, setEmail] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const [falha, setFalha] = useState(null);
+  async function entrar(e) {
+    e.preventDefault();
+    setEntrando(true); setFalha(null);
+    try { await completeLoginIfPresent(email); onPronto(); }
+    catch { setFalha('Não deu para entrar com esse e-mail. Confira se é o mesmo para onde o link foi enviado, ou peça um link novo.'); setEntrando(false); }
+  }
+  return (
+    <form onSubmit={entrar}>
+      <h2 style={s.h2}>Confirme seu e-mail</h2>
+      <p style={s.p}>Para terminar de entrar neste aparelho, digite o e-mail que recebeu o link.</p>
+      <input type="email" required placeholder="seu@email.com" value={email}
+        onChange={(e) => setEmail(e.target.value)} style={s.input} autoFocus />
+      <button type="submit" disabled={entrando} style={s.btn}>{entrando ? 'Entrando…' : 'Entrar'}</button>
+      {falha && <p style={s.err}>{falha}</p>}
+    </form>
+  );
 }
 
 function LinkIncompleto() {

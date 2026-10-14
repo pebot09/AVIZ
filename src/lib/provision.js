@@ -1,13 +1,9 @@
-// Provisionamento de uma escola nova (o que o onboarding cria).
+// Endereço (slug) de uma escola nova.
 //
-// Ordem importa por causa das regras: primeiro viramos dono (bootstrap do
-// membro numa escola vazia), depois escrevemos a vitrine pública e o config —
-// que já exigem ser dono.
-//
-// Em produção isto vira uma Cloud Function com Admin SDK (não depende de
-// afrouxar regras). Por ora, roda no cliente com a cláusula de bootstrap.
+// A criação em si acontece no servidor (worker/escola.js, via
+// src/lib/escolaApi.js), antes do login do dono.
 
-import { ref, get, set } from 'firebase/database';
+import { ref, get } from 'firebase/database';
 import { db } from './firebase.js';
 import { paths } from './paths.js';
 
@@ -35,19 +31,4 @@ export function slugify(txt) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
-}
-
-// Cria a escola. `uid` é o dono. Retorna o slug.
-//
-// Só cria: se a escola já existe, garante o vínculo do dono e para por aí.
-// Sem isso, um provisionamento repetido (a chave pendente do onboarding que
-// não foi limpa, um segundo login) reescreveria o config por cima do que a
-// escola já ajustou, jogando as regras de volta para os valores do onboarding.
-export async function provisionTenant({ slug, nomeEscola, artigo, cor, donoNome, donoGenero, config, uid }) {
-  const jaExiste = (await get(ref(db, paths.tenantPublic(slug)))).exists();
-  await set(ref(db, paths.member(slug, uid)), { role: 'owner', nome: donoNome || 'Dono', genero: donoGenero || 'o' });
-  if (jaExiste) return slug;
-  await set(ref(db, paths.tenantPublic(slug)), { nome: nomeEscola, artigo: artigo || 'o', cor: cor || '#2563eb' });
-  await set(ref(db, paths.config(slug)), config);
-  return slug;
 }

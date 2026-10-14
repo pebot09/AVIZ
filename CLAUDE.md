@@ -24,3 +24,7 @@ Missão: acabar com o caos de faltas e reposições.
 * Ao terminar uma tarefa, diga o que mudou, como testar e qual é o próximo passo de maior impacto.
 * Nunca apague dados no Firebase de produção sem confirmação explícita.
 * Se algo exigir decisão de produto (o que a escola vê, preço, regras), pergunte ao Pedro em vez de decidir.
+* Pedro não revisa código. Ao terminar uma tarefa com testes passando, faça merge na main e push.
+* Nunca publique com teste falhando.
+* Se algo quebrar em produção, reverta para a versão anterior primeiro e investigue depois.
+* Ao final, diga ao Pedro em linguagem simples o que mudou para a escola e o que ele deve testar no celular (se algo).

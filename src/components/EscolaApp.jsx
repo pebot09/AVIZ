@@ -10,6 +10,7 @@ import FaltasReposicoesTab from './FaltasReposicoesTab.jsx';
 import PainelTab from './PainelTab.jsx';
 import ConfigScreen from './ConfigScreen.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import EnderecoGuardar from './EnderecoGuardar.jsx';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
 // Passarinho: Turmas · Faltas & Reposições · Painel. Por ora, Turmas está
@@ -28,6 +29,16 @@ export default function EscolaApp({ tenant, user, membro }) {
   const [aba, setAba] = useState('Turmas');
   const [configAberto, setConfigAberto] = useState(false);
   const [confirmarSair, setConfirmarSair] = useState(false);
+  // Na primeira entrada do dono, mostra o endereço do espaço para ele guardar.
+  const chaveEndereco = `aviz_endereco_visto_${tenant}`;
+  const [verEndereco, setVerEndereco] = useState(() => {
+    if (!ehDono) return false;
+    try { return !localStorage.getItem(chaveEndereco); } catch { return false; }
+  });
+  const fecharEndereco = () => {
+    try { localStorage.setItem(chaveEndereco, '1'); } catch { /* ignore */ }
+    setVerEndereco(false);
+  };
 
   useEffect(() => onValue(ref(db, paths.tenantPublic(tenant)), (snap) => setPub(snap.val() || {})), [tenant]);
   const nomeEscola = (pub && pub.nome) || tenant;
@@ -82,6 +93,12 @@ export default function EscolaApp({ tenant, user, membro }) {
             <span>{erro}</span>
             <button onClick={() => window.location.reload()} className="shrink-0 underline font-medium">Recarregar</button>
           </div>
+        </div>
+      )}
+
+      {verEndereco && (
+        <div className="max-w-4xl mx-auto px-4">
+          <EnderecoGuardar slug={tenant} onFechar={fecharEndereco} />
         </div>
       )}
 

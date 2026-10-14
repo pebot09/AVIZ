@@ -63,12 +63,19 @@ restauração de um clique.
 
 ## Bootstrap do primeiro dono
 
-Como só o dono pode escrever em `members`, e no começo não há dono, o primeiro
-registro de membro é semeado fora das regras:
-1. o dono faz login uma vez (cria a conta Auth e ganha um `uid`);
-2. cria-se manualmente `/tenants/{tid}/members/{uid} = { role: "owner", nome }`
-   no console (ou via provisionamento com Admin SDK);
-3. a partir daí o dono tem acesso pleno.
+A escola nova é criada pelo Worker (`/api/escola`, `worker/escola.js`), **antes**
+do login do dono — assim o link mágico funciona em qualquer aparelho:
+1. no fim do onboarding, o Worker grava `tenantsPublic`, `config`, um membro
+   marcador `members/_pendente` e `/escolasPendentes/{tid} = { email, … }`;
+2. o dono clica no link do e-mail (em qualquer aparelho) e entra;
+3. o app chama `assumir` com o ID token; o Worker confere no Identity Toolkit
+   que o e-mail do login é o informado (e verificado) e grava o dono em
+   `members/{uid}`, apagando o marcador e a pendência.
+
+O marcador existe para a cláusula de bootstrap das regras ("primeiro membro
+numa escola sem membros") não deixar outra conta tomar a escola antes do dono.
+`/escolasPendentes` e `/limiteCriacao` não têm regra: nenhum cliente lê ou
+grava, só o Worker. Pendência não assumida em 7 dias libera o endereço.
 
 ## Login do professor por PIN
 
