@@ -7,7 +7,7 @@ AVIZ é um sistema de gestão de alunos, faltas e reposições para escolas e at
 Missão: acabar com o caos de faltas e reposições.
 
 * Produto genérico: nada de dados ou regras fixas de uma escola específica. Tudo que varia entre escolas deve ser configuração.
-* O AVIZ NÃO tem módulo de cobrança. Não proponha nem implemente cobrança.
+* O AVIZ não faz cobrança de alunos (sem mensalidades, argila, extras etc.). A assinatura que a escola paga ao AVIZ existe e é outra coisa.
 * Stack: Firebase + GitHub Pages.
 
 ## Momento do negócio
