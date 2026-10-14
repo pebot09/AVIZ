@@ -6,7 +6,9 @@
 //      já roda junto com o app na Cloudflare, no plano grátis.
 //   2. /api/professor → login do professor por PIN e gestão da equipe pelo
 //      dono (worker/professor.js).
-//   3. qualquer outro caminho → o app (arquivos estáticos em ./dist).
+//   3. /api/escola → criação de escola pelo onboarding, antes do login
+//      (worker/escola.js).
+//   4. qualquer outro caminho → o app (arquivos estáticos em ./dist).
 //
 // Por que existe: o aluno não tem conta no Firebase, e as regras barram quem
 // não tem conta — senão ele leria os dados de todos os outros alunos. O Worker
@@ -21,6 +23,7 @@ import { reducer, normalizeState } from '../src/domain/reducer.js';
 import { fatiaAluno, acaoDoAluno } from '../src/domain/fatiaAluno.js';
 import { getAccessToken, criarCustomToken } from './firebaseAuth.js';
 import { criarHandlerProfessor } from './professor.js';
+import { criarHandlerEscola } from './escola.js';
 
 const DB = 'https://aviz-cb3c8-default-rtdb.firebaseio.com';
 // Chave pública do app web (a mesma de src/lib/firebase.js — não é segredo).
@@ -89,6 +92,20 @@ function depsFirebase(env) {
   };
 }
 
+// O Identity Toolkit valida o ID token (assinatura, validade, revogação) e
+// devolve o dono dele.
+async function usuarioDoIdToken(idToken) {
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const u = d && d.users && d.users[0];
+  return u && u.localId ? { uid: u.localId, email: u.email || null, emailVerificado: !!u.emailVerified } : null;
+}
+
 // Acesso ao banco para /api/professor. Os PINs (hash) ficam em
 // /pinsProfessor e as tentativas em /pinTentativas — caminhos que as regras
 // não liberam para cliente nenhum; só esta credencial de servidor alcança.
@@ -109,23 +126,17 @@ function depsProfessor(env) {
     if (!r.ok) throw new Error(`firebase write ${r.status}`);
   }
   return {
+    ler,
+    usuarioDoIdToken,
     lerMembros: (tid) => ler(`tenants/${tid}/members`),
     lerPin: (tid, uid) => ler(`pinsProfessor/${tid}/${uid}`),
     lerTentativa: (tid, chave) => ler(`pinTentativas/${tid}/${chave}`),
     gravarTentativa: (tid, chave, valor) => patch({ [`pinTentativas/${tid}/${chave}`]: valor }),
     atualizar: patch,
     criarToken: (uid, claims) => criarCustomToken(env.FIREBASE_SERVICE_ACCOUNT, uid, claims),
-    // O Identity Toolkit valida o ID token (assinatura, validade, revogação) e
-    // devolve o dono dele.
     async uidDoIdToken(idToken) {
-      const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-      if (!r.ok) return null;
-      const d = await r.json();
-      return (d && d.users && d.users[0] && d.users[0].localId) || null;
+      const u = await usuarioDoIdToken(idToken);
+      return u ? u.uid : null;
     },
   };
 }
@@ -206,6 +217,18 @@ export default {
         return await criarHandlerProfessor(depsProfessor(env))(request);
       } catch (e) {
         console.error('[professor]', e && e.stack ? e.stack : e);
+        return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
+      }
+    }
+
+    if (url.pathname === '/api/escola') {
+      if (!env.FIREBASE_SERVICE_ACCOUNT) {
+        return json({ erro: 'A criação de escolas ainda não foi ativada.' }, 503);
+      }
+      try {
+        return await criarHandlerEscola(depsProfessor(env))(request);
+      } catch (e) {
+        console.error('[escola]', e && e.stack ? e.stack : e);
         return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
       }
     }

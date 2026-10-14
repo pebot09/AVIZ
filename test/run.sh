@@ -37,6 +37,10 @@ echo "── login do professor por PIN ──"
 node test/professor-smoke.mjs
 
 echo
+echo "── criação de escola (onboarding) ──"
+node test/escola-smoke.mjs
+
+echo
 echo "── roteamento de entrada ──"
 node test/rota-smoke.mjs
 

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
-import { slugify, slugDisponivel, slugDisponivelAuto, provisionTenant } from '../lib/provision.js';
+import { slugify, slugDisponivel, slugDisponivelAuto } from '../lib/provision.js';
+import { criarEscola, assumirEscola, enderecoDaEscola } from '../lib/escolaApi.js';
+import EnderecoGuardar from '../components/EnderecoGuardar.jsx';
 import { sendLoginLink } from '../lib/auth.js';
 import { VERSAO_TEXTOS } from '../legal/operador.js';
 import { LINK_TERMOS, LINK_PRIVACIDADE } from '../legal/rota.js';
@@ -60,7 +62,7 @@ export default function Onboarding({ user }) {
   const [salvando, setSalvando] = useState(false);
   const [email, setEmail] = useState(user?.email || '');
   const [saibaMais, setSaibaMais] = useState(false);
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState(null); // slug criado, aguardando o clique no e-mail
   const [duplicado, setDuplicado] = useState(null); // endereço já usado, aguardando decisão
   const [aceito, setAceito] = useState(false); // Termos + Privacidade (PLANTA, seção 7)
   const set = (patch) => setR((prev) => ({ ...prev, ...patch }));
@@ -151,19 +153,23 @@ export default function Onboarding({ user }) {
         setSalvando(false);
         return;
       }
-      const slug = await slugDisponivelAuto(base);
+      // O endereço base acabou de ser conferido livre; se a pessoa pediu um
+      // espaço novo mesmo assim, pega o próximo livre (-2, -3…).
+      const slug = confirmandoDuplicado ? await slugDisponivelAuto(base) : base;
+      const emailDono = (user && user.email) || email.trim().toLowerCase();
       const config = montarConfig();
-      const payload = { slug, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), donoGenero: r.donoArtigo || 'o', config };
+      // A escola é salva no servidor ANTES do login. Assim o link do e-mail
+      // funciona em qualquer aparelho — antes, as respostas ficavam só neste
+      // navegador e se perdiam se o link abrisse no celular.
+      await criarEscola({ slug, email: emailDono, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), donoGenero: r.donoArtigo || 'o', config });
 
-      if (user) {
-        await provisionTenant({ ...payload, uid: user.uid });
+      if (user && user.email) {
+        await assumirEscola(slug);
         window.location.href = `/?e=${slug}`;
         return;
       }
-      // Sem login: guarda e manda link mágico; o provisionamento roda no retorno.
-      try { localStorage.setItem('aviz_pending_onboarding', JSON.stringify(payload)); } catch { /* ignore */ }
-      await sendLoginLink(email, `${window.location.origin}/?e=${slug}`);
-      setEnviado(true);
+      await sendLoginLink(emailDono, enderecoDaEscola(slug));
+      setEnviado(slug);
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -175,7 +181,8 @@ export default function Onboarding({ user }) {
     return (
       <Card>
         <h2 className="text-xl font-bold text-gray-800 mb-2">Quase lá!</h2>
-        <p className="text-sm text-gray-600">Mandamos um link para <b>{email}</b>. Clique nele para entrar e o seu app será criado.</p>
+        <p className="text-sm text-gray-600">Mandamos um link para <b>{email}</b>. Clique nele para entrar — pode ser no celular ou no computador.</p>
+        <EnderecoGuardar slug={enviado} />
       </Card>
     );
   }
@@ -363,7 +370,11 @@ export default function Onboarding({ user }) {
               <li>Vaga extra: {r.vagaExtra ? `sim (${r.vagaExtraQuando})` : 'não'}</li>
               <li>Férias: {r.ferias ? (r.feriasCredito ? `sim, ${r.feriasCreditos} crédito(s), ${r.feriasValidade} dias` : 'sim, sem crédito') : 'não'}</li>
             </ul>
-            {!user && (
+            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+              <span className="block text-xs text-gray-500 mb-0.5">Endereço do seu espaço</span>
+              <span className="font-medium text-gray-800 break-all">{enderecoDaEscola(slugify(r.nomeEscola))}</span>
+            </div>
+            {!(user && user.email) && (
               <Campo label="Seu e-mail (para entrar e receber o acesso)"><TextInput value={email} onChange={setEmail} placeholder="voce@email.com" /></Campo>
             )}
             <label className="flex items-start gap-2 text-sm text-gray-600 mt-4">
@@ -385,7 +396,7 @@ export default function Onboarding({ user }) {
         {/* A arrow importa: onClick={finalizar} passaria o evento do clique
             como confirmandoDuplicado, pulando o aviso de endereço repetido. */}
         {ehUltimo ? (
-          <button onClick={() => finalizar()} disabled={salvando || !aceito || (!user && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
+          <button onClick={() => finalizar()} disabled={salvando || !aceito || (!(user && user.email) && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
             {salvando ? 'Criando…' : 'Criar meu app'}
           </button>
         ) : (

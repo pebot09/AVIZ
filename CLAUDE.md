@@ -7,7 +7,7 @@ AVIZ é um sistema de gestão de alunos, faltas e reposições para escolas e at
 Missão: acabar com o caos de faltas e reposições.
 
 * Produto genérico: nada de dados ou regras fixas de uma escola específica. Tudo que varia entre escolas deve ser configuração.
-* O AVIZ NÃO tem módulo de cobrança. Não proponha nem implemente cobrança.
+* O AVIZ não faz cobrança de alunos (sem mensalidades, argila, extras etc.). A assinatura que a escola paga ao AVIZ existe e é outra coisa.
 * Stack: Firebase + GitHub Pages.
 
 ## Momento do negócio
@@ -24,3 +24,7 @@ Missão: acabar com o caos de faltas e reposições.
 * Ao terminar uma tarefa, diga o que mudou, como testar e qual é o próximo passo de maior impacto.
 * Nunca apague dados no Firebase de produção sem confirmação explícita.
 * Se algo exigir decisão de produto (o que a escola vê, preço, regras), pergunte ao Pedro em vez de decidir.
+* Pedro não revisa código. Ao terminar uma tarefa com testes passando, faça merge na main e push.
+* Nunca publique com teste falhando.
+* Se algo quebrar em produção, reverta para a versão anterior primeiro e investigue depois.
+* Ao final, diga ao Pedro em linguagem simples o que mudou para a escola e o que ele deve testar no celular (se algo).

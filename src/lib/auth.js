@@ -38,18 +38,23 @@ export async function sendLoginLink(email, continueUrl) {
   return clean;
 }
 
+// A URL atual é um link de login aberto num aparelho que não guardou o
+// e-mail (outro celular, navegador interno do app de e-mail)? Então o app
+// precisa pedir o e-mail numa tela própria antes de fechar o login.
+export function linkPedeEmail() {
+  if (!isSignInWithEmailLink(auth, window.location.href)) return false;
+  try { return !localStorage.getItem(EMAIL_KEY); } catch { return true; }
+}
+
 // Passo 2: se a URL atual é um link de login, fecha o login. Chamar no load.
-// Retorna o usuário logado, ou null se não era um link.
-export async function completeLoginIfPresent() {
+// Retorna o usuário logado, ou null se não era um link (ou se falta o e-mail —
+// ver linkPedeEmail; aí chame de novo passando o e-mail digitado).
+export async function completeLoginIfPresent(emailDigitado) {
   if (!isSignInWithEmailLink(auth, window.location.href)) return null;
 
-  let email = null;
-  try { email = localStorage.getItem(EMAIL_KEY); } catch { /* ignore */ }
-  // Link aberto noutro dispositivo: pedimos o e-mail de novo.
-  if (!email) {
-    email = window.prompt('Confirme seu e-mail para entrar:');
-  }
-  if (!email) throw new Error('E-mail não informado para completar o login');
+  let email = emailDigitado || null;
+  if (!email) { try { email = localStorage.getItem(EMAIL_KEY); } catch { /* ignore */ } }
+  if (!email) return null;
 
   const cred = await signInWithEmailLink(auth, email.trim().toLowerCase(), window.location.href);
   try { localStorage.removeItem(EMAIL_KEY); } catch { /* ignore */ }
