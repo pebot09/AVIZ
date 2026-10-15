@@ -16,7 +16,8 @@ import { exportarDadosEscola, excluirEscola } from '../src/lib/dados.js';
 import { montarExportacao, planoExclusao, confirmacaoExclusaoOk, nomeArquivoExportacao, FORMATO_EXPORTACAO } from '../src/domain/dadosEscola.js';
 import { TERMOS } from '../src/legal/termos.js';
 import { PRIVACIDADE } from '../src/legal/privacidade.js';
-import { OPERADOR, textosProntos } from '../src/legal/operador.js';
+import { OPERADOR, MODO_TESTE, textosProntos } from '../src/legal/operador.js';
+import { TERMOS_TESTE, PRIVACIDADE_TESTE } from '../src/legal/teste.js';
 import { paginaLegal } from '../src/legal/rota.js';
 import PaginaLegal from '../src/legal/PaginaLegal.jsx';
 import DadosSec from '../src/components/DadosSec.jsx';
@@ -177,7 +178,21 @@ async function main() {
     ['Privacidade: suboperadores nomeados', /Firebase/.test(p) && /Cloudflare/.test(p)],
   ];
   for (const [nome, ok] of exige) checar(nome, ok);
-  checar('textos ainda são rascunho (há campos em aberto)', !textosProntos());
+  checar('textos completos ainda são rascunho (há campos em aberto)', !textosProntos());
+
+  // Textos do teste gratuito: sem campos em aberto, sem cobrança, com o básico da LGPD.
+  const tt = texto(TERMOS_TESTE);
+  const pt = texto(PRIVACIDADE_TESTE);
+  for (const [nome, ok] of [
+    ['Teste: nenhum campo em aberto', !/\[[^\]]*\]/.test(tt + pt)],
+    ['Teste: diz que é gratuito e sem cobrança', /gratuito/.test(tt) && /não gera nenhuma cobrança/.test(tt)],
+    ['Teste: escola controladora, AVIZ operador', /controladora[\s\S]*operador/.test(tt) && /controladora[\s\S]*operador/.test(pt)],
+    ['Teste: proíbe dado sensível', /sensíveis/.test(tt)],
+    ['Teste: exportação e exclusão', /baixar uma cópia/.test(tt) && /excluir a escola/.test(tt)],
+    ['Teste: não promete o que não existe (auditoria, 90 dias)', !/auditoria|90 dias/.test(tt + pt)],
+    ['Teste: Política cobre arts. 14, 18 e 33', /art\. 14/.test(pt) && /art\. 18/.test(pt) && /art\. 33/.test(pt)],
+    ['Teste: suboperadores nomeados', /Firebase/.test(pt) && /Cloudflare/.test(pt)],
+  ]) checar(nome, ok);
   const preenchido = Object.fromEntries(Object.keys(OPERADOR).map((k) => [k, 'x']));
   checar('textos prontos só quando revisados e preenchidos', textosProntos(preenchido, true) && !textosProntos(preenchido, false) && !textosProntos(OPERADOR, true));
 
@@ -193,7 +208,9 @@ async function main() {
   ]) {
     try {
       const html = renderToString(el);
-      checar(`render ${nome}`, html.length > 200 && (!nome.startsWith('PaginaLegal') || html.includes('Rascunho')));
+      // No modo teste a página mostra o texto do teste, sem faixa de rascunho.
+      const legalOk = !nome.startsWith('PaginaLegal') || (MODO_TESTE ? html.includes('teste gratuito') && !html.includes('Rascunho') : html.includes('Rascunho'));
+      checar(`render ${nome}`, html.length > 200 && legalOk);
     } catch (e) { checar(`render ${nome}`, false, e.message); }
   }
 

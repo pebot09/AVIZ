@@ -9,8 +9,8 @@ import DadosSec from './DadosSec.jsx';
 import { mensagemDeErro } from '../lib/erros.js';
 
 // Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
-export default function ConfigScreen({ tenant, config, pub, dispatch, onClose, ehDono, uid }) {
-  const [sec, setSec] = useState(null);
+export default function ConfigScreen({ tenant, config, pub, dispatch, onClose, ehDono, uid, secInicial = null }) {
+  const [sec, setSec] = useState(secInicial);
   const secoes = [
     { key: 'identidade', label: 'Identidade', desc: 'Nome e cor da escola', comp: IdentidadeSec },
     { key: 'vocab', label: 'Vocabulário', desc: 'Como chamar aluno, turma, professor', comp: VocabSec },
