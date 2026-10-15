@@ -40,8 +40,12 @@ d({ type: 'ADD_ALUNO', turmaId: t1.id, nome: 'Anaquerida' });
 d({ type: 'ADD_ALUNO', turmaId: t1.id, nome: 'Zoroastro' });
 d({ type: 'ADD_ALUNO', turmaId: t2.id, nome: 'Belquior' });
 
-const prox1 = getNextOccurrences(t1, 8).filter((x) => !isDataBloqueada(x, config));
-const prox2 = getNextOccurrences(t2, 8).filter((x) => !isDataBloqueada(x, config));
+// Só aulas que ainda não começaram: a "próxima" pode ser a de hoje, já em
+// andamento (ex.: rodar o teste numa quinta depois das 19h30), e vaga de aula
+// passada não é oferecida — o teste falhava conforme o dia e a hora.
+const aindaVem = (t) => (x) => getClassDatetime(t.id, x, s.turmas).getTime() > Date.now();
+const prox1 = getNextOccurrences(t1, 9).filter((x) => !isDataBloqueada(x, config)).filter(aindaVem(t1));
+const prox2 = getNextOccurrences(t2, 9).filter((x) => !isDataBloqueada(x, config)).filter(aindaVem(t2));
 
 // O outro aluno falta (abre vaga) e tem férias — nada disso pode aparecer.
 d({ type: 'ADD_FALTA', alunoNome: 'Zoroastro', turmaId: t1.id, datasComTipo: [{ data: prox1[0], semAntecedencia: false }] });
