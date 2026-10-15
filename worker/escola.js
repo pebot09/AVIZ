@@ -8,7 +8,7 @@
 // login, que aquele e-mail é dele — em qualquer aparelho.
 //
 // Operações (sempre POST, corpo JSON com `op` e `e` = escola):
-//   criar    público  → { email, nomeEscola, artigo, cor, donoNome, donoGenero, config }
+//   criar    público  → { email, nomeEscola, artigo, cor, donoNome, config }
 //   assumir  logado   → { idToken }  vira dono se o e-mail do login bate
 //
 // Enquanto ninguém assumiu, a escola tem um membro-marcador (`_pendente`):
@@ -89,7 +89,6 @@ export function criarHandlerEscola(deps) {
         [`escolasPendentes/${tid}`]: {
           email,
           donoNome: corpo.donoNome.trim(),
-          donoGenero: corpo.donoGenero === 'a' ? 'a' : 'o',
           criadoEm: t,
         },
         [`limiteCriacao/${chave}`]: dentro ? { n: lim.n + 1, desde: lim.desde } : { n: 1, desde: t },
@@ -107,7 +106,7 @@ export function criarHandlerEscola(deps) {
       if (!pendente) return erro();
       if (!quem.emailVerificado || (quem.email || '').toLowerCase() !== pendente.email) return erro();
       await deps.atualizar({
-        [`tenants/${tid}/members/${quem.uid}`]: { role: 'owner', nome: pendente.donoNome, genero: pendente.donoGenero },
+        [`tenants/${tid}/members/${quem.uid}`]: { role: 'owner', nome: pendente.donoNome },
         [`tenants/${tid}/members/${MARCADOR}`]: null,
         [`escolasPendentes/${tid}`]: null,
       });
