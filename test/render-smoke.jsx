@@ -22,6 +22,8 @@ import { fatiaAluno, vagasParaAluno } from '../src/domain/fatiaAluno.js';
 import { EquipeView } from '../src/components/EquipeSec.jsx';
 import { LoginPin } from '../src/App.jsx';
 import EnderecoGuardar from '../src/components/EnderecoGuardar.jsx';
+import PrimeirosPassos from '../src/components/PrimeirosPassos.jsx';
+import ConfigScreen from '../src/components/ConfigScreen.jsx';
 import Onboarding from '../src/onboarding/Onboarding.jsx';
 
 const config = {
@@ -90,6 +92,9 @@ const casos = [
   ['FaltasReposicoesTab', <FaltasReposicoesTab state={s} dispatch={noop} vocab={vocab} config={config} />],
   ['NotasTurmaModal', <NotasTurmaModal turma={turma} state={s} dispatch={noop} tenantId="t1" autor="Ana" onClose={noop} />],
   ['GerarLinkModal', <GerarLinkModal state={s} dispatch={noop} vocab={vocab} onClose={noop} />],
+  ['TurmasTab (pedido do guia)', <TurmasTab state={s} dispatch={noop} vocab={vocab} config={config} capacidadePadrao={7} tenantId="t1" autor="Ana" pedido={{ tipo: 'link', n: 1 }} />],
+  ['PrimeirosPassos (escola vazia)', <PrimeirosPassos state={normalizeState({})} vocab={vocab} marcados={{}} onPasso={noop} onEsconder={noop} />],
+  ['PrimeirosPassos (com dados)', <PrimeirosPassos state={s} vocab={vocab} marcados={{ regras: true }} onPasso={noop} onEsconder={noop} />],
 ];
 
 

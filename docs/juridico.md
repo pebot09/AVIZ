@@ -4,6 +4,13 @@
 > Foram escritos a partir da PLANTA (seções 7 e 8) e do que o código guarda
 > hoje, não por um advogado.
 
+> **Durante o teste gratuito** (`MODO_TESTE = true` em `operador.js`), as
+> páginas `/termos` e `/privacidade` mostram os textos curtos de
+> [`src/legal/teste.js`](../src/legal/teste.js): sem cobrança, sem campos em
+> aberto, sem faixa de rascunho e só com o que o código já faz. Os textos
+> completos abaixo voltam quando houver assinatura: virar `MODO_TESTE` para
+> `false`.
+
 ## Onde está cada coisa
 
 | O quê | Onde |

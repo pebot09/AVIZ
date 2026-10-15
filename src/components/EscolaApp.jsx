@@ -11,6 +11,8 @@ import PainelTab from './PainelTab.jsx';
 import ConfigScreen from './ConfigScreen.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import EnderecoGuardar from './EnderecoGuardar.jsx';
+import PrimeirosPassos from './PrimeirosPassos.jsx';
+import { primeirosPassos, guiaConcluido } from '../domain/primeirosPassos.js';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
 // Passarinho: Turmas · Faltas & Reposições · Painel. Por ora, Turmas está
@@ -27,7 +29,10 @@ export default function EscolaApp({ tenant, user, membro }) {
   const { state, dispatch, erro } = useTenantStore(tenant, autor, config);
   const [pub, setPub] = useState(null);
   const [aba, setAba] = useState('Turmas');
+  // false = fechado; true = menu; 'equipe' etc. = abre direto nessa seção.
   const [configAberto, setConfigAberto] = useState(false);
+  // Pedido do guia para a aba Turmas (nova turma, abrir turma, gerar links).
+  const [pedidoTurmas, setPedidoTurmas] = useState(null);
   const [confirmarSair, setConfirmarSair] = useState(false);
   // Na primeira entrada do dono, mostra o endereço do espaço para ele guardar.
   const chaveEndereco = `aviz_endereco_visto_${tenant}`;
@@ -40,11 +45,29 @@ export default function EscolaApp({ tenant, user, membro }) {
     setVerEndereco(false);
   };
 
+  // Guia de primeiros passos: o que o dono já tocou e se escondeu o guia.
+  const chavePassos = `aviz_passos_${tenant}`;
+  const [marcados, setMarcados] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(chavePassos)) || {}; } catch { return {}; }
+  });
+  const marcar = (mudanca) => setMarcados((m) => {
+    const novo = { ...m, ...mudanca };
+    try { localStorage.setItem(chavePassos, JSON.stringify(novo)); } catch { /* ignore */ }
+    return novo;
+  });
+  const irParaPasso = (key) => {
+    if (key === 'regras') { marcar({ regras: true }); setConfigAberto(true); return; }
+    if (key === 'professores') { marcar({ professores: true }); setConfigAberto('equipe'); return; }
+    setAba('Turmas');
+    setPedidoTurmas({ tipo: key, n: Date.now() });
+  };
+
   useEffect(() => onValue(ref(db, paths.tenantPublic(tenant)), (snap) => setPub(snap.val() || {})), [tenant]);
   const nomeEscola = (pub && pub.nome) || tenant;
 
   const vocab = makeVocab(config);
   const carregando = state === undefined || config === undefined;
+  const verGuia = ehDono && !carregando && !marcados.escondido && !guiaConcluido(primeirosPassos(state, marcados));
 
   // Uma vez, após carregar: recalcula as vagas extras e congela o resumo dos
   // dias já passados — como o Passarinho faz logo depois do sync. Tem que ser
@@ -102,6 +125,12 @@ export default function EscolaApp({ tenant, user, membro }) {
         </div>
       )}
 
+      {verGuia && (
+        <div className="max-w-4xl mx-auto px-4">
+          <PrimeirosPassos state={state} vocab={vocab} marcados={marcados} onPasso={irParaPasso} onEsconder={() => marcar({ escondido: true })} />
+        </div>
+      )}
+
       {confirmarSair && (
         <ConfirmModal
           title="Sair da conta?" danger
@@ -115,14 +144,14 @@ export default function EscolaApp({ tenant, user, membro }) {
       {carregando ? (
         <p className="text-center text-gray-400 text-sm py-10">Carregando…</p>
       ) : aba === 'Turmas' ? (
-        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} config={config} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} tenantId={tenant} autor={autor} />
+        <TurmasTab state={state} dispatch={dispatch} vocab={vocab} config={config} capacidadePadrao={(config?.regras?.capacidadeNominal) || 7} tenantId={tenant} autor={autor} pedido={pedidoTurmas} />
       ) : aba === 'Faltas & Reposições' ? (
         <FaltasReposicoesTab state={state} dispatch={dispatch} vocab={vocab} config={config} />
       ) : (
         <PainelTab state={state} dispatch={dispatch} vocab={vocab} config={config} podeEditarLog={ehDono} />
       )}
 
-      {configAberto && ehDono && <ConfigScreen tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} ehDono={ehDono} uid={user.uid} />}
+      {configAberto && ehDono && <ConfigScreen secInicial={typeof configAberto === 'string' ? configAberto : null} tenant={tenant} config={config} pub={pub} dispatch={dispatch} onClose={() => setConfigAberto(false)} ehDono={ehDono} uid={user.uid} />}
     </div>
   );
 }

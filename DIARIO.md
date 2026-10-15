@@ -5,6 +5,36 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-15 — Sessão 2: Termos de teste e primeiros passos
+
+### O que foi feito
+- **Termos e Política do teste gratuito** (`src/legal/teste.js`): curtos,
+  "gratuito, sem cobrança", sem faixa de RASCUNHO e sem campos em branco. Só
+  prometem o que o código já faz (nada de auditoria nem corte em 90 dias).
+  Contato: "pelo mesmo canal em que recebeu o convite". Chave `MODO_TESTE`
+  em `operador.js`; os textos completos ficam guardados para depois.
+  Versão aceita no onboarding agora é `2026-10-15-teste`.
+- **Guia "Primeiros passos"** para o dono (`PrimeirosPassos.jsx`), com os
+  passos que o Pedro definiu: 1. conferir regras; 2. turmas e horários;
+  3. alunos; 4. enviar link; 5. professores (opcional). Cada passo tem um
+  botão que leva ao lugar certo. Turmas, alunos e links ganham ✓ pelos
+  dados; regras e professores, quando o dono toca no botão (guardado no
+  aparelho). O guia some quando os 4 obrigatórios estão feitos, ou em
+  "Esconder guia".
+- Teste de domínio agora falha de verdade quando um `console.assert` falha
+  (antes só imprimia e o deploy seguia).
+
+### Pendente
+- Itens 6 (depois do 1º cliente), 7 a 12 do diagnóstico.
+- Contato oficial (e-mail) nos Termos, quando o Pedro quiser um.
+
+### Próximo passo
+Pedro: criar uma escola nova no celular e seguir o guia até o fim. Depois,
+**item 7**: cadastrar vários alunos de uma vez (colar lista) e gerar/enviar
+os links em lote.
+
+---
+
 ## 2026-10-15 — Sessão 1: o AVIZ visto pelo primeiro cliente-teste
 
 ### Diagnóstico (escola que nunca viu o sistema)
@@ -56,9 +86,7 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 - Cloudflare: "Disable builds" ligado — só o GitHub Actions publica (com testes).
 
 ### Pendente
-- Itens 3, 4 (Sessão 2), 6 (depois do 1º cliente), 7 a 12.
-- Nome público do projeto no Firebase como "AVIZ" (remetente do e-mail) —
-  Pedro faz no console, se ainda não fez.
+- Itens 3, 4 (feitos na Sessão 2), 6 (depois do 1º cliente), 7 a 12.
 
 ### Notas para a próxima sessão
 - A `main` recusa push direto (regra do GitHub). Caminho: push na branch de

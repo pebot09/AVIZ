@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   sortTurmas, EXTENSO, DIAS_ORDER, TURMA_EXTRA_ID, arr,
   turmaShortLabel, getTurmaLabel, todayStr, dateToStr, getFaltaExpiry,
@@ -13,7 +13,7 @@ import GerarLinkModal from './GerarLinkModal.jsx';
 
 // Aba Turmas — porte fiel do SectionTurmas do Passarinho, com vocabulário
 // configurável e o seletor de horário 24h do AVIZ.
-export default function TurmasTab({ state, dispatch, vocab, config, capacidadePadrao, tenantId, autor }) {
+export default function TurmasTab({ state, dispatch, vocab, config, capacidadePadrao, tenantId, autor, pedido }) {
   const sorted = useMemo(() => sortTurmas(state.turmas).filter((t) => t.id !== TURMA_EXTRA_ID), [state.turmas]);
   const turmaExtra = useMemo(() => state.turmas.find((t) => t.id === TURMA_EXTRA_ID), [state.turmas]);
   const [expandedId, setExpandedId] = useState(null);
@@ -21,6 +21,14 @@ export default function TurmasTab({ state, dispatch, vocab, config, capacidadePa
   const [notasDe, setNotasDe] = useState(null);
   const [showNova, setShowNova] = useState(false);
   const [showLink, setShowLink] = useState(false);
+
+  // Pedidos do guia de primeiros passos (EscolaApp).
+  useEffect(() => {
+    if (!pedido) return;
+    if (pedido.tipo === 'turmas') setShowNova(true);
+    else if (pedido.tipo === 'link') setShowLink(true);
+    else if (pedido.tipo === 'alunos' && sorted[0]) setExpandedId(sorted[0].id);
+  }, [pedido && pedido.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cardProps = {
     state, dispatch, vocab, config, tenantId, autor,

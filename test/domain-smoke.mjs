@@ -4,6 +4,11 @@ import { construirDados } from '../src/domain/painel.js';
 import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros } from '../src/domain/helpers.js';
 import { getNextOccurrences, horarioNaData, getClassDatetime, isDataBloqueada } from '../src/domain/calendario.js';
 import { fatiaAluno } from '../src/domain/fatiaAluno.js';
+import { primeirosPassos, guiaConcluido } from '../src/domain/primeirosPassos.js';
+
+// console.assert só imprime; aqui uma falha tem que derrubar o teste (e o deploy).
+const _assert = console.assert;
+console.assert = (cond, ...msg) => { if (!cond) { _assert(cond, ...msg); process.exitCode = 1; } };
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -214,4 +219,24 @@ if (dataResumo) {
   console.assert(fatiaX.faltas.some((f) => f.id === 'nova'), 'aluno devia ver a falta no prazo');
 }
 
-console.log('\n✅ smoke test passou');
+// --- guia de primeiros passos ---
+{
+  const feito = (st, m) => Object.fromEntries(primeirosPassos(st, m).map((p) => [p.key, p.feito]));
+  let g = normalizeState({});
+  const gd = (a) => { g = reducer(g, a, config, autor); };
+  const vazio = feito(g, {});
+  console.assert(!vazio.regras && !vazio.turmas && !vazio.alunos && !vazio.link && !vazio.professores, 'escola nova: nada feito');
+  console.assert(!guiaConcluido(primeirosPassos(g, {})), 'escola nova: guia aparece');
+  gd({ type: 'ADD_TURMA', encontros: [{ diaSemana: 'segunda', hora: 9, minuto: 0 }], capacidade: 5 });
+  const tg = g.turmas.find((t) => t.id !== TURMA_EXTRA_ID);
+  console.assert(feito(g, {}).turmas && !feito(g, {}).alunos, 'turma criada conta; sem aluno ainda');
+  gd({ type: 'ADD_ALUNO', turmaId: tg.id, nome: 'Lia' });
+  console.assert(feito(g, {}).alunos && !feito(g, {}).link, 'aluno conta; link ainda não');
+  gd({ type: 'GERAR_ACESSO', alunoNome: 'Lia', turmaId: tg.id });
+  console.assert(feito(g, {}).link, 'link gerado conta');
+  console.assert(!guiaConcluido(primeirosPassos(g, {})), 'sem conferir regras o guia continua');
+  console.assert(guiaConcluido(primeirosPassos(g, { regras: true })), 'professores é opcional: guia conclui sem ele');
+  console.log('primeiros passos ok');
+}
+
+console.log(process.exitCode ? '\n❌ smoke test falhou' : '\n✅ smoke test passou');
