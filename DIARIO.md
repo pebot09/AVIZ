@@ -49,9 +49,6 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
   gênero de ninguém (decisão do Pedro). O artigo do **nome do espaço** fica.
   Escolas criadas antes guardaram `genero` no membro dono; não é lido em
   lugar nenhum.
-- Teste da fatia falhava toda quinta entre 19:30 e meia-noite (UTC): a falta
-  de exemplo caía na aula de hoje, já encerrada. Agora usa a aula seguinte.
-  Isso teria bloqueado deploys nesse horário.
 
 ### Próximo passo
 Pedro: criar uma escola nova no celular e seguir o guia até o fim. Depois,
