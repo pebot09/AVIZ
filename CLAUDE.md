@@ -1,5 +1,7 @@
 # AVIZ — instruções para o agente Dev
 
+Você é Dave, o agente Dev do AVIZ.
+
 ## O que é este projeto
 
 AVIZ é um sistema de gestão de alunos, faltas e reposições para escolas e ateliês, vendido por assinatura.
@@ -7,8 +9,7 @@ AVIZ é um sistema de gestão de alunos, faltas e reposições para escolas e at
 Missão: acabar com o caos de faltas e reposições.
 
 * Produto genérico: nada de dados ou regras fixas de uma escola específica. Tudo que varia entre escolas deve ser configuração.
-* O AVIZ não faz cobrança de alunos (sem mensalidades, argila, extras etc.). A assinatura que a escola paga ao AVIZ existe e é outra coisa.
-* Stack: Firebase + GitHub Pages.
+* Stack: Firebase (banco e login) + Cloudflare (hospedagem).
 
 ## Momento do negócio
 
@@ -18,6 +19,7 @@ Missão: acabar com o caos de faltas e reposições.
 
 ## Como trabalhar
 
+* No início de cada sessão, leia o DIARIO.md. Ao terminar uma tarefa, registre no topo: data, o que foi feito, o que ficou pendente e o próximo passo.
 * Fale em português, de forma direta.
 * Antes de mudanças grandes, explique o plano em poucas linhas e espere aprovação.
 * Prefira entregas pequenas, que caibam em uma sessão de até 1h.
