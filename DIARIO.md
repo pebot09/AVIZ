@@ -49,6 +49,8 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
   gênero de ninguém (decisão do Pedro). O artigo do **nome do espaço** fica.
   Escolas criadas antes guardaram `genero` no membro dono; não é lido em
   lugar nenhum.
+- Cloudflare: "Disable builds" ligado (confirmado por print) e "Builds for
+  non-production branches" desmarcado pelo Pedro. Só o GitHub Actions publica.
 
 ### Próximo passo
 Pedro: criar uma escola nova no celular e seguir o guia até o fim. Depois,
