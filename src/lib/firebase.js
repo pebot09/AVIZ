@@ -23,3 +23,5 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
 export const auth = getAuth(app);
+// E-mails do Firebase (o link de acesso) e telas dele em português.
+auth.languageCode = 'pt-BR';

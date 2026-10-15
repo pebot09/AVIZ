@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { exportarDadosEscola, baixarJson, excluirEscola } from '../lib/dados.js';
 import { nomeArquivoExportacao, confirmacaoExclusaoOk } from '../domain/dadosEscola.js';
 import { LINK_TERMOS, LINK_PRIVACIDADE } from '../legal/rota.js';
+import { mensagemDeErro } from '../lib/erros.js';
 
 // Configurações → Dados e privacidade. Só o dono vê (e as regras só deixam o
 // dono apagar config, vitrine e equipe). Exportar e excluir são direitos da
@@ -24,7 +25,7 @@ export default function DadosSec({ tenant, uid, onDone }) {
       baixarJson(dados, nomeArquivoExportacao(tenant, agora));
       setResumo(dados.resumo);
     } catch (e) {
-      setErroExp('Não consegui gerar o arquivo. (' + (e.message || 'erro') + ')');
+      setErroExp('Não consegui gerar o arquivo. (' + mensagemDeErro(e) + ')');
     } finally {
       setExportando(false);
     }
@@ -37,7 +38,7 @@ export default function DadosSec({ tenant, uid, onDone }) {
       await excluirEscola(tenant, uid);
       window.location.href = '/';
     } catch (e) {
-      setErroExc(e.message);
+      setErroExc(mensagemDeErro(e));
       setExcluindo(false);
     }
   }

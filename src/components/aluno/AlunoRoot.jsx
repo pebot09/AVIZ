@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { buscarFatia, enviarAcao } from '../../lib/alunoApi.js';
 import { makeVocab } from '../../domain/vocab.js';
 import AlunoApp from './AlunoApp.jsx';
+import { mensagemDeErro } from '../../lib/erros.js';
 
 // Carrega a fatia do aluno e envia as ações dele. Toda a decisão de "o que ele
 // pode ver e fazer" é do servidor; aqui só transportamos.
@@ -16,7 +17,7 @@ export default function AlunoRoot({ tenant, codigo }) {
       setErroCarga(null);
       setDados(await buscarFatia(tenant, codigo));
     } catch (e) {
-      setErroCarga(e.message);
+      setErroCarga(mensagemDeErro(e));
       setDados(null);
     }
   }, [tenant, codigo]);
@@ -32,7 +33,7 @@ export default function AlunoRoot({ tenant, codigo }) {
       setDados(await enviarAcao(tenant, codigo, acao));
       return true;
     } catch (e) {
-      setErroAcao(e.message);
+      setErroAcao(mensagemDeErro(e));
       // Conflito: alguém mexeu na escola no meio. Recarrega para o aluno ver o
       // estado real antes de tentar de novo.
       if (e.tipo === 'conflito') carregar();

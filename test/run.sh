@@ -41,6 +41,10 @@ echo "── criação de escola (onboarding) ──"
 node test/escola-smoke.mjs
 
 echo
+echo "── mensagens de erro em português ──"
+node test/erros-smoke.mjs
+
+echo
 echo "── roteamento de entrada ──"
 node test/rota-smoke.mjs
 
