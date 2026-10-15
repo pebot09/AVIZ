@@ -13,6 +13,7 @@ import Onboarding from './onboarding/Onboarding.jsx';
 import PaginaLegal from './legal/PaginaLegal.jsx';
 import { paginaLegal, LINK_TERMOS, LINK_PRIVACIDADE } from './legal/rota.js';
 import { mensagemDeErro } from './lib/erros.js';
+import { ehAppIos } from './lib/instalavel.js';
 
 export default function App() {
   const noEndereco = resolveTenant();
@@ -174,6 +175,12 @@ function LoginEmail({ tenant, erro }) {
     <form onSubmit={enviar}>
       <h2 style={s.h2}>Entrar — {tenant}</h2>
       <p style={s.p}>Acesso do responsável pela escola. Enviamos um link, sem senha.</p>
+      {ehAppIos() && (
+        <p style={s.dim}>
+          No app do iPhone, o link do e-mail abre no Safari e você entra por lá. Para entrar
+          aqui no app, use seu PIN (crie em Configurações → Equipe → Seu PIN).
+        </p>
+      )}
       <input
         type="email" required placeholder="seu@email.com" value={email}
         onChange={(e) => setEmail(e.target.value)} style={s.input} autoFocus
