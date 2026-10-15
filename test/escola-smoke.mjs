@@ -84,7 +84,7 @@ const criar = (extra = {}) => ({ op: 'criar', e: 'atelie-sol', email: 'Ana@Exemp
   const a = await pedir({ op: 'assumir', e: 'atelie-sol', idToken: 'tok-ana' });
   checar('dono do e-mail assume (qualquer aparelho)', a.status === 200);
   const dono = b.pegar('tenants/atelie-sol/members/uid-ana');
-  checar('vira owner com nome e gênero', dono && dono.role === 'owner' && dono.nome === 'Ana' && dono.genero === 'a');
+  checar('vira owner só com nome (sem gênero)', dono && dono.role === 'owner' && dono.nome === 'Ana' && !('genero' in dono));
   checar('marcador some', b.pegar(`tenants/atelie-sol/members/${MARCADOR}`) === undefined);
   checar('pendência some', b.pegar('escolasPendentes/atelie-sol') === undefined);
 

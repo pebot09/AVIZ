@@ -45,7 +45,9 @@ const prox2 = getNextOccurrences(t2, 8).filter((x) => !isDataBloqueada(x, config
 
 // O outro aluno falta (abre vaga) e tem férias — nada disso pode aparecer.
 d({ type: 'ADD_FALTA', alunoNome: 'Zoroastro', turmaId: t1.id, datasComTipo: [{ data: prox1[0], semAntecedencia: false }] });
-d({ type: 'ADD_FALTA', alunoNome: 'Belquior', turmaId: t2.id, datasComTipo: [{ data: prox2[0], semAntecedencia: false }] });
+// prox2[0] pode ser hoje, com a aula já encerrada (quinta depois das 19:30):
+// a vaga sumiria e o teste falharia só nesse horário. A seguinte é sempre futura.
+d({ type: 'ADD_FALTA', alunoNome: 'Belquior', turmaId: t2.id, datasComTipo: [{ data: prox2[1], semAntecedencia: false }] });
 d({ type: 'ADD_NOTA', turmaId: t1.id, texto: 'Zoroastro anda sumido' });
 d({ type: 'GERAR_ACESSO', alunoNome: 'Anaquerida', turmaId: t1.id });
 d({ type: 'GERAR_ACESSO', alunoNome: 'Zoroastro', turmaId: t1.id });

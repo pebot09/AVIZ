@@ -28,7 +28,7 @@ export const PRIVACIDADE = {
       blocos: [
         {
           lista: [
-            'Dono da escola: e-mail, o nome ou apelido pelo qual quer ser chamado e o artigo de tratamento (o/a). O e-mail serve para o acesso por link e para comunicações sobre a assinatura.',
+            'Dono da escola: e-mail e o nome ou apelido pelo qual quer ser chamado. O e-mail serve para o acesso por link e para comunicações sobre a assinatura.',
             'Professores: nome (como aparece no histórico de ações) e o PIN da escola.',
             'Alunos: nome, turma(s), faltas, reposições, férias, créditos, o código do link pessoal e, se o aluno ativar, as turmas em que quer ser avisado de vagas.',
             'Registros de uso: o histórico de ações dentro da escola (quem lançou qual falta, quando), usado para a escola conferir o que aconteceu, e registros técnicos de acesso mantidos pelos nossos fornecedores de infraestrutura por motivo de segurança.',

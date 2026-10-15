@@ -26,7 +26,7 @@ async function chamar(corpo) {
   return dados;
 }
 
-// payload: { slug, email, nomeEscola, artigo, cor, donoNome, donoGenero, config }
+// payload: { slug, email, nomeEscola, artigo, cor, donoNome, config }
 export function criarEscola({ slug, ...resto }) {
   return chamar({ op: 'criar', e: slug, ...resto });
 }

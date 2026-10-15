@@ -48,7 +48,7 @@ function contrair(prep, artigo) {
 }
 
 const INICIAL = {
-  donoNome: '', donoArtigo: '', nomeEscola: '', espacoArtigo: '', slug: '', slugEditado: false,
+  donoNome: '', nomeEscola: '', espacoArtigo: '', slug: '', slugEditado: false,
   vAluno: 'aluno', vTurma: 'turma', vProfessor: 'professor',
   capNominal: 0, capFisica: 0,
   antecedencia: 24, semAntec: null, semAntecJanela: 2, validadeFalta: 30,
@@ -92,7 +92,7 @@ export default function Onboarding({ user }) {
 
   function podeAvancar() {
     switch (step) {
-      case 'dono': return r.donoNome.trim().length > 0 && !!r.donoArtigo;
+      case 'dono': return r.donoNome.trim().length > 0;
       case 'espaco': return r.nomeEscola.trim().length > 0 && !!r.espacoArtigo && slugify(r.nomeEscola).length > 0;
       case 'capNominal': return Number(r.capNominal) >= 1;
       case 'capFisica': return Number(r.capFisica) >= 1;
@@ -162,7 +162,7 @@ export default function Onboarding({ user }) {
       // A escola é salva no servidor ANTES do login. Assim o link do e-mail
       // funciona em qualquer aparelho — antes, as respostas ficavam só neste
       // navegador e se perdiam se o link abrisse no celular.
-      await criarEscola({ slug, email: emailDono, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), donoGenero: r.donoArtigo || 'o', config });
+      await criarEscola({ slug, email: emailDono, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), config });
 
       if (user && user.email) {
         await assumirEscola(slug);
@@ -226,11 +226,9 @@ export default function Onboarding({ user }) {
 
       <div className="min-h-[160px]">
         {step === 'dono' && (
-          <Passo titulo="Como podemos te chamar?" ajuda="O artigo (O / A) nos diz como te tratar — no masculino ou no feminino.">
+          <Passo titulo="Como podemos te chamar?">
             <Campo label="Seu nome">
-              <ArtigoNome artigo={r.donoArtigo} nome={r.donoNome}
-                onArtigo={(v) => set({ donoArtigo: v })} onNome={(v) => set({ donoNome: v })}
-                placeholder="Seu nome" autoFocus />
+              <TextInput value={r.donoNome} onChange={(v) => set({ donoNome: v })} placeholder="Seu nome" autoFocus />
             </Campo>
           </Passo>
         )}
