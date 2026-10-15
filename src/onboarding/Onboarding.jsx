@@ -6,6 +6,7 @@ import EnderecoGuardar from '../components/EnderecoGuardar.jsx';
 import { sendLoginLink } from '../lib/auth.js';
 import { VERSAO_TEXTOS } from '../legal/operador.js';
 import { LINK_TERMOS, LINK_PRIVACIDADE } from '../legal/rota.js';
+import { mensagemDeErro } from '../lib/erros.js';
 
 const VOC_ALUNO = [
   { value: 'aluno', label: 'aluno', plural: 'alunos' },
@@ -171,7 +172,7 @@ export default function Onboarding({ user }) {
       await sendLoginLink(emailDono, enderecoDaEscola(slug));
       setEnviado(slug);
     } catch (e) {
-      setErro(e.message);
+      setErro(mensagemDeErro(e));
     } finally {
       setSalvando(false);
     }

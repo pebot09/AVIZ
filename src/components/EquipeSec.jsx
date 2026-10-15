@@ -6,6 +6,7 @@ import { salvarProfessor, salvarMeuPin, removerProfessor } from '../lib/professo
 import { problemaDoPin, PIN_TAMANHO } from '../domain/pin.js';
 import { makeVocab, cap } from '../domain/vocab.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { mensagemDeErro } from '../lib/erros.js';
 
 // Configurações → Equipe (só o dono). O dono cria o próprio PIN e o de cada
 // professor; todos entram escolhendo o nome e digitando o PIN. O PIN nunca volta para a tela: o servidor guarda só
@@ -86,7 +87,7 @@ export function EquipeView({ tenant, vocab, professores, carregando, meuPin, sal
           onCancel={() => setRemovendo(null)}
           onConfirm={async () => {
             const p = removendo; setRemovendo(null); setErro(null);
-            try { await remover(p.id); } catch (e) { setErro(e.message); }
+            try { await remover(p.id); } catch (e) { setErro(mensagemDeErro(e)); }
           }}
         />
       )}
@@ -112,7 +113,7 @@ function FormProfessor({ inicial, vocab, salvar, onFim }) {
     }
     setSalvando(true);
     try { await salvar({ id: inicial.id, nome: nome.trim(), pin: pin || undefined }); onFim(); }
-    catch (err) { setErro(err.message); }
+    catch (err) { setErro(mensagemDeErro(err)); }
     finally { setSalvando(false); }
   }
 

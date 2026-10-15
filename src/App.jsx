@@ -12,6 +12,7 @@ import AlunoRoot from './components/aluno/AlunoRoot.jsx';
 import Onboarding from './onboarding/Onboarding.jsx';
 import PaginaLegal from './legal/PaginaLegal.jsx';
 import { paginaLegal, LINK_TERMOS, LINK_PRIVACIDADE } from './legal/rota.js';
+import { mensagemDeErro } from './lib/erros.js';
 
 export default function App() {
   const noEndereco = resolveTenant();
@@ -26,7 +27,7 @@ export default function App() {
 
   useEffect(() => {
     // Fecha o login se caímos aqui vindos de um link mágico.
-    completeLoginIfPresent().catch((e) => setErro(e.message));
+    completeLoginIfPresent().catch((e) => setErro(mensagemDeErro(e)));
     return watchAuth(setUser);
   }, []);
 
@@ -100,7 +101,7 @@ export function LoginPin({ tenant, inicial }) {
     let vivo = true;
     listarProfessores(tenant)
       .then((lista) => { if (vivo) setProfessores(lista); })
-      .catch((e) => { if (vivo) { setProfessores([]); setFalha(e.message); } });
+      .catch((e) => { if (vivo) { setProfessores([]); setFalha(mensagemDeErro(e)); } });
     return () => { vivo = false; };
   }, [tenant, inicial]);
 
@@ -109,7 +110,7 @@ export function LoginPin({ tenant, inicial }) {
     setEntrando(true); setFalha(null);
     // Sucesso: o watchAuth do App percebe a sessão nova e segue sozinho.
     try { await entrarComPin(tenant, id, pin); }
-    catch (err) { setFalha(err.message); setPin(''); setEntrando(false); }
+    catch (err) { setFalha(mensagemDeErro(err)); setPin(''); setEntrando(false); }
   }
 
   if (professores === undefined) return <p style={s.dim}>Carregando…</p>;
@@ -156,7 +157,7 @@ function LoginEmail({ tenant, erro }) {
     e.preventDefault();
     setEnviando(true); setFalha(null);
     try { await sendLoginLink(email); setEnviado(true); }
-    catch (err) { setFalha(err.message); }
+    catch (err) { setFalha(mensagemDeErro(err)); }
     finally { setEnviando(false); }
   }
 
@@ -202,7 +203,7 @@ function Dono({ tenant, user }) {
       // aparelho, sem depender do navegador onde o formulário foi preenchido.
       if (!m && user.email) {
         try { if (await assumirEscola(tenant)) m = await lerMembro(); }
-        catch (e) { if (vivo) setFalhaAssumir(e.message); }
+        catch (e) { if (vivo) setFalhaAssumir(mensagemDeErro(e)); }
       }
       // Só lembra a escola em que o acesso foi confirmado.
       if (m) lembrarTenant(tenant);

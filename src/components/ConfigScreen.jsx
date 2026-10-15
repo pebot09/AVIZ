@@ -6,6 +6,7 @@ import { fmtBRFull, arr } from '../domain/helpers.js';
 import { Campo, TextInput, Select, SimNao, ArtigoNome, Slider } from '../onboarding/widgets.jsx';
 import EquipeSec from './EquipeSec.jsx';
 import DadosSec from './DadosSec.jsx';
+import { mensagemDeErro } from '../lib/erros.js';
 
 // Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
 export default function ConfigScreen({ tenant, config, pub, dispatch, onClose, ehDono, uid }) {
@@ -66,7 +67,7 @@ function useSalvar(fn, onDone) {
   const [erro, setErro] = useState(null);
   async function salvar() {
     setSalvando(true); setErro(null);
-    try { await fn(); onDone(); } catch (e) { setErro(e.message); } finally { setSalvando(false); }
+    try { await fn(); onDone(); } catch (e) { setErro(mensagemDeErro(e)); } finally { setSalvando(false); }
   }
   return { salvar, salvando, erro };
 }
