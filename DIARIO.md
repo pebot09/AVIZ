@@ -5,6 +5,22 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-15 — CLAUDE.md: outros agentes + teste que falhava conforme a hora
+
+- Feito: CLAUDE.md ganhou a regra de terminar com um bloco "PARA [NOME]:"
+  quando algo precisar de outro agente (Gustavo: escolas e suporte; Adriana:
+  preço, Termos, empresa; Júlia: coordenação).
+- Feito: o teste da fatia do aluno quebrava às quintas depois das 19h30 (UTC)
+  — usava a "próxima aula" mesmo já em andamento. Isso deixava a main
+  vermelha e travava qualquer deploy. Agora usa só aulas que ainda não
+  começaram; conferido simulando vários dias e horários.
+- Pendente: o mesmo teste ainda falha no último dia do mês à noite (o teste
+  de férias não acha aula restante no mês). Já existia antes; corrigir numa
+  próxima sessão, antes de 30/10.
+- Próximo passo: o mesmo da Sessão 2 (abaixo).
+
+---
+
 ## 2026-10-15 — Sessão 2: Termos de teste e primeiros passos
 
 ### O que foi feito
