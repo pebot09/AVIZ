@@ -45,6 +45,10 @@ echo "── mensagens de erro em português ──"
 node test/erros-smoke.mjs
 
 echo
+echo "── app instalável (manifesto) ──"
+node test/manifest-smoke.mjs
+
+echo
 echo "── roteamento de entrada ──"
 node test/rota-smoke.mjs
 

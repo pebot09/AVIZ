@@ -8,7 +8,9 @@
 //      dono (worker/professor.js).
 //   3. /api/escola → criação de escola pelo onboarding, antes do login
 //      (worker/escola.js).
-//   4. qualquer outro caminho → o app (arquivos estáticos em ./dist).
+//   4. /manifest.webmanifest → o app instalável, com o nome da escola
+//      (worker/manifest.js).
+//   5. qualquer outro caminho → o app (arquivos estáticos em ./dist).
 //
 // Por que existe: o aluno não tem conta no Firebase, e as regras barram quem
 // não tem conta — senão ele leria os dados de todos os outros alunos. O Worker
@@ -24,6 +26,7 @@ import { fatiaAluno, acaoDoAluno } from '../src/domain/fatiaAluno.js';
 import { getAccessToken, criarCustomToken } from './firebaseAuth.js';
 import { criarHandlerProfessor } from './professor.js';
 import { criarHandlerEscola } from './escola.js';
+import { criarHandlerManifesto } from './manifest.js';
 
 const DB = 'https://aviz-cb3c8-default-rtdb.firebaseio.com';
 // Chave pública do app web (a mesma de src/lib/firebase.js — não é segredo).
@@ -231,6 +234,16 @@ export default {
         console.error('[escola]', e && e.stack ? e.stack : e);
         return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
       }
+    }
+
+    if (url.pathname === '/manifest.webmanifest') {
+      // O nome da escola é público (tenantsPublic tem leitura aberta): não
+      // precisa de credencial.
+      const lerNome = async (slug) => {
+        const r = await fetch(`${DB}/tenantsPublic/${slug}/nome.json`);
+        return r.ok ? r.json() : null;
+      };
+      return criarHandlerManifesto({ lerNome })(url);
     }
 
     // Todo o resto é o app (SPA servida pelos assets).

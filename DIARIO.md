@@ -5,6 +5,31 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-15 — App instalável (tela inicial do iOS e Android)
+
+### O que foi feito
+- "Adicionar à Tela de Início" agora cria um app: ícone próprio, tela cheia,
+  sem barra do navegador. Ícone: um "A" discreto em forma de casa, branco no
+  azul do app (decisão do Pedro). Gerado por `scripts/gerar-icones.py`.
+- Nome embaixo do ícone = nome da escola (decisão do Pedro). O manifesto é
+  gerado pelo Worker (`/manifest.webmanifest?e=…&c=…`, `worker/manifest.js`),
+  lendo `tenantsPublic/{escola}/nome` (leitura pública).
+- O app abre onde a pessoa estava: aluno no link pessoal, equipe no endereço
+  da escola. Duas escolas no mesmo celular = dois ícones.
+- Sem service worker de propósito: nada fica em cache, cada abertura pega a
+  versão nova. O Chrome confirmou que o app é instalável sem ele.
+- iPhone: o app instalado não compartilha o login com o Safari, e o link do
+  e-mail abre no Safari. A tela de login por e-mail, dentro do app do
+  iPhone, avisa para entrar com PIN.
+
+### Pendente
+- Pedro testar a instalação no iPhone e no Android.
+
+### Próximo passo
+Cadastrar alunos em lote (colar lista) e gerar/enviar links em lote.
+
+---
+
 ## 2026-10-15 — CLAUDE.md: outros agentes + teste que falhava conforme a hora
 
 - Feito: CLAUDE.md ganhou a regra de terminar com um bloco "PARA [NOME]:"
