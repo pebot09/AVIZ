@@ -1,11 +1,7 @@
-// Cliente de /api/professor: login do professor por PIN e gestão da equipe.
-//
-// O professor não tem e-mail. O Worker confere o PIN e devolve um custom token;
-// signInWithCustomToken o transforma numa sessão normal do Firebase Auth, e
-// daí em diante as regras de membro e o EscolaApp valem igual ao do dono.
-// As ações do dono vão com o ID token dele, que o Worker confere.
+// Cliente de /api/professor: o dono gere a equipe. Cada professor tem conta de
+// e-mail + PIN de 4 números e entra pela mesma tela do dono (contaApi.js).
+// As ações vão com o ID token do dono, que o Worker confere.
 
-import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from './firebase.js';
 
 const BASE = '/api/professor';
@@ -27,33 +23,19 @@ async function chamar(corpo) {
   return dados;
 }
 
-export async function listarProfessores(tenant) {
-  const r = await chamar({ op: 'listar', e: tenant });
-  return r.professores || [];
-}
-
-export async function entrarComPin(tenant, id, pin) {
-  const { token } = await chamar({ op: 'entrar', e: tenant, id, pin });
-  const cred = await signInWithCustomToken(auth, token);
-  return cred.user;
-}
-
 async function idTokenDoDono() {
   if (!auth.currentUser) throw new Error('Sessão expirada. Entre de novo.');
   return auth.currentUser.getIdToken();
 }
 
 // Cria (sem id) ou edita (com id) um professor. `pin` só vai quando muda.
-export async function salvarProfessor(tenant, { id, nome, pin }) {
+// Retorna { id, nome, aviso? } — aviso quando o e-mail já tinha conta.
+export async function salvarProfessor(tenant, { id, nome, email, pin }) {
   const corpo = { op: 'salvar', e: tenant, idToken: await idTokenDoDono(), nome };
   if (id) corpo.id = id;
-  if (pin !== undefined && pin !== '') corpo.pin = pin;
+  if (email) corpo.email = email.trim().toLowerCase();
+  if (pin) corpo.pin = pin;
   return chamar(corpo);
-}
-
-// O dono cria (ou troca) o próprio PIN. Entra na mesma conta dele, como dono.
-export async function salvarMeuPin(tenant, pin) {
-  return chamar({ op: 'salvar', e: tenant, idToken: await idTokenDoDono(), proprio: true, pin });
 }
 
 export async function removerProfessor(tenant, id) {

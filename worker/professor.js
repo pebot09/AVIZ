@@ -1,32 +1,27 @@
-// /api/professor — login do professor por PIN e gestão da equipe pelo dono.
+// /api/professor — o dono gere a equipe da escola.
 //
-// O professor não tem e-mail, então não tem como entrar no Firebase Auth
-// sozinho. O Worker confere o PIN e devolve um custom token do Firebase para
-// aquele professor; o navegador troca isso por uma sessão normal
-// (signInWithCustomToken), e daí em diante as MESMAS regras de membro valem
-// para ele — sem mexer em database.rules.json.
+// Cada professor tem uma conta de e-mail + PIN de 4 números, igual à do dono
+// (/contas, ver worker/conta.js), e entra pela mesma tela. Aqui o dono:
+//   salvar   dono → { idToken, id?, nome, email?, pin? }   cria ou edita professor
+//   remover  dono → { idToken, id }
 //
-// Operações (sempre POST, corpo JSON com `op` e `e` = escola):
-//   listar   público  → nomes de quem tem PIN (para a tela de login)
-//   entrar   público  → { id, pin } → { token }        (com limite de tentativas)
-//   salvar   dono     → { idToken, id?, nome, pin? }   cria ou edita professor
-//            dono     → { idToken, proprio: true, pin } define o PIN do próprio dono
-//   remover  dono     → { idToken, id }
-//
-// O dono também pode ter PIN: ele mesmo cria o dele, e cria o de cada
-// professor. O PIN do dono entra na MESMA conta dele (a do link mágico), então
-// ele continua dono; o link por e-mail segue valendo para quando esquecer o PIN.
+// Regras da conta do professor:
+//   - e-mail sem conta no AVIZ: cria a conta com o PIN que o dono definiu
+//     (marcada com criadaPor = esta escola);
+//   - e-mail que já tem conta: o professor entra com o PIN que já usa. O dono
+//     só troca esse PIN se a conta foi criada por esta mesma escola — senão o
+//     dono de uma escola poderia entrar como a pessoa em outra.
+//   - professor antigo (sem e-mail): ao ganhar e-mail, passa a ter conta.
 //
 // "dono" = quem manda o ID token do Firebase de um membro com role 'owner'
 // naquela escola. O Worker nunca confia no corpo para saber quem é quem.
 //
 // Puro em relação ao Firebase: tudo que toca o banco ou a rede vem em `deps`.
 
+import { novoUidProfessor, ehUidProfessor, nomeProfessorValido } from '../src/domain/pin.js';
 import {
-  problemaDoPin, pinValido, hashPin, conferePin,
-  estaBloqueado, registrarErro, minutosAteLiberar,
-  novoUidProfessor, ehUidProfessor, nomeProfessorValido,
-} from '../src/domain/pin.js';
+  normalizarEmail, emailValido, problemaDoPinConta, chaveDoEmail, hashPinConta,
+} from '../src/domain/conta.js';
 
 const MAX_CORPO = 8 * 1024;
 const ehSlug = (s) => typeof s === 'string' && /^[a-z0-9-]{1,60}$/.test(s);
@@ -37,24 +32,6 @@ function json(dados, status = 200) {
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
   });
 }
-
-// Chave do limite de tentativas: hash do IP (não guardamos o IP em si).
-async function chaveDoIp(ip) {
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(ip || 'sem-ip')));
-  return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-// uid do Firebase Auth: o do dono vem do Auth (28 caracteres), o do professor
-// é gerado aqui (prof-…). Só conferimos que é seguro como pedaço de caminho.
-const ehUid = (s) => typeof s === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(s);
-
-const professoresDe = (membros) => Object.entries(membros || {})
-  .filter(([uid, m]) => m && m.role === 'professor' && ehUidProfessor(uid));
-
-// Quem pode entrar por PIN: professores, e o dono depois que criou o dele.
-const podeEntrarComPin = (uid, m) => !!m && !!m.temPin
-  && ((m.role === 'professor' && ehUidProfessor(uid)) || (m.role === 'owner' && ehUid(uid)));
-const comPinDe = (membros) => Object.entries(membros || {}).filter(([uid, m]) => podeEntrarComPin(uid, m));
 
 export function criarHandlerProfessor(deps) {
   const agora = () => (deps.agora ? deps.agora() : Date.now());
@@ -68,86 +45,71 @@ export function criarHandlerProfessor(deps) {
   }
 
   const ops = {
-    async listar(tid) {
-      const membros = await deps.lerMembros(tid);
-      const professores = comPinDe(membros)
-        .map(([id, m]) => ({ id, nome: m.nome || 'Responsável' }))
-        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-      return json({ professores });
-    },
-
-    async entrar(tid, corpo, request) {
-      // Escola sem membros não existe (ou foi excluída): responde igual a PIN
-      // errado e NÃO grava nada. Sem isso, o registro de tentativas recriaria
-      // um nó para uma escola apagada — ou para qualquer slug inventado.
-      const membros = await deps.lerMembros(tid);
-      if (!membros || !Object.keys(membros).length) return json({ erro: 'PIN incorreto.' }, 403);
-      const chave = await chaveDoIp(request.headers && request.headers.get && request.headers.get('CF-Connecting-IP'));
-      const t = await deps.lerTentativa(tid, chave);
-      if (estaBloqueado(t, agora())) {
-        return json({ erro: `Muitas tentativas erradas. Tente de novo em ${minutosAteLiberar(t, agora())} min.` }, 429);
-      }
-      const id = corpo.id;
-      const pin = corpo.pin;
-      let ok = false;
-      const m = ehUid(id) ? membros[id] : null;
-      if (podeEntrarComPin(id, m) && pinValido(pin)) {
-        ok = await conferePin(pin, await deps.lerPin(tid, id));
-      }
-      if (!ok) {
-        await deps.gravarTentativa(tid, chave, registrarErro(t, agora()));
-        return json({ erro: 'PIN incorreto.' }, 403);
-      }
-      if (t) await deps.gravarTentativa(tid, chave, null);
-      return json({ token: await deps.criarToken(id, { tid, role: m.role }) });
-    },
-
     async salvar(tid, corpo) {
       const dono = await exigirDono(tid, corpo.idToken);
       if (!dono) return json({ erro: 'Só o responsável pela escola pode fazer isso.' }, 403);
 
-      // PIN do próprio dono: só o PIN muda; papel e nome ficam como estão.
-      if (corpo.proprio === true) {
-        const problema = problemaDoPin(corpo.pin);
-        if (problema) return json({ erro: problema }, 400);
-        await deps.atualizar({
-          [`tenants/${tid}/members/${dono.uid}/temPin`]: true,
-          [`pinsProfessor/${tid}/${dono.uid}`]: await hashPin(corpo.pin),
-        });
-        return json({ id: dono.uid });
-      }
-
       const novo = !corpo.id;
-      const id = novo ? novoUidProfessor() : corpo.id;
-      const atual = novo ? null : dono.membros[id];
-      if (!novo && !(ehUidProfessor(id) && atual && atual.role === 'professor')) {
-        return json({ erro: 'Professor não encontrado.' }, 404);
-      }
+      const atual = novo ? null : dono.membros[corpo.id];
+      if (!novo && !(atual && atual.role === 'professor')) return json({ erro: 'Professor não encontrado.' }, 404);
 
       const nome = corpo.nome === undefined && atual ? atual.nome : corpo.nome;
       if (!nomeProfessorValido(nome)) return json({ erro: 'Informe o nome (até 40 letras).' }, 400);
       const nomeLimpo = nome.trim();
-      const repetido = [...professoresDe(dono.membros), ...comPinDe(dono.membros)]
-        .some(([uid, m]) => uid !== id && (m.nome || '').trim().toLowerCase() === nomeLimpo.toLowerCase());
-      if (repetido) return json({ erro: 'Já existe alguém da equipe com esse nome.' }, 409);
 
-      const pin = corpo.pin;
-      if (novo || pin !== undefined) {
-        const problema = problemaDoPin(pin);
+      // O e-mail não muda depois de definido (para trocar, remova e adicione).
+      const email = atual && atual.email ? atual.email : normalizarEmail(corpo.email);
+      if (!emailValido(email)) return json({ erro: 'Informe o e-mail do professor.' }, 400);
+
+      const pin = corpo.pin === '' ? undefined : corpo.pin;
+      if (pin !== undefined) {
+        const problema = problemaDoPinConta(pin);
         if (problema) return json({ erro: problema }, 400);
       }
 
-      const updates = {
-        [`tenants/${tid}/members/${id}`]: {
-          role: 'professor',
-          nome: nomeLimpo,
-          temPin: true,
-          criadoEm: (atual && atual.criadoEm) || agora(),
-        },
+      const chave = await chaveDoEmail(email);
+      const conta = await deps.ler(`contas/${chave}`);
+      const updates = {};
+      let uid;
+      let aviso = null;
+      if (conta && conta.uid) {
+        uid = conta.uid;
+        if (pin !== undefined) {
+          if (conta.criadaPor === tid) {
+            updates[`contas/${chave}/pin`] = await hashPinConta(pin);
+            updates[`loginTentativas/${chave}`] = null;
+          } else {
+            aviso = 'Essa pessoa já tinha conta no AVIZ: ela entra com o PIN que já usa. Se esqueceu, use "Esqueci meu PIN" na tela de entrada.';
+          }
+        }
+      } else {
+        if (pin === undefined) return json({ erro: 'Defina um PIN de 4 números.' }, 400);
+        uid = !novo && ehUidProfessor(corpo.id) ? corpo.id : novoUidProfessor();
+        updates[`contas/${chave}`] = { uid, email, pin: await hashPinConta(pin), criadaPor: tid, atualizadoEm: agora() };
+      }
+
+      const outro = dono.membros[uid];
+      if (uid !== corpo.id && outro) {
+        return json({ erro: outro.role === 'owner' ? 'Esse e-mail é do responsável pela escola.' : 'Essa pessoa já está na equipe.' }, 409);
+      }
+      const repetido = Object.entries(dono.membros)
+        .some(([id, m]) => id !== corpo.id && id !== uid && m && (m.nome || '').trim().toLowerCase() === nomeLimpo.toLowerCase());
+      if (repetido) return json({ erro: 'Já existe alguém da equipe com esse nome.' }, 409);
+
+      // Professor antigo que ganhou e-mail de uma conta que já existia: o
+      // membro passa para o uid da conta.
+      if (!novo && uid !== corpo.id) {
+        updates[`tenants/${tid}/members/${corpo.id}`] = null;
+        updates[`pinsProfessor/${tid}/${corpo.id}`] = null;
+      }
+      updates[`tenants/${tid}/members/${uid}`] = {
+        role: 'professor',
+        nome: nomeLimpo,
+        email,
+        criadoEm: (atual && atual.criadoEm) || agora(),
       };
-      if (pin !== undefined) updates[`pinsProfessor/${tid}/${id}`] = await hashPin(pin);
       await deps.atualizar(updates);
-      return json({ id, nome: nomeLimpo });
+      return json({ id: uid, nome: nomeLimpo, ...(aviso ? { aviso } : {}) });
     },
 
     async remover(tid, corpo) {
@@ -155,11 +117,9 @@ export function criarHandlerProfessor(deps) {
       if (!dono) return json({ erro: 'Só o responsável pela escola pode fazer isso.' }, 403);
       const id = corpo.id;
       const atual = dono.membros[id];
-      if (!(ehUidProfessor(id) && atual && atual.role === 'professor')) {
-        return json({ erro: 'Professor não encontrado.' }, 404);
-      }
+      if (!(atual && atual.role === 'professor')) return json({ erro: 'Professor não encontrado.' }, 404);
       // Sem o registro de membro, as regras barram a sessão que ele já tinha
-      // aberta na hora — não precisa esperar o token do Firebase expirar.
+      // aberta na hora. A conta (e-mail + PIN) fica: pode estar em outra escola.
       await deps.atualizar({ [`tenants/${tid}/members/${id}`]: null, [`pinsProfessor/${tid}/${id}`]: null });
       return json({ ok: true });
     },
@@ -177,6 +137,6 @@ export function criarHandlerProfessor(deps) {
     if (!ehSlug(tid)) return json({ erro: 'Escola inválida.' }, 400);
     const op = Object.prototype.hasOwnProperty.call(ops, corpo.op) ? ops[corpo.op] : null;
     if (!op) return json({ erro: 'Operação desconhecida.' }, 400);
-    return op(tid, corpo, request);
+    return op(tid, corpo);
   };
 }

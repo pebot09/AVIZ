@@ -1,14 +1,14 @@
 // Cloudflare Worker do AVIZ.
 //
-// Faz três coisas:
+// Faz estas coisas:
 //   1. /api/aluno  → a fatia do aluno (o "servidorzinho" que antes seria uma
 //      Cloud Function). Aqui não precisa do plano Blaze do Firebase: o Worker
 //      já roda junto com o app na Cloudflare, no plano grátis.
-//   2. /api/professor → login do professor por PIN e gestão da equipe pelo
-//      dono (worker/professor.js).
+//   2. /api/professor → o dono gere a equipe (professores com e-mail + PIN)
+//      (worker/professor.js).
 //   3. /api/escola → criação de escola pelo onboarding, antes do login
 //      (worker/escola.js).
-//   4. /api/conta → login de dono por e-mail + PIN (worker/conta.js).
+//   4. /api/conta → login por e-mail + PIN, de dono e professor (worker/conta.js).
 //   5. /manifest.webmanifest → o app instalável, com o nome da escola
 //      (worker/manifest.js).
 //   6. qualquer outro caminho → o app (arquivos estáticos em ./dist).
@@ -111,9 +111,9 @@ async function usuarioDoIdToken(idToken) {
   return u && u.localId ? { uid: u.localId, email: u.email || null, emailVerificado: !!u.emailVerified } : null;
 }
 
-// Acesso ao banco para /api/professor. Os PINs (hash) ficam em
-// /pinsProfessor e as tentativas em /pinTentativas — caminhos que as regras
-// não liberam para cliente nenhum; só esta credencial de servidor alcança.
+// Acesso ao banco para /api/professor, /api/conta e /api/escola. Os PINs
+// (hash) ficam em /contas e as tentativas em /loginTentativas — caminhos que
+// as regras não liberam para cliente nenhum; só esta credencial alcança.
 function depsProfessor(env) {
   async function ler(caminho) {
     const auth = await paramAuth(env);
@@ -141,9 +141,6 @@ function depsProfessor(env) {
     },
     usuarioDoIdToken,
     lerMembros: (tid) => ler(`tenants/${tid}/members`),
-    lerPin: (tid, uid) => ler(`pinsProfessor/${tid}/${uid}`),
-    lerTentativa: (tid, chave) => ler(`pinTentativas/${tid}/${chave}`),
-    gravarTentativa: (tid, chave, valor) => patch({ [`pinTentativas/${tid}/${chave}`]: valor }),
     atualizar: patch,
     criarToken: (uid, claims) => criarCustomToken(env.FIREBASE_SERVICE_ACCOUNT, uid, claims),
     async uidDoIdToken(idToken) {

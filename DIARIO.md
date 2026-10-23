@@ -5,6 +5,33 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-23 — Professores com e-mail + PIN (entrega 3, adiantada a pedido do Pedro)
+
+### O que foi feito
+- O dono cadastra o professor com nome, e-mail e PIN de 4 números
+  (Configurações → Equipe). O professor entra pela mesma tela do dono
+  (e-mail + PIN) e o app acha a escola sozinho.
+- Cada professor tem uma conta em `/contas` (criadaPor = escola). Se o
+  e-mail já tem conta no AVIZ (ex.: dono de outra escola), a pessoa entra na
+  equipe com o PIN que já usa: o dono NÃO consegue trocar PIN de conta criada
+  por outra escola.
+- O e-mail do professor não muda depois de salvo (para trocar: remover e
+  adicionar). Professor antigo (sem e-mail) aparece com aviso; ao editar e
+  pôr e-mail + PIN, passa a entrar.
+- Saiu o login antigo de professor (escolher nome + PIN de 6 números) e o
+  código dele (worker `listar`/`entrar`, PIN do dono por escola).
+- "Esqueci meu PIN" também serve para professor.
+
+### Pendente
+- Entrega 2: criação de escola só pelo Pedro + link de convite para o dono
+  escolher o PIN.
+- Professores antigos das escolas de teste: editar e pôr e-mail + PIN.
+
+### Próximo passo
+Entrega 2.
+
+---
+
 ## 2026-10-23 — Login por e-mail + PIN (entrega 1 de 3)
 
 ### Decisões do Pedro
