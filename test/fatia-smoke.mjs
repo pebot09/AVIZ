@@ -57,7 +57,10 @@ d({ type: 'GERAR_ACESSO', alunoNome: 'Zoroastro', turmaId: t1.id });
 // A nossa aluna falta e tira férias. A falta precisa cair num mês diferente
 // do das férias: marcar férias num mês em que o aluno já falta é bloqueado
 // (abriria duas vagas para a mesma pessoa — ver ADD_AUSENCIA).
-const mesFerias = todayStr().slice(0, 7);
+// As férias vão no mês da próxima aula (depois de hoje): no mês atual, depois
+// da última aula do mês, não sobra aula para virar vaga, e o teste falhava do
+// fim de cada mês em diante.
+const mesFerias = (prox1.find((x) => x > todayStr()) || prox1[1]).slice(0, 7);
 const dataFaltaAna = prox1.find((x) => x.slice(0, 7) !== mesFerias) || prox1[1];
 // Uma segunda data livre (fora do mês de férias e diferente da falta acima).
 // O teste de autoria mais abaixo marca uma nova falta e precisa de uma data em
@@ -136,7 +139,8 @@ checar('oferece vagas de outras turmas', vagas.some((v) => v.turmaId === t2.id))
 
 // ---- férias ----
 const meses = mesesDeFeriasDisponiveis(fatia, config);
-checar('limite de férias por ano é respeitado', meses.every((m) => m.slice(0, 4) !== todayStr().slice(0, 4)), meses.join(','));
+// O limite é do ano das férias (que pode ser o ano que vem, perto do Réveillon).
+checar('limite de férias por ano é respeitado', meses.every((m) => m.slice(0, 4) !== mesFerias.slice(0, 4)), meses.join(','));
 
 // ---- ações: identidade vem do código, não do pedido ----
 const forjada = acaoDoAluno({ type: 'ADD_FALTA', alunoNome: 'Zoroastro', turmaId: t2.id, datasComTipo: [] }, acesso, s, config);
