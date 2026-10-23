@@ -18,8 +18,8 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
   para a Adriana no mural.
 
 ### Pendente
-- As regras do banco ainda deixam o dono apagar a escola (só a tela saiu).
-  Fechar isso exige mudar database.rules.json e o Pedro publicar no console.
+- Regras do banco continuam deixando o dono apagar a escola por fora do app:
+  o Pedro decidiu que tirar o botão basta (não mexer nas regras).
 - Ferramenta para o Pedro excluir uma escola (hoje: pelo console do Firebase).
 ## 2026-10-23 — Cadastro de alunos em lote
 
