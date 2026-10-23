@@ -31,3 +31,4 @@ Missão: acabar com o caos de faltas e reposições.
 * Se algo quebrar em produção, reverta para a versão anterior primeiro e investigue depois.
 * Ao final, diga ao Pedro em linguagem simples o que mudou para a escola e o que ele deve testar no celular (se algo).
 * Quando algo precisar de outro agente (Gustavo: escolas e suporte; Adriana: preço, Termos, empresa; Júlia: coordenação), termine com um bloco 'PARA [NOME]:' com a mensagem pronta para o Pedro copiar.
+* No início de cada sessão, além do DIARIO.md, leia a seção 9 ('Recados da equipe') da Bíblia do AVIZ: https://claude.ai/code/artifact/a2c7a548-d639-45a0-b166-12021a2201d4. Quando algo precisar de outro agente, escreva o recado lá (data · de quem · para quem · recado). Apague os recados para você que já resolveu.
