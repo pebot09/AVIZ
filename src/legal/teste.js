@@ -35,7 +35,7 @@ export const TERMOS_TESTE = {
       blocos: [
         'Os dados que a escola cadastra são da escola. Ela é a controladora desses dados e o AVIZ é o operador, que os usa só para fazer o serviço funcionar (Lei nº 13.709/2018, LGPD).',
         'Cadastre só o necessário: nome do aluno e turma. Não coloque no AVIZ documentos, telefones, endereços nem dados sensíveis, como informações de saúde.',
-        'O dono pode baixar uma cópia de todos os dados ou excluir a escola a qualquer momento, em Configurações → Dados e privacidade.',
+        'O dono pode baixar uma cópia de todos os dados a qualquer momento, em Configurações → Baixar os dados. Para excluir a escola e todos os dados dela, basta pedir à equipe do AVIZ.',
       ],
     },
     {
@@ -48,7 +48,7 @@ export const TERMOS_TESTE = {
     {
       titulo: '6. Fim do teste e contato',
       blocos: [
-        'A escola pode parar de usar o AVIZ quando quiser, excluindo os dados pelo próprio app. Se o teste acabar, avisaremos antes, com tempo para a escola baixar os dados.',
+        'A escola pode parar de usar o AVIZ quando quiser e pedir a exclusão dos dados. Se o teste acabar, avisaremos antes, com tempo para a escola baixar os dados.',
         'Dúvidas, sugestões e pedidos: fale com a equipe do AVIZ pelo mesmo canal em que recebeu o convite para o teste.',
       ],
     },
@@ -95,14 +95,14 @@ export const PRIVACIDADE_TESTE = {
     {
       titulo: '5. Por quanto tempo guardamos',
       blocos: [
-        'Enquanto a escola usar o AVIZ. Guardamos as 10 cópias de segurança automáticas mais recentes de cada escola. Se o dono excluir a escola pelo app, os dados e as cópias são apagados na hora.',
+        'Enquanto a escola usar o AVIZ. Guardamos as 10 cópias de segurança automáticas mais recentes de cada escola. Se o dono pedir a exclusão da escola, os dados e as cópias são apagados.',
       ],
     },
     {
       titulo: '6. Seus direitos',
       blocos: [
         'A LGPD (art. 18) garante a qualquer pessoa o direito de acessar, corrigir, levar ou pedir a exclusão dos seus dados.',
-        'Alunos e professores: façam o pedido à escola, que é a controladora. O app dá a ela as ferramentas para isso. Donos: o próprio app permite baixar e excluir os dados da escola (Configurações → Dados e privacidade).',
+        'Alunos e professores: façam o pedido à escola, que é a controladora. O app dá a ela as ferramentas para isso. Donos: o próprio app permite baixar os dados da escola (Configurações → Baixar os dados); para excluí-los, peçam à equipe do AVIZ.',
         'Quando houver alunos crianças ou adolescentes, cabe à escola cuidar do melhor interesse deles e ter a autorização dos responsáveis quando a lei exigir (art. 14 da LGPD).',
       ],
     },

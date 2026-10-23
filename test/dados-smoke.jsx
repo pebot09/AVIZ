@@ -188,7 +188,7 @@ async function main() {
     ['Teste: diz que é gratuito e sem cobrança', /gratuito/.test(tt) && /não gera nenhuma cobrança/.test(tt)],
     ['Teste: escola controladora, AVIZ operador', /controladora[\s\S]*operador/.test(tt) && /controladora[\s\S]*operador/.test(pt)],
     ['Teste: proíbe dado sensível', /sensíveis/.test(tt)],
-    ['Teste: exportação e exclusão', /baixar uma cópia/.test(tt) && /excluir a escola/.test(tt)],
+    ['Teste: exportação e exclusão (a pedido)', /baixar uma cópia/.test(tt) && /excluir a escola/.test(tt) && /pedir à equipe do AVIZ/.test(tt)],
     ['Teste: não promete o que não existe (auditoria, 90 dias)', !/auditoria|90 dias/.test(tt + pt)],
     ['Teste: Política cobre arts. 14, 18 e 33', /art\. 14/.test(pt) && /art\. 18/.test(pt) && /art\. 33/.test(pt)],
     ['Teste: suboperadores nomeados', /Firebase/.test(pt) && /Cloudflare/.test(pt)],

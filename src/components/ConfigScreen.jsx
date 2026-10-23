@@ -8,39 +8,55 @@ import EquipeSec from './EquipeSec.jsx';
 import DadosSec from './DadosSec.jsx';
 import { mensagemDeErro } from '../lib/erros.js';
 
-// Configurações do dono — menu de seções. Calendário é uma delas, entre as outras.
+// Configurações do dono — menu em grupos: a escola, as regras, a equipe e os
+// dados. Cada item abre a sua seção.
 export default function ConfigScreen({ tenant, config, pub, dispatch, onClose, ehDono, uid, secInicial = null }) {
   const [sec, setSec] = useState(secInicial);
-  const secoes = [
-    { key: 'identidade', label: 'Identidade', desc: 'Nome e cor da escola', comp: IdentidadeSec },
-    { key: 'vocab', label: 'Vocabulário', desc: 'Como chamar aluno, turma, professor', comp: VocabSec },
-    { key: 'capacidades', label: 'Capacidades', desc: 'Máximo por turma e na sala', comp: CapacidadesSec },
-    { key: 'faltas', label: 'Faltas', desc: 'Antecedência e validade', comp: FaltasSec },
-    { key: 'vagaextra', label: 'Vaga extra', desc: 'Abertura de vagas de reposição', comp: VagaExtraSec },
-    { key: 'ferias', label: 'Férias', desc: 'Créditos e limites', comp: FeriasSec },
-    { key: 'calendario', label: 'Calendário', desc: 'Recessos e feriados', comp: CalendarioSec },
-    { key: 'equipe', label: 'Equipe', desc: 'Quem entra por PIN', comp: EquipeSec },
-    ...(ehDono ? [{ key: 'dados', label: 'Dados e privacidade', desc: 'Baixar ou excluir os dados da escola', comp: DadosSec }] : []),
+  const grupos = [
+    { titulo: 'A escola', itens: [
+      { key: 'identidade', label: 'Nome e cor', desc: 'Como a escola aparece no app', comp: IdentidadeSec },
+      { key: 'vocab', label: 'Vocabulário', desc: 'Como chamar aluno, turma, professor', comp: VocabSec },
+      { key: 'capacidades', label: 'Capacidades', desc: 'Máximo por turma e na sala', comp: CapacidadesSec },
+      { key: 'calendario', label: 'Calendário', desc: 'Recessos e feriados', comp: CalendarioSec },
+    ] },
+    { titulo: 'Regras de faltas e reposição', itens: [
+      { key: 'faltas', label: 'Faltas', desc: 'Antecedência do aviso e validade', comp: FaltasSec },
+      { key: 'vagaextra', label: 'Vaga extra', desc: 'Quando abrem vagas de reposição', comp: VagaExtraSec },
+      { key: 'ferias', label: 'Férias', desc: 'Créditos e limites', comp: FeriasSec },
+    ] },
+    { titulo: 'Equipe', itens: [
+      { key: 'equipe', label: 'Professores e seu PIN', desc: 'Quem entra no app da escola', comp: EquipeSec },
+    ] },
+    ...(ehDono ? [{ titulo: 'Dados', itens: [
+      { key: 'dados', label: 'Baixar os dados', desc: 'Cópia de tudo o que a escola tem no AVIZ', comp: DadosSec },
+    ] }] : []),
   ];
-  const atual = secoes.find((s) => s.key === sec);
+  const atual = grupos.flatMap((g) => g.itens).find((s) => s.key === sec);
 
   return (
-    <Modal title={atual ? `Configurações — ${atual.label}` : 'Configurações'} onClose={onClose}>
+    <Modal title={atual ? atual.label : 'Configurações'} onClose={onClose}>
       {!atual ? (
-        <div className="divide-y divide-gray-100 -my-1">
-          {secoes.map((s) => (
-            <button key={s.key} onClick={() => setSec(s.key)} className="w-full text-left py-3 flex items-center justify-between hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors">
-              <span>
-                <span className="block text-sm font-medium text-gray-800">{s.label}</span>
-                <span className="block text-xs text-gray-400">{s.desc}</span>
-              </span>
-              <span className="text-gray-300 text-lg">›</span>
-            </button>
+        <div className="space-y-4">
+          {grupos.map((g) => (
+            <section key={g.titulo}>
+              <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1 px-2">{g.titulo}</h4>
+              <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                {g.itens.map((s) => (
+                  <button key={s.key} onClick={() => setSec(s.key)} className="w-full text-left py-3 px-3 flex items-center justify-between hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg">
+                    <span>
+                      <span className="block text-sm font-medium text-gray-800">{s.label}</span>
+                      <span className="block text-xs text-gray-400">{s.desc}</span>
+                    </span>
+                    <span className="text-gray-300 text-lg">›</span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : (
         <div>
-          <button onClick={() => setSec(null)} className="text-sm text-blue-600 hover:text-blue-800 mb-3">← Voltar</button>
+          <button onClick={() => setSec(null)} className="text-sm text-blue-600 hover:text-blue-800 mb-3">← Configurações</button>
           <atual.comp tenant={tenant} uid={uid} config={config} pub={pub} dispatch={dispatch} onDone={() => setSec(null)} />
         </div>
       )}
