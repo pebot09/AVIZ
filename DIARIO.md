@@ -5,6 +5,32 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-23 — Criação de escola só pelo Pedro + convite do dono (entrega 2)
+
+### O que foi feito
+- `/?novo=1` (questionário) só funciona para admin logado: `/admins/{uid} =
+  true`, marcado pelo Pedro no console. Quem não é admin vê "Só a equipe do
+  AVIZ cria escolas".
+- O questionário pede nome e e-mail do responsável. Ao criar, sai um LINK DE
+  CONVITE (`/?convite=…`, uso único, 30 dias) com botões Copiar e WhatsApp.
+  Convites não aceitos aparecem listados para reenviar.
+- O dono abre o convite, aceita os Termos (o aceite foi do questionário para
+  cá), escolhe o PIN de 4 números e já entra como dono. Se o e-mail já tem
+  conta no AVIZ, entra com o PIN que já usa (o convite não troca PIN).
+- Saíram: escola "pendente presa ao e-mail", assumir pelo link mágico, limite
+  de criação por IP.
+
+### Pendente
+- Pedro: marcar a própria conta como admin no console (passo a passo na
+  conversa de 2026-10-23) e testar criando uma escola e abrindo o convite.
+- Os e-mails de "Esqueci meu PIN" ainda dependem da cota do Firebase (raro).
+
+### Próximo passo
+Item 7 do diagnóstico: cadastrar alunos em lote (colar lista) e gerar/enviar
+links em lote.
+
+---
+
 ## 2026-10-23 — Professores com e-mail + PIN (entrega 3, adiantada a pedido do Pedro)
 
 ### O que foi feito

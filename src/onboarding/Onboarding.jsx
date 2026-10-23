@@ -1,11 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
 import { slugify, slugDisponivel, slugDisponivelAuto } from '../lib/provision.js';
-import { criarEscola, assumirEscola, enderecoDaEscola } from '../lib/escolaApi.js';
-import EnderecoGuardar from '../components/EnderecoGuardar.jsx';
-import { sendLoginLink } from '../lib/auth.js';
-import { VERSAO_TEXTOS } from '../legal/operador.js';
-import { LINK_TERMOS, LINK_PRIVACIDADE } from '../legal/rota.js';
+import { criarEscola, enderecoDaEscola, souAdmin, listarConvites, linkDoConvite } from '../lib/escolaApi.js';
+import { emailValido } from '../domain/conta.js';
 import { mensagemDeErro } from '../lib/erros.js';
 
 const VOC_ALUNO = [
@@ -56,16 +53,35 @@ const INICIAL = {
   ferias: null, feriasCredito: null, feriasCreditos: 1, feriasValidade: 30, feriasLimiteAno: 1,
 };
 
+// Questionário de criação de escola. Só o administrador do AVIZ (Pedro) usa:
+// ele responde com o cliente e, no fim, recebe o link de convite para mandar
+// ao dono (worker/escola.js).
 export default function Onboarding({ user }) {
+  const [admin, setAdmin] = useState(undefined);
+  useEffect(() => { let vivo = true; souAdmin().then((a) => { if (vivo) setAdmin(a); }); return () => { vivo = false; }; }, [user && user.uid]);
+  if (admin === undefined) return <Card><p className="text-sm text-gray-400">Carregando…</p></Card>;
+  if (!admin) {
+    return (
+      <Card>
+        <div className="text-[10px] tracking-[0.2em] text-gray-300 font-semibold mb-5">AVIZ</div>
+        <h2 className="text-lg font-bold text-gray-800 mb-2">Criação de escolas</h2>
+        <p className="text-sm text-gray-600">Só a equipe do AVIZ cria escolas novas. Se você quer usar o AVIZ, fale com a gente.</p>
+        <a href="/" className="inline-block mt-4 text-sm text-blue-600 underline">Ir para a entrada</a>
+      </Card>
+    );
+  }
+  return <Questionario />;
+}
+
+export function Questionario() {
   const [r, setR] = useState(INICIAL);
   const [i, setI] = useState(0);
   const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
-  const [email, setEmail] = useState(user?.email || '');
+  const [email, setEmail] = useState('');
   const [saibaMais, setSaibaMais] = useState(false);
-  const [enviado, setEnviado] = useState(null); // slug criado, aguardando o clique no e-mail
+  const [criado, setCriado] = useState(null); // { slug, convite, nome, email }
   const [duplicado, setDuplicado] = useState(null); // endereço já usado, aguardando decisão
-  const [aceito, setAceito] = useState(false); // Termos + Privacidade (PLANTA, seção 7)
   const set = (patch) => setR((prev) => ({ ...prev, ...patch }));
 
   const A = r.vAluno || 'aluno', As = plural(r.vAluno, VOC_ALUNO);
@@ -134,14 +150,13 @@ export default function Onboarding({ user }) {
         feriasLimiteAno: r.feriasCredito ? r.feriasLimiteAno : null,
       },
       criadoEm: new Date().toISOString(),
-      // Qual versão dos Termos e da Política a escola aceitou, e quando.
-      aceite: { versao: VERSAO_TEXTOS, em: new Date().toISOString() },
+      // O aceite dos Termos é do dono, ao abrir o convite (worker/escola.js).
     };
   }
 
   async function finalizar(confirmandoDuplicado = false) {
     setErro(null);
-    if (!aceito) { setErro('Para criar o app, aceite os Termos de Uso e a Política de Privacidade.'); return; }
+    if (!emailValido(email)) { setErro('Informe o e-mail do responsável.'); return; }
     setSalvando(true);
     try {
       const base = slugify(r.nomeEscola);
@@ -157,21 +172,10 @@ export default function Onboarding({ user }) {
       // O endereço base acabou de ser conferido livre; se a pessoa pediu um
       // espaço novo mesmo assim, pega o próximo livre (-2, -3…).
       const slug = confirmandoDuplicado ? await slugDisponivelAuto(base) : base;
-      const emailDono = (user && user.email) || email.trim().toLowerCase();
+      const emailDono = email.trim().toLowerCase();
       const config = montarConfig();
-      // A escola é salva no servidor ANTES do login. Assim o link do e-mail
-      // funciona em qualquer aparelho — antes, as respostas ficavam só neste
-      // navegador e se perdiam se o link abrisse no celular.
-      await criarEscola({ slug, email: emailDono, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), config });
-
-      if (user && user.email) {
-        await assumirEscola(slug);
-        window.location.href = `/?e=${slug}`;
-        return;
-      }
-      // Ao abrir o link, o dono já escolhe o PIN com que vai entrar dali em diante.
-      await sendLoginLink(emailDono, `${enderecoDaEscola(slug)}&novopin=1&email=${encodeURIComponent(emailDono)}`);
-      setEnviado(slug);
+      const { convite } = await criarEscola({ slug, email: emailDono, nomeEscola: r.nomeEscola.trim(), artigo: r.espacoArtigo || 'o', cor: '#2563eb', donoNome: r.donoNome.trim(), config });
+      setCriado({ slug, convite, nome: r.nomeEscola.trim(), email: emailDono, donoNome: r.donoNome.trim() });
     } catch (e) {
       setErro(mensagemDeErro(e));
     } finally {
@@ -179,15 +183,7 @@ export default function Onboarding({ user }) {
     }
   }
 
-  if (enviado) {
-    return (
-      <Card>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Quase lá!</h2>
-        <p className="text-sm text-gray-600">Mandamos um link para <b>{email}</b>. Clique nele para entrar — pode ser no celular ou no computador.</p>
-        <EnderecoGuardar slug={enviado} />
-      </Card>
-    );
-  }
+  if (criado) return <EscolaCriada {...criado} />;
 
   if (duplicado) {
     return (
@@ -198,14 +194,14 @@ export default function Onboarding({ user }) {
           O endereço <b>/?e={duplicado}</b> já está em uso.
         </p>
         <p className="text-sm text-gray-600 mb-4">
-          Se esse espaço é seu, <b>entre nele</b> — todos os seus dados continuam lá.
-          Criar outro aqui faria um espaço <b>novo e vazio</b>, num endereço diferente.
+          Confira se a escola já não foi criada antes. Criar outra aqui faria um
+          espaço <b>novo e vazio</b>, num endereço diferente.
         </p>
         <div className="space-y-2">
           <button
             onClick={() => { window.location.href = `/?e=${duplicado}`; }}
             className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
-          >Entrar no espaço existente</button>
+          >Abrir o espaço existente</button>
           <button
             onClick={() => { setDuplicado(null); finalizar(true); }}
             disabled={salvando}
@@ -227,15 +223,15 @@ export default function Onboarding({ user }) {
 
       <div className="min-h-[160px]">
         {step === 'dono' && (
-          <Passo titulo="Como podemos te chamar?">
-            <Campo label="Seu nome">
-              <TextInput value={r.donoNome} onChange={(v) => set({ donoNome: v })} placeholder="Seu nome" autoFocus />
+          <Passo titulo="Quem é o responsável pela escola?" ajuda="É quem vai receber o convite e entrar como dono.">
+            <Campo label="Nome do responsável">
+              <TextInput value={r.donoNome} onChange={(v) => set({ donoNome: v })} placeholder="Nome" autoFocus />
             </Campo>
           </Passo>
         )}
 
         {step === 'espaco' && (
-          <Passo titulo={`Prazer${r.donoNome ? ', ' + r.donoNome : ''}! Qual o nome do espaço?`} ajuda="Escolha o artigo (O / A) e digite o nome — é o que vai aparecer grande no app.">
+          <Passo titulo="Qual o nome do espaço?" ajuda="Escolha o artigo (O / A) e digite o nome — é o que vai aparecer grande no app.">
             <Campo label="Nome do espaço">
               <ArtigoNome artigo={r.espacoArtigo} nome={r.nomeEscola}
                 onArtigo={(v) => set({ espacoArtigo: v })}
@@ -374,36 +370,79 @@ export default function Onboarding({ user }) {
               <span className="block text-xs text-gray-500 mb-0.5">Endereço do seu espaço</span>
               <span className="font-medium text-gray-800 break-all">{enderecoDaEscola(slugify(r.nomeEscola))}</span>
             </div>
-            {!(user && user.email) && (
-              <Campo label="Seu e-mail (para entrar e receber o acesso)"><TextInput value={email} onChange={setEmail} placeholder="voce@email.com" /></Campo>
-            )}
-            <label className="flex items-start gap-2 text-sm text-gray-600 mt-4">
-              <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} className="mt-0.5 rounded" />
-              <span>
-                Li e aceito os <a href={LINK_TERMOS} target="_blank" rel="noreferrer" className="text-blue-600 underline">Termos de Uso</a> e
-                a <a href={LINK_PRIVACIDADE} target="_blank" rel="noreferrer" className="text-blue-600 underline">Política de Privacidade</a>,
-                e declaro que posso cadastrar os nomes que vou inserir.
-              </span>
-            </label>
+            <Campo label="E-mail do responsável (é com ele que o dono vai entrar)">
+              <TextInput value={email} onChange={setEmail} placeholder="dono@email.com" />
+            </Campo>
           </Passo>
         )}
       </div>
 
       {erro && <p className="text-red-600 text-sm mt-3">{erro}</p>}
+      {step === 'dono' && <ConvitesPendentes />}
 
       <div className="flex justify-between items-center mt-6">
         <button onClick={voltar} disabled={i === 0} className="text-sm text-gray-500 disabled:opacity-30">← Voltar</button>
         {/* A arrow importa: onClick={finalizar} passaria o evento do clique
             como confirmandoDuplicado, pulando o aviso de endereço repetido. */}
         {ehUltimo ? (
-          <button onClick={() => finalizar()} disabled={salvando || !aceito || (!(user && user.email) && !email.trim())} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
-            {salvando ? 'Criando…' : 'Criar meu app'}
+          <button onClick={() => finalizar()} disabled={salvando || !emailValido(email)} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40">
+            {salvando ? 'Criando…' : 'Criar escola'}
           </button>
         ) : (
           <button onClick={avancar} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Avançar →</button>
         )}
       </div>
     </Card>
+  );
+}
+
+// Fim da criação: o link de convite, para o Pedro mandar ao dono.
+export function EscolaCriada({ convite, nome, email, donoNome }) {
+  const link = linkDoConvite(convite);
+  const [copiado, setCopiado] = useState(false);
+  const mensagem = `Olá${donoNome ? ', ' + donoNome : ''}! O app de ${nome} no AVIZ está pronto. Abra este link para criar seu PIN e entrar: ${link}`;
+  const copiar = () => {
+    try { navigator.clipboard.writeText(link).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }); } catch { /* o link está na tela */ }
+  };
+  return (
+    <Card>
+      <div className="text-[10px] tracking-[0.2em] text-gray-300 font-semibold mb-5">AVIZ</div>
+      <h2 className="text-xl font-bold text-gray-800 mb-2">Escola criada!</h2>
+      <p className="text-sm text-gray-600 mb-3">
+        Mande este convite para <b>{email}</b>. Ao abrir, o responsável escolhe um PIN de 4 números e já entra como dono.
+      </p>
+      <p className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm break-all text-gray-800">{link}</p>
+      <div className="flex gap-2 mt-3">
+        <button onClick={copiar} className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${copiado ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>
+          {copiado ? '✓ Copiado!' : 'Copiar link'}
+        </button>
+        <a href={`https://wa.me/?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noreferrer"
+          className="flex-1 py-2.5 rounded-lg text-sm font-medium text-center border border-gray-300 text-gray-700">WhatsApp</a>
+      </div>
+      <p className="text-xs text-gray-400 mt-3">O convite vale uma vez só, por 30 dias.</p>
+      <a href="/?novo=1" className="inline-block mt-4 text-sm text-blue-600 underline">Criar outra escola</a>
+      <ConvitesPendentes />
+    </Card>
+  );
+}
+
+// Convites ainda não aceitos (para reenviar o link, se o cliente perdeu).
+export function ConvitesPendentes() {
+  const [lista, setLista] = useState(null);
+  useEffect(() => { let vivo = true; listarConvites().then((l) => { if (vivo) setLista(l); }).catch(() => { if (vivo) setLista([]); }); return () => { vivo = false; }; }, []);
+  if (!lista || !lista.length) return null;
+  return (
+    <div className="mt-6 border-t border-gray-100 pt-4">
+      <p className="text-sm font-medium text-gray-700 mb-2">Convites ainda não aceitos</p>
+      <ul className="space-y-2">
+        {lista.map((c) => (
+          <li key={c.convite} className="text-xs text-gray-600">
+            <b>{c.nome}</b> · {c.email}{c.vencido ? ' · vencido' : ''}
+            <span className="block break-all text-gray-400">{linkDoConvite(c.convite)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -20,11 +20,11 @@ import AlunoApp from '../src/components/aluno/AlunoApp.jsx';
 import RegrasModal from '../src/components/aluno/RegrasModal.jsx';
 import { fatiaAluno, vagasParaAluno } from '../src/domain/fatiaAluno.js';
 import { EquipeView } from '../src/components/EquipeSec.jsx';
-import { Login, NovoPin, EsqueciPin } from '../src/App.jsx';
+import { Login, NovoPin, EsqueciPin, Convite } from '../src/App.jsx';
 import EnderecoGuardar from '../src/components/EnderecoGuardar.jsx';
 import PrimeirosPassos from '../src/components/PrimeirosPassos.jsx';
 import ConfigScreen from '../src/components/ConfigScreen.jsx';
-import Onboarding from '../src/onboarding/Onboarding.jsx';
+import Onboarding, { Questionario, EscolaCriada } from '../src/onboarding/Onboarding.jsx';
 
 const config = {
   regras: { capacidadeNominal: 7, capacidadeFisica: 8, validadeFaltaDias: 30, validadeFeriasDias: 30, antecedenciaHoras: 2, semAntecedencia: true, ferias: true, feriasCredito: true, feriasCreditos: 1, feriasLimiteAno: 0 },
@@ -148,6 +148,10 @@ casos.push(['NovoPin', <NovoPin tenant="t1" />]);
 casos.push(['EsqueciPin', <EsqueciPin tenant={null} onVoltar={noop} />]);
 casos.push(['EnderecoGuardar', <EnderecoGuardar slug="atelie-sol" onFechar={() => {}} />]);
 casos.push(['Onboarding', <Onboarding user={null} />]);
+casos.push(['Questionario', <Questionario />]);
+casos.push(['EscolaCriada', <EscolaCriada convite={'a'.repeat(48)} nome="Ateliê Sol" email="ana@exemplo.com" donoNome="Ana" />]);
+casos.push(['Convite (sem conta)', <Convite convite={'a'.repeat(48)} inicial={{ e: 'atelie-sol', escola: 'Ateliê Sol', email: 'ana@exemplo.com', donoNome: 'Ana', temConta: false }} />]);
+casos.push(['Convite (já tem conta)', <Convite convite={'a'.repeat(48)} inicial={{ e: 'atelie-sol', escola: 'Ateliê Sol', email: 'ana@exemplo.com', donoNome: 'Ana', temConta: true }} />]);
 casos.push(['RegrasModal', <RegrasModal config={config} vocab={vocab} onClose={noop} />]);
 casos.push(['RegrasModal (sem regras)', <RegrasModal config={configMinimo} vocab={vocab} onClose={noop} />]);
 
