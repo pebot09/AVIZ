@@ -156,6 +156,26 @@ export function reducer(state, action, config) {
       break;
     }
 
+    // Cadastro em lote (lista colada). A tela já filtrou os repetidos com
+    // lerListaDeAlunos; aqui só garantimos de novo que ninguém entra duas vezes.
+    case 'ADD_ALUNOS': {
+      const turma = state.turmas.find((t) => t.id === action.turmaId);
+      if (!turma) return state;
+      const novos = [];
+      for (const nome of arr(action.nomes)) {
+        if (typeof nome !== 'string' || !nome.trim()) continue;
+        if (arr(turma.alunos).includes(nome) || novos.includes(nome)) continue;
+        novos.push(nome);
+      }
+      if (!novos.length) return state;
+      next = {
+        ...state,
+        turmas: state.turmas.map((t) => (t.id === action.turmaId ? { ...t, alunos: [...arr(t.alunos), ...novos] } : t)),
+        log: addLog(state.log, autor, `Adicionou à turma ${getTurmaLabel(state.turmas, action.turmaId)} (${novos.length}): ${novos.join(', ')}`),
+      };
+      break;
+    }
+
     case 'CHANGE_TURMA_ALUNO': {
       const { oldTurmaId, newTurmaId, nome } = action;
       if (!oldTurmaId || !newTurmaId || oldTurmaId === newTurmaId) return state;

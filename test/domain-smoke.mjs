@@ -5,6 +5,7 @@ import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros } 
 import { getNextOccurrences, horarioNaData, getClassDatetime, isDataBloqueada } from '../src/domain/calendario.js';
 import { fatiaAluno } from '../src/domain/fatiaAluno.js';
 import { primeirosPassos, guiaConcluido } from '../src/domain/primeirosPassos.js';
+import { lerListaDeAlunos, limparNome } from '../src/domain/listaAlunos.js';
 
 // console.assert só imprime; aqui uma falha tem que derrubar o teste (e o deploy).
 const _assert = console.assert;
@@ -237,6 +238,36 @@ if (dataResumo) {
   console.assert(!guiaConcluido(primeirosPassos(g, {})), 'sem conferir regras o guia continua');
   console.assert(guiaConcluido(primeirosPassos(g, { regras: true })), 'professores é opcional: guia conclui sem ele');
   console.log('primeiros passos ok');
+}
+
+// --- cadastro de alunos em lote (lista colada) ---
+{
+  console.assert(limparNome('  1. Ana   Souza ') === 'Ana Souza', 'tira numeração e espaços');
+  console.assert(limparNome('2) Bia') === 'Bia' && limparNome('- Caio') === 'Caio' && limparNome('• Duda') === 'Duda', 'tira marcadores');
+  console.assert(limparNome('10 - Edu') === 'Edu', 'tira "10 -"');
+  console.assert(limparNome('Ana 2') === 'Ana 2', 'número no fim do nome fica');
+  const colado = '1. Ana Souza\r\n\n2. bruno lima\n- Ana souza\n  \n• Célia\nCelia\nNina';
+  const r = lerListaDeAlunos(colado, ['Nina']);
+  console.assert(JSON.stringify(r.novos) === JSON.stringify(['Ana Souza', 'bruno lima', 'Célia']), 'novos: ' + JSON.stringify(r.novos));
+  console.assert(JSON.stringify(r.jaNaTurma) === JSON.stringify(['Nina']), 'já na turma: ' + JSON.stringify(r.jaNaTurma));
+  console.assert(lerListaDeAlunos('', []).novos.length === 0, 'lista vazia');
+
+  let g = normalizeState({});
+  const gd = (a) => { g = reducer(g, a, config, autor); };
+  gd({ type: 'ADD_TURMA', encontros: [{ diaSemana: 'segunda', hora: 9, minuto: 0 }], capacidade: 5 });
+  const tl = g.turmas.find((t) => t.id !== TURMA_EXTRA_ID);
+  gd({ type: 'ADD_ALUNO', turmaId: tl.id, nome: 'Nina' });
+  const logAntes = g.log.length;
+  gd({ type: 'ADD_ALUNOS', turmaId: tl.id, nomes: ['Ana', 'Bia', 'Nina', 'Ana', ''] });
+  const tl2 = g.turmas.find((t) => t.id === tl.id);
+  console.assert(JSON.stringify(tl2.alunos) === JSON.stringify(['Nina', 'Ana', 'Bia']), 'lote adiciona sem repetir: ' + JSON.stringify(tl2.alunos));
+  console.assert(g.log.length === logAntes + 1 && /\(2\): Ana, Bia/.test(g.log[0].descricao), 'uma linha só no histórico: ' + (g.log[0] && g.log[0].descricao));
+  const antes = g;
+  gd({ type: 'ADD_ALUNOS', turmaId: tl.id, nomes: ['Ana'] });
+  console.assert(g === antes, 'lote só com repetidos não muda nada');
+  gd({ type: 'ADD_ALUNOS', turmaId: 'nao-existe', nomes: ['Zé'] });
+  console.assert(g === antes, 'turma inexistente não muda nada');
+  console.log('alunos em lote ok');
 }
 
 console.log(process.exitCode ? '\n❌ smoke test falhou' : '\n✅ smoke test passou');
