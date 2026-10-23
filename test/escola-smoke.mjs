@@ -1,11 +1,15 @@
-// Criação de escola pelo onboarding (worker/escola.js).
+// Criação de escola (só admin) e convite do dono (worker/escola.js).
 //
-// Banco e Identity Toolkit de mentira. O que importa provar: a escola nasce
-// salva antes do login, só o dono do e-mail informado consegue assumi-la (em
-// qualquer aparelho), e ninguém toma uma escola que já existe.
+// Banco e Identity Toolkit de mentira. O que importa provar: só o admin cria;
+// a escola nasce com um convite de uso único; quem abre o convite escolhe o
+// PIN, aceita os Termos e vira dono (e entra de verdade com e-mail + PIN);
+// o convite não troca o PIN de quem já tem conta; ninguém toma escola que já
+// existe.
 
 import { webcrypto } from 'node:crypto';
-import { criarHandlerEscola, MARCADOR, MAX_CRIACOES, VALIDADE_PENDENTE_MS } from '../worker/escola.js';
+import { criarHandlerEscola, MARCADOR, VALIDADE_CONVITE_MS } from '../worker/escola.js';
+import { criarHandlerConta } from '../worker/conta.js';
+import { chaveDoEmail, hashPinConta } from '../src/domain/conta.js';
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
@@ -15,105 +19,114 @@ const checar = (nome, cond, extra) => {
   else { console.log(`  ERRO ${nome}${extra ? ' — ' + extra : ''}`); falhas++; }
 };
 
-function bancoFalso() {
+function montar() {
   const raiz = {};
-  const pegar = (caminho) => caminho.split('/').reduce((n, k) => (n == null ? undefined : n[k]), raiz);
-  const por = (caminho, valor) => {
-    const ks = caminho.split('/');
+  const pegar = (c) => c.split('/').reduce((n, k) => (n == null ? undefined : n[k]), raiz);
+  const por = (c, v) => {
+    const ks = c.split('/');
     let n = raiz;
     for (const k of ks.slice(0, -1)) { if (typeof n[k] !== 'object' || n[k] === null) n[k] = {}; n = n[k]; }
-    if (valor === null) delete n[ks[ks.length - 1]];
-    else n[ks[ks.length - 1]] = JSON.parse(JSON.stringify(valor));
+    if (v === null) delete n[ks.at(-1)]; else n[ks.at(-1)] = JSON.parse(JSON.stringify(v));
   };
-  return { raiz, pegar, por };
-}
-
-function montar({ usuarios = {}, agora = 1_000_000 } = {}) {
-  const b = bancoFalso();
-  const relogio = { t: agora };
-  const h = criarHandlerEscola({
+  const relogio = { t: 1_000_000 };
+  const usuarios = { 'tok-pedro': { uid: 'uid-pedro' }, 'tok-outro': { uid: 'uid-outro' } };
+  const deps = {
     agora: () => relogio.t,
-    ler: async (c) => { const v = b.pegar(c); return v === undefined ? null : v; },
-    atualizar: async (u) => { for (const [c, v] of Object.entries(u)) b.por(c, v); },
-    usuarioDoIdToken: async (tok) => usuarios[tok] || null,
-  });
-  const pedir = async (corpo, ip = '1.1.1.1') => {
-    const req = new Request('https://x/api/escola', {
-      method: 'POST', body: JSON.stringify(corpo), headers: { 'CF-Connecting-IP': ip },
-    });
-    const r = await h(req);
-    return { status: r.status, dados: await r.json() };
+    ler: async (c) => { const v = pegar(c); return v === undefined ? null : JSON.parse(JSON.stringify(v)); },
+    lerChaves: async (c) => { const v = pegar(c); return v ? Object.fromEntries(Object.keys(v).map((k) => [k, true])) : null; },
+    atualizar: async (u) => { for (const [c, v] of Object.entries(u)) por(c, v); },
+    usuarioDoIdToken: async (t) => usuarios[t] || null,
+    criarToken: async (uid) => `token:${uid}`,
   };
-  return { b, pedir, relogio };
+  por('admins/uid-pedro', true);
+  const h = criarHandlerEscola(deps);
+  const pedir = async (corpo) => {
+    const r = await h(new Request('https://x/api/escola', { method: 'POST', body: JSON.stringify(corpo) }));
+    return { status: r.status, d: await r.json() };
+  };
+  const entrar = async (email, pin) => {
+    const r = await criarHandlerConta(deps)(new Request('https://x/api/conta', { method: 'POST', body: JSON.stringify({ op: 'entrar', email, pin }) }));
+    return { status: r.status, d: await r.json() };
+  };
+  return { raiz, pegar, por, pedir, entrar, relogio };
 }
 
-const config = { vocab: { aluno: 'aluno' }, regras: { capacidadeNominal: 6 }, criadoEm: '2026-10-14', aceite: { versao: 'x' }, intruso: 1 };
-const criar = (extra = {}) => ({ op: 'criar', e: 'atelie-sol', email: 'Ana@Exemplo.com', nomeEscola: 'Ateliê Sol', artigo: 'o', donoNome: 'Ana', donoGenero: 'a', config, ...extra });
+const config = { vocab: { aluno: 'aluno' }, regras: { capacidadeNominal: 6 }, criadoEm: '2026-10-14', intruso: 1 };
+const criar = (extra = {}) => ({ op: 'criar', idToken: 'tok-pedro', e: 'atelie-sol', email: 'Ana@Exemplo.com', nomeEscola: 'Ateliê Sol', artigo: 'o', donoNome: 'Ana', config, ...extra });
 
 {
-  const { b, pedir } = montar({
-    usuarios: {
-      'tok-ana': { uid: 'uid-ana', email: 'ana@exemplo.com', emailVerificado: true },
-      'tok-outro': { uid: 'uid-x', email: 'x@exemplo.com', emailVerificado: true },
-      'tok-nao-verif': { uid: 'uid-nv', email: 'ana@exemplo.com', emailVerificado: false },
-    },
-  });
+  const m = montar();
+  checar('Pedro é admin', (await m.pedir({ op: 'souAdmin', idToken: 'tok-pedro' })).d.admin === true);
+  checar('outro não é admin', (await m.pedir({ op: 'souAdmin', idToken: 'tok-outro' })).d.admin === false);
+  checar('sem login não é admin', (await m.pedir({ op: 'souAdmin' })).d.admin === false);
 
-  const r = await pedir(criar());
-  checar('cria a escola antes do login', r.status === 200, JSON.stringify(r.dados));
-  checar('vitrine pública gravada', b.pegar('tenantsPublic/atelie-sol/nome') === 'Ateliê Sol');
-  checar('config gravado', b.pegar('tenants/atelie-sol/config/regras/capacidadeNominal') === 6);
-  checar('config sem chave inesperada', b.pegar('tenants/atelie-sol/config/intruso') === undefined);
-  checar('marcador bloqueia o bootstrap das regras', !!b.pegar(`tenants/atelie-sol/members/${MARCADOR}`));
-  checar('e-mail fica fora de /tenants (membro não lê)', b.pegar('escolasPendentes/atelie-sol/email') === 'ana@exemplo.com');
-  checar('nenhum dono ainda', !Object.values(b.pegar('tenants/atelie-sol/members')).some((m) => m.role === 'owner'));
+  let r = await m.pedir(criar({ idToken: undefined }));
+  checar('criar sem login = 403', r.status === 403 && !m.raiz.tenantsPublic);
+  r = await m.pedir(criar({ idToken: 'tok-outro' }));
+  checar('criar sem ser admin = 403', r.status === 403 && !m.raiz.tenantsPublic);
+  r = await m.pedir(criar({ email: 'sem-arroba' }));
+  checar('e-mail inválido = 400', r.status === 400);
+  r = await m.pedir(criar({ config: { vocab: 1 } }));
+  checar('config incompleto = 400', r.status === 400);
 
-  const outro = await pedir(criar({ email: 'x@exemplo.com' }));
-  checar('outro e-mail não sobrescreve escola pendente', outro.status === 409);
-  checar('e-mail original mantido', b.pegar('escolasPendentes/atelie-sol/email') === 'ana@exemplo.com');
+  r = await m.pedir(criar());
+  checar('admin cria a escola', r.status === 200 && r.d.e === 'atelie-sol');
+  const convite = r.d.convite;
+  checar('convite é um segredo longo', /^[0-9a-f]{48}$/.test(convite));
+  checar('escola nasce com nome público', m.pegar('tenantsPublic/atelie-sol/nome') === 'Ateliê Sol');
+  checar('config limpo (sem chave intrusa)', !('intruso' in m.pegar('tenants/atelie-sol/config')));
+  checar('escola nasce sem dono, com o marcador', Object.keys(m.pegar('tenants/atelie-sol/members')).join() === MARCADOR);
+  checar('convite guarda escola e e-mail', m.pegar(`convites/${convite}/e`) === 'atelie-sol' && m.pegar(`convites/${convite}/email`) === 'ana@exemplo.com');
 
-  const refaz = await pedir(criar({ nomeEscola: 'Ateliê Sol!' }));
-  checar('mesmo e-mail pode refazer o formulário', refaz.status === 200 && b.pegar('tenantsPublic/atelie-sol/nome') === 'Ateliê Sol!');
+  r = await m.pedir(criar({ email: 'outra@exemplo.com' }));
+  checar('ninguém cria em cima de escola que existe', r.status === 409);
 
-  checar('assumir sem token pede login', (await pedir({ op: 'assumir', e: 'atelie-sol' })).status === 401);
-  checar('token inválido não assume', (await pedir({ op: 'assumir', e: 'atelie-sol', idToken: 'lixo' })).status === 401);
-  checar('outro e-mail não assume', (await pedir({ op: 'assumir', e: 'atelie-sol', idToken: 'tok-outro' })).status === 404);
-  checar('e-mail não verificado não assume', (await pedir({ op: 'assumir', e: 'atelie-sol', idToken: 'tok-nao-verif' })).status === 404);
-  checar('ainda sem dono', !b.pegar('tenants/atelie-sol/members/uid-x') && !b.pegar('tenants/atelie-sol/members/uid-nv'));
+  r = await m.pedir({ op: 'convites', idToken: 'tok-pedro' });
+  checar('admin vê os convites pendentes', r.status === 200 && r.d.convites.length === 1 && r.d.convites[0].nome === 'Ateliê Sol');
+  checar('outro não vê os convites', (await m.pedir({ op: 'convites', idToken: 'tok-outro' })).status === 403);
 
-  const a = await pedir({ op: 'assumir', e: 'atelie-sol', idToken: 'tok-ana' });
-  checar('dono do e-mail assume (qualquer aparelho)', a.status === 200);
-  const dono = b.pegar('tenants/atelie-sol/members/uid-ana');
-  checar('vira owner só com nome (sem gênero)', dono && dono.role === 'owner' && dono.nome === 'Ana' && !('genero' in dono));
-  checar('marcador some', b.pegar(`tenants/atelie-sol/members/${MARCADOR}`) === undefined);
-  checar('pendência some', b.pegar('escolasPendentes/atelie-sol') === undefined);
+  r = await m.pedir({ op: 'verConvite', convite });
+  checar('convite mostra escola, e-mail e que não há conta', r.status === 200 && r.d.escola === 'Ateliê Sol' && r.d.email === 'ana@exemplo.com' && r.d.temConta === false);
+  checar('convite inventado = 404', (await m.pedir({ op: 'verConvite', convite: 'f'.repeat(48) })).status === 404);
+  checar('convite com formato errado = 404', (await m.pedir({ op: 'verConvite', convite: '../admins' })).status === 404);
 
-  checar('assumir de novo não faz nada', (await pedir({ op: 'assumir', e: 'atelie-sol', idToken: 'tok-ana' })).status === 404);
-  const tomar = await pedir(criar());
-  checar('escola já assumida não pode ser recriada, nem pelo mesmo e-mail', tomar.status === 409);
-  checar('config da escola real intacto', b.pegar('tenantsPublic/atelie-sol/nome') === 'Ateliê Sol!');
+  r = await m.pedir({ op: 'aceitarConvite', convite, pin: '4829' });
+  checar('sem aceitar os Termos não entra', r.status === 400 && !m.pegar('contas'));
+  r = await m.pedir({ op: 'aceitarConvite', convite, pin: '1234', aceite: true });
+  checar('PIN fraco é recusado', r.status === 400);
+  r = await m.pedir({ op: 'aceitarConvite', convite, pin: '4829', aceite: true, versao: 'v-teste' });
+  checar('aceitar o convite entra (token)', r.status === 200 && r.d.e === 'atelie-sol' && /^token:dono-/.test(r.d.token));
+  const uid = r.d.token.slice('token:'.length);
+  const membros = m.pegar('tenants/atelie-sol/members');
+  checar('vira dono, e o marcador sai', membros[uid].role === 'owner' && membros[uid].nome === 'Ana' && !membros[MARCADOR]);
+  checar('aceite dos Termos registrado', m.pegar('tenants/atelie-sol/config/aceite/versao') === 'v-teste');
+  checar('PIN não fica em texto puro', !JSON.stringify(m.raiz).includes('4829'));
+  checar('convite some depois de usado', !m.pegar(`convites/${convite}`));
+  checar('convite não vale duas vezes', (await m.pedir({ op: 'aceitarConvite', convite, pin: '5173', aceite: true })).status === 404);
+
+  r = await m.entrar('ana@exemplo.com', '4829');
+  checar('dono entra com e-mail + PIN e cai na escola', r.status === 200 && r.d.escolas.length === 1 && r.d.escolas[0].e === 'atelie-sol' && r.d.escolas[0].papel === 'owner');
+
+  // Quem já tem conta: o convite não troca o PIN.
+  const chave = await chaveDoEmail('bia@exemplo.com');
+  m.por(`contas/${chave}`, { uid: 'uid-bia', email: 'bia@exemplo.com', pin: await hashPinConta('5173') });
+  r = await m.pedir(criar({ e: 'estudio-lua', nomeEscola: 'Estúdio Lua', email: 'bia@exemplo.com', donoNome: 'Bia' }));
+  const c2 = r.d.convite;
+  checar('convite avisa que a pessoa já tem conta', (await m.pedir({ op: 'verConvite', convite: c2 })).d.temConta === true);
+  r = await m.pedir({ op: 'aceitarConvite', convite: c2, pin: '9046', aceite: true });
+  checar('quem já tem conta vira dono com o mesmo uid', r.status === 200 && m.pegar('tenants/estudio-lua/members/uid-bia/role') === 'owner');
+  checar('o convite não troca o PIN de quem já tem conta', (await m.entrar('bia@exemplo.com', '9046')).status === 403 && (await m.entrar('bia@exemplo.com', '5173')).status === 200);
+
+  // Convite vencido
+  r = await m.pedir(criar({ e: 'velha', nomeEscola: 'Velha', email: 'v@exemplo.com' }));
+  m.relogio.t += VALIDADE_CONVITE_MS + 1;
+  checar('convite vencido não vale', (await m.pedir({ op: 'verConvite', convite: r.d.convite })).status === 404);
+  checar('admin vê que venceu', (await m.pedir({ op: 'convites', idToken: 'tok-pedro' })).d.convites.find((x) => x.e === 'velha').vencido === true);
+
+  // Encanamento
+  checar('operação desconhecida = 400', (await m.pedir({ op: 'assumir' })).status === 400);
+  checar('__proto__ não vira operação', (await m.pedir({ op: '__proto__' })).status === 400);
 }
 
-{
-  const { b, pedir, relogio } = montar();
-  await pedir(criar());
-  relogio.t += VALIDADE_PENDENTE_MS + 1;
-  const r = await pedir(criar({ email: 'novo@exemplo.com' }));
-  checar('escola pendente abandonada libera o endereço', r.status === 200 && b.pegar('escolasPendentes/atelie-sol/email') === 'novo@exemplo.com');
-}
-
-{
-  const { pedir } = montar();
-  checar('e-mail inválido recusado', (await pedir(criar({ email: 'nada' }))).status === 400);
-  checar('sem nome do espaço recusado', (await pedir(criar({ nomeEscola: '  ' }))).status === 400);
-  checar('config sem regras recusado', (await pedir(criar({ config: { vocab: {} } }))).status === 400);
-  checar('slug inválido recusado', (await pedir(criar({ e: '../billing' }))).status === 400);
-  checar('operação desconhecida recusada', (await pedir({ op: 'apagar', e: 'atelie-sol' })).status === 400);
-  let ultimo;
-  for (let i = 0; i < MAX_CRIACOES + 1; i++) ultimo = await pedir(criar({ e: `escola-${i}` }), '9.9.9.9');
-  checar('limite de criações por IP', ultimo.status === 429);
-  checar('outro IP segue livre', (await pedir(criar({ e: 'escola-z' }), '8.8.8.8')).status === 200);
-}
-
-if (falhas) { console.log(`\n❌ ${falhas} falha(s)`); process.exit(1); }
-console.log('\n✅ criação de escola ok');
+console.log(falhas ? `\n❌ ${falhas} falha(s) na criação de escola` : '\n✅ criação de escola e convite ok');
+process.exit(falhas ? 1 : 0);

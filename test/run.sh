@@ -41,7 +41,7 @@ echo "── login por e-mail + PIN ──"
 node test/conta-smoke.mjs
 
 echo
-echo "── criação de escola (onboarding) ──"
+echo "── criação de escola e convite do dono ──"
 node test/escola-smoke.mjs
 
 echo

@@ -8,11 +8,11 @@
 //   /tenants/{tid}/snapshots     "fotos" da lista salvas à mão pelo professor
 //   /tenants/{tid}/backups       backup automático do estado (anel das últimas N)
 //   /billing/{tid}               plano/status/vencimento — só super-admin
-//   /pinsProfessor/{tid}/{uid}   hash do PIN do professor — só o Worker (fora das regras)
-//   /pinTentativas/{tid}/{ip}    limite de tentativas de PIN — só o Worker
-//   /escolasPendentes/{tid}      escola criada no onboarding, esperando o dono
-//                                entrar com o e-mail informado — só o Worker
-//   /limiteCriacao/{ip}          limite de escolas criadas por IP — só o Worker
+//   /contas/{sha256(email)}      conta de login: uid + hash do PIN — só o Worker
+//   /loginTentativas/{…}         limite de tentativas de PIN por e-mail — só o Worker
+//   /convites/{token}            convite do dono de uma escola nova — só o Worker
+//   /admins/{uid}                true = pode criar escolas (marcado no console)
+//   /pinsProfessor, /pinTentativas  restos do login antigo (só apagados)
 
 export const paths = {
   tenantPublic: (tid) => `tenantsPublic/${tid}`,

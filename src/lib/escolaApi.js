@@ -1,8 +1,7 @@
-// Cliente de /api/escola: a escola nova é salva no servidor ANTES do login.
-//
-// Assim o link mágico funciona em qualquer aparelho: quem abre o link entra,
-// e o app "assume" a escola pendente daquele e-mail (worker/escola.js).
+// Cliente de /api/escola: criação de escola (só admin) e convite do dono.
+// Ver worker/escola.js.
 
+import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from './firebase.js';
 
 async function chamar(corpo) {
@@ -26,22 +25,36 @@ async function chamar(corpo) {
   return dados;
 }
 
-// payload: { slug, email, nomeEscola, artigo, cor, donoNome, config }
-export function criarEscola({ slug, ...resto }) {
-  return chamar({ op: 'criar', e: slug, ...resto });
+const idToken = async () => (auth.currentUser ? auth.currentUser.getIdToken() : null);
+
+export async function souAdmin() {
+  if (!auth.currentUser) return false;
+  try { return !!(await chamar({ op: 'souAdmin', idToken: await idToken() })).admin; } catch { return false; }
 }
 
-// Vira dono da escola pendente, se o e-mail do login for o do onboarding.
-// Retorna true se assumiu; false se não havia nada para este e-mail.
-export async function assumirEscola(tenant) {
-  if (!auth.currentUser || !auth.currentUser.email) return false;
-  try {
-    await chamar({ op: 'assumir', e: tenant, idToken: await auth.currentUser.getIdToken() });
-    return true;
-  } catch (e) {
-    if (e.status === 404) return false;
-    throw e;
-  }
+// payload: { slug, email, nomeEscola, artigo, cor, donoNome, config } → { e, convite }
+export async function criarEscola({ slug, ...resto }) {
+  return chamar({ op: 'criar', e: slug, idToken: await idToken(), ...resto });
+}
+
+export async function listarConvites() {
+  return (await chamar({ op: 'convites', idToken: await idToken() })).convites || [];
+}
+
+export function verConvite(convite) {
+  return chamar({ op: 'verConvite', convite });
+}
+
+// Aceita o convite (e escolhe o PIN, se a pessoa ainda não tem conta) e entra.
+export async function aceitarConvite(convite, pin, versao) {
+  const { e, token } = await chamar({ op: 'aceitarConvite', convite, pin, aceite: true, versao });
+  await signInWithCustomToken(auth, token);
+  return e;
+}
+
+export function linkDoConvite(convite) {
+  const origem = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origem}/?convite=${convite}`;
 }
 
 // Endereço completo do espaço, para o dono guardar e passar à equipe.

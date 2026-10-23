@@ -4,7 +4,8 @@ import { db } from './lib/firebase.js';
 import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, esquecerTenant, querEscolaNova } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, linkPedeEmail, watchAuth, logout } from './lib/auth.js';
-import { assumirEscola } from './lib/escolaApi.js';
+import { verConvite, aceitarConvite } from './lib/escolaApi.js';
+import { VERSAO_TEXTOS } from './legal/operador.js';
 import { entrarComEmailPin, definirMeuPin, minhasEscolas } from './lib/contaApi.js';
 import { PIN_CONTA_TAMANHO, problemaDoPinConta } from './domain/conta.js';
 import EscolaApp from './components/EscolaApp.jsx';
@@ -41,18 +42,91 @@ export default function App() {
     if (!tenant) return <Shell><LinkIncompleto /></Shell>;
     return <AlunoRoot tenant={tenant} codigo={accessCode} />;
   }
+  // Convite de dono de escola nova: aceitar os Termos e escolher o PIN.
+  const convite = new URLSearchParams(window.location.search).get('convite');
+  if (convite) return <Shell><Convite convite={convite} /></Shell>;
   if (pedeEmail) return <Shell><ConfirmarEmail onPronto={() => setPedeEmail(false)} /></Shell>;
   if (user === undefined) return <Shell><p style={s.dim}>Carregando…</p></Shell>;
   // Criar escola é sempre um pedido explícito (?novo=1). Nunca o destino de
   // quem só abriu o app sem endereço — era assim que se criava uma escola
   // duplicada e vazia sem perceber.
-  if (novo) return <Onboarding user={user || null} />;
+  // Criar escola: só o administrador, logado (o Onboarding confere).
+  if (novo && user) return <Onboarding user={user} />;
   if (!user) return <Shell><Login tenant={tenant} erro={erro} /></Shell>;
   // Voltou do link "Esqueci meu PIN" (ou do convite): escolhe o PIN primeiro.
   if (querNovoPin()) return <Shell><NovoPin tenant={tenant} /></Shell>;
   // Logado sem escola no endereço: o app descobre de quais escolas a conta é.
   if (!tenant) return <Shell><EscolherEscola user={user} /></Shell>;
   return <Dono tenant={tenant} user={user} />;
+}
+
+// Abre o convite: mostra a escola e o e-mail, pede o aceite dos Termos e o PIN
+// (se a pessoa ainda não tem conta no AVIZ). Aceitou → já entra como dono.
+export function Convite({ convite, inicial }) {
+  const [info, setInfo] = useState(inicial); // undefined = carregando
+  const [falha, setFalha] = useState(null);
+  const [pin, setPin] = useState('');
+  const [conf, setConf] = useState('');
+  const [aceito, setAceito] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  useEffect(() => {
+    if (inicial) return;
+    let vivo = true;
+    verConvite(convite).then((d) => { if (vivo) setInfo(d); }).catch((e) => { if (vivo) { setInfo(null); setFalha(mensagemDeErro(e)); } });
+    return () => { vivo = false; };
+  }, [convite, inicial]);
+
+  async function entrar(e) {
+    e.preventDefault();
+    setFalha(null);
+    if (!info.temConta) {
+      const problema = problemaDoPinConta(pin);
+      if (problema) { setFalha(problema); return; }
+      if (pin !== conf) { setFalha('Os dois PINs não são iguais.'); return; }
+    }
+    setSalvando(true);
+    try {
+      const slug = await aceitarConvite(convite, info.temConta ? undefined : pin, VERSAO_TEXTOS);
+      irPara(slug);
+    } catch (err) { setFalha(mensagemDeErro(err)); setSalvando(false); }
+  }
+
+  if (info === undefined) return <p style={s.dim}>Abrindo o convite…</p>;
+  if (!info) {
+    return (
+      <div>
+        <h2 style={s.h2}>Convite indisponível</h2>
+        <p style={s.p}>{falha}</p>
+        <p style={s.dim}>Se você já aceitou, entre com seu e-mail e PIN em <a href="/">{window.location.host}</a>.</p>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={entrar}>
+      <h2 style={s.h2}>Bem-vindo{info.donoNome ? `, ${info.donoNome}` : ''}!</h2>
+      <p style={s.p}>O app de <b>{info.escola}</b> está pronto. Você vai entrar com o e-mail <b>{info.email}</b>.</p>
+      {info.temConta ? (
+        <p style={s.dim}>Você já tem conta no AVIZ: depois de aceitar, use o PIN que já usa.</p>
+      ) : (
+        <>
+          <p style={s.p}>Escolha um PIN de {PIN_CONTA_TAMANHO} números. É com ele que você entra.</p>
+          <CampoPin value={pin} onChange={setPin} placeholder="PIN" autoComplete="new-password" aria-label="PIN" />
+          <CampoPin value={conf} onChange={setConf} placeholder="Repita o PIN" autoComplete="new-password" aria-label="Repita o PIN" style={{ ...s.input, marginTop: 0 }} />
+        </>
+      )}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#4b5563', margin: '8px 0 14px' }}>
+        <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} style={{ marginTop: 3 }} />
+        <span>
+          Li e aceito os <a href={LINK_TERMOS} target="_blank" rel="noreferrer">Termos de Uso</a> e a{' '}
+          <a href={LINK_PRIVACIDADE} target="_blank" rel="noreferrer">Política de Privacidade</a>, e declaro que posso cadastrar os nomes que vou inserir.
+        </span>
+      </label>
+      <button type="submit" disabled={salvando || !aceito || (!info.temConta && (pin.length !== PIN_CONTA_TAMANHO || conf.length !== PIN_CONTA_TAMANHO))} style={s.btn}>
+        {salvando ? 'Entrando…' : 'Entrar no app'}
+      </button>
+      {falha && <p style={s.err}>{falha}</p>}
+    </form>
+  );
 }
 
 const querNovoPin = () => new URLSearchParams(window.location.search).has('novopin');
@@ -225,7 +299,6 @@ export function EsqueciPin({ tenant, onVoltar }) {
 
 function Dono({ tenant, user }) {
   const [membro, setMembro] = useState(undefined);
-  const [falhaAssumir, setFalhaAssumir] = useState(null);
 
   useEffect(() => {
     let vivo = true;
@@ -234,14 +307,7 @@ function Dono({ tenant, user }) {
         const snap = await get(ref(db, paths.member(tenant, user.uid))).catch(() => null);
         return snap && snap.exists() ? snap.val() : null;
       };
-      let m = await lerMembro();
-      // Escola recém-criada no onboarding (salva no servidor, presa ao
-      // e-mail): quem entra com aquele e-mail vira o dono — em qualquer
-      // aparelho, sem depender do navegador onde o formulário foi preenchido.
-      if (!m && user.email) {
-        try { if (await assumirEscola(tenant)) m = await lerMembro(); }
-        catch (e) { if (vivo) setFalhaAssumir(mensagemDeErro(e)); }
-      }
+      const m = await lerMembro();
       // Só lembra a escola em que o acesso foi confirmado.
       if (m) lembrarTenant(tenant);
       if (vivo) setMembro(m);
@@ -265,7 +331,6 @@ function Dono({ tenant, user }) {
           <p style={s.dim}>{user.email
             ? 'Confira se este é o e-mail cadastrado nesta escola.'
             : 'Seu acesso de professor foi removido. Fale com o responsável pela escola.'}</p>
-          {falhaAssumir && <p style={s.err}>{falhaAssumir}</p>}
         </div>
         {user.email && (
           <button onClick={() => { esquecerTenant(tenant); window.location.replace('/'); }} style={{ ...s.btnSec, marginTop: 12 }}>
