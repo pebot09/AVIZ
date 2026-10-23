@@ -5,6 +5,22 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-23 — Configurações: rolagem, menu em grupos, sem excluir escola
+
+### O que foi feito
+- Rolagem: toda janela (Modal) agora tem altura da tela, título fixo e só o
+  conteúdo rola. Antes, no celular, o fim das Configurações ficava cortado.
+- Menu das Configurações em grupos: A escola (nome e cor, vocabulário,
+  capacidades, calendário) · Regras de faltas e reposição (faltas, vaga
+  extra, férias) · Equipe (professores e seu PIN) · Dados (baixar os dados).
+- Excluir a escola saiu do app (decisão do Pedro: só ele exclui, a pedido do
+  dono). Termos e Política de teste ajustados: exclusão a pedido. Recado
+  para a Adriana no mural.
+
+### Pendente
+- As regras do banco ainda deixam o dono apagar a escola (só a tela saiu).
+  Fechar isso exige mudar database.rules.json e o Pedro publicar no console.
+- Ferramenta para o Pedro excluir uma escola (hoje: pelo console do Firebase).
 ## 2026-10-23 — Cadastro de alunos em lote
 
 ### O que foi feito
