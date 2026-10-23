@@ -25,7 +25,7 @@ const checar = (nome, cond, extra) => {
 
 {
   const reg = await hashSegredo('4829');
-  checar('hash não contém o PIN', !JSON.stringify(reg).includes('4829'));
+  checar('hash não contém o PIN', !JSON.stringify(reg).includes('"4829"'));
   checar('PIN certo confere', await confereSegredo('4829', reg));
   checar('PIN errado não confere', !(await confereSegredo('4828', reg)));
   checar('mesmo PIN, sal diferente, hash diferente', reg.hash !== (await hashSegredo('4829')).hash);
@@ -124,7 +124,7 @@ const entrar = async (deps, email, pin) => {
   checar('membro criado com papel, nome e e-mail', membroAna.role === 'professor' && membroAna.nome === 'Ana' && membroAna.email === 'ana@exemplo.com');
   const chaveAna = await chaveDoEmail('ana@exemplo.com');
   checar('conta criada para o e-mail, marcada como desta escola', deps.banco.contas[chaveAna].uid === idAna && deps.banco.contas[chaveAna].criadaPor === 'escola');
-  checar('PIN não está em texto puro em lugar nenhum', !JSON.stringify(deps.banco).includes('4829'));
+  checar('PIN não está em texto puro em lugar nenhum', !JSON.stringify(deps.banco).includes('"4829"'));
 
   r = await entrar(deps, 'ana@exemplo.com', '4829');
   checar('professor entra com e-mail + PIN', r.status === 200 && r.d.token === `token:${idAna}`);

@@ -79,7 +79,9 @@ const pedir = (h, corpo) => h(new Request('https://x.dev/api/conta', { method: '
   checar('dona define o PIN', r.status === 200);
   const chave = await chaveDoEmail('ana@exemplo.com');
   checar('conta guardada pela chave do e-mail, com o uid dela', m.db.contas[chave].uid === 'uid-ana');
-  checar('PIN não fica em texto puro', !JSON.stringify(m.db).includes('4829'));
+  // Procura o PIN como valor ("4829"), não como trecho: o hash em hex às
+  // vezes contém "4829" por acaso, e o teste falhava ~1 vez em 200.
+  checar('PIN não fica em texto puro', !JSON.stringify(m.db).includes('"4829"'));
   checar('definir PIN já devolve as escolas', r.d.escolas.length === 2);
 
   r = await pedir(h, { op: 'entrar', email: '  ANA@exemplo.com ', pin: '4829' });

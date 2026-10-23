@@ -5,6 +5,26 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-23 — Testes que falhavam conforme a data
+
+### O que foi feito
+- Pedro testou no celular as entregas 1, 2 e 3 do login novo: tudo
+  funcionou (incluindo marcar a conta dele como admin no console).
+- Cadastro de alunos em lote: DESCARTADO (decisão do Pedro). O botão de gerar
+  link do aluno já basta.
+- Testes que travariam o deploy em certas datas:
+  - fatia do aluno falhava do fim de cada mês em diante (a partir de 28/10)
+    e de 29 a 31/12: férias de teste no mês atual sem aula restante.
+  - testes de PIN falhavam ~1 vez em 200: o hash às vezes contém "4829".
+  Conferido rodando todos os testes com o relógio simulado em 70 dias, de
+  manhã e à noite.
+
+### Próximo passo
+Escolher com o Pedro entre os itens 8 a 12 do diagnóstico (domínio próprio,
+restaurar backup, auditoria do super-admin, ajuda nas telas, textos).
+
+---
+
 ## 2026-10-23 — Criação de escola só pelo Pedro + convite do dono (entrega 2)
 
 ### O que foi feito
@@ -26,8 +46,7 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 - Os e-mails de "Esqueci meu PIN" ainda dependem da cota do Firebase (raro).
 
 ### Próximo passo
-Item 7 do diagnóstico: cadastrar alunos em lote (colar lista) e gerar/enviar
-links em lote.
+(Ver entrada mais nova.)
 
 ---
 

@@ -100,7 +100,7 @@ const criar = (extra = {}) => ({ op: 'criar', idToken: 'tok-pedro', e: 'atelie-s
   const membros = m.pegar('tenants/atelie-sol/members');
   checar('vira dono, e o marcador sai', membros[uid].role === 'owner' && membros[uid].nome === 'Ana' && !membros[MARCADOR]);
   checar('aceite dos Termos registrado', m.pegar('tenants/atelie-sol/config/aceite/versao') === 'v-teste');
-  checar('PIN não fica em texto puro', !JSON.stringify(m.raiz).includes('4829'));
+  checar('PIN não fica em texto puro', !JSON.stringify(m.raiz).includes('"4829"'));
   checar('convite some depois de usado', !m.pegar(`convites/${convite}`));
   checar('convite não vale duas vezes', (await m.pedir({ op: 'aceitarConvite', convite, pin: '5173', aceite: true })).status === 404);
 
