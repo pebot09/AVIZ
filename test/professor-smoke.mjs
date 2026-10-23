@@ -1,18 +1,19 @@
-// Login do professor por PIN (worker/professor.js + src/domain/pin.js).
+// Equipe da escola (worker/professor.js): o dono cadastra professores com
+// nome, e-mail e PIN de 4 números; cada um ganha uma conta (/contas) e entra
+// pela mesma tela do dono (worker/conta.js).
 //
 // O banco e o Identity Toolkit são de mentira: nada sai para a rede. O que
-// importa provar aqui é quem consegue o quê — só o dono gere a equipe, só o PIN
-// certo vira sessão, o chute às cegas trava, e o PIN nunca vai parar num lugar
-// que um membro consegue ler.
+// importa provar: só o dono gere a equipe, o PIN nunca fica em texto puro nem
+// onde um membro lê, o professor criado entra de verdade, e o dono de uma
+// escola não consegue trocar o PIN de uma conta que é de outra escola.
 
 import { webcrypto } from 'node:crypto';
 import fs from 'node:fs';
 import { criarHandlerProfessor } from '../worker/professor.js';
+import { criarHandlerConta } from '../worker/conta.js';
 import { criarCustomToken } from '../worker/firebaseAuth.js';
-import {
-  pinValido, pinFraco, problemaDoPin, hashPin, conferePin,
-  estaBloqueado, registrarErro, MAX_ERROS, JANELA_MS, ehUidProfessor,
-} from '../src/domain/pin.js';
+import { hashSegredo, confereSegredo, ehUidProfessor } from '../src/domain/pin.js';
+import { chaveDoEmail, hashPinConta } from '../src/domain/conta.js';
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
@@ -22,33 +23,13 @@ const checar = (nome, cond, extra) => {
   else { console.log(`  ERRO ${nome}${extra ? ' — ' + extra : ''}`); falhas++; }
 };
 
-// ---- Regras do PIN ----
-checar('PIN de 6 números é válido', pinValido('482915'));
-checar('PIN curto é inválido', !pinValido('4829'));
-checar('PIN com letra é inválido', !pinValido('48291a'));
-checar('PIN número (não string) é inválido', !pinValido(482915));
-checar('000000 é fraco', pinFraco('000000'));
-checar('123456 é fraco', pinFraco('123456'));
-checar('654321 é fraco', pinFraco('654321'));
-checar('482915 não é fraco', !pinFraco('482915'));
-checar('problemaDoPin explica o tamanho', /6 números/.test(problemaDoPin('12')));
-
 {
-  const reg = await hashPin('482915');
-  checar('hash não contém o PIN', !JSON.stringify(reg).includes('482915'));
-  checar('PIN certo confere', await conferePin('482915', reg));
-  checar('PIN errado não confere', !(await conferePin('482916', reg)));
-  const reg2 = await hashPin('482915');
-  checar('mesmo PIN, sal diferente, hash diferente', reg.hash !== reg2.hash);
-  checar('registro vazio não confere', !(await conferePin('482915', null)));
-}
-
-{
-  let t = null;
-  for (let i = 0; i < MAX_ERROS; i++) t = registrarErro(t, 1000 + i);
-  checar(`${MAX_ERROS} erros bloqueiam`, estaBloqueado(t, 2000));
-  checar('bloqueio passa depois da janela', !estaBloqueado(t, 1000 + JANELA_MS + 1));
-  checar('erro depois da janela recomeça a contagem', registrarErro(t, 1000 + JANELA_MS + 1).n === 1);
+  const reg = await hashSegredo('4829');
+  checar('hash não contém o PIN', !JSON.stringify(reg).includes('4829'));
+  checar('PIN certo confere', await confereSegredo('4829', reg));
+  checar('PIN errado não confere', !(await confereSegredo('4828', reg)));
+  checar('mesmo PIN, sal diferente, hash diferente', reg.hash !== (await hashSegredo('4829')).hash);
+  checar('registro vazio não confere', !(await confereSegredo('4829', null)));
 }
 
 // ---- Custom token ----
@@ -80,101 +61,118 @@ const TOKEN_DONO = 'id-token-dono';
 
 function fakeDeps() {
   const banco = {
-    tenants: { escola: { members: { [DONO]: { role: 'owner', nome: 'Pedro' } } } },
-    pinsProfessor: {},
-    pinTentativas: {},
-  };
-  let agora = 1_000_000;
-  const ler = (caminho) => caminho.split('/').reduce((o, k) => (o == null ? null : o[k] ?? null), banco);
-  return {
-    banco,
-    passar: (ms) => { agora += ms; },
-    agora: () => agora,
-    lerMembros: async (tid) => ler(`tenants/${tid}/members`),
-    lerPin: async (tid, uid) => ler(`pinsProfessor/${tid}/${uid}`),
-    lerTentativa: async (tid, k) => ler(`pinTentativas/${tid}/${k}`),
-    gravarTentativa: async (tid, k, v) => {
-      banco.pinTentativas[tid] = banco.pinTentativas[tid] || {};
-      if (v == null) delete banco.pinTentativas[tid][k]; else banco.pinTentativas[tid][k] = v;
+    tenants: {
+      escola: { members: { [DONO]: { role: 'owner', nome: 'Pedro' } } },
+      outra: { members: { 'uid-dona-outra': { role: 'owner', nome: 'Bia' } } },
     },
+  };
+  const ler = (caminho) => caminho.split('/').reduce((o, k) => (o == null ? null : o[k] ?? null), banco);
+  const deps = {
+    banco,
+    agora: () => 1_000_000,
+    ler: async (c) => { const v = ler(c); return v == null ? null : JSON.parse(JSON.stringify(v)); },
+    lerChaves: async (c) => { const v = ler(c); return v ? Object.fromEntries(Object.keys(v).map((k) => [k, true])) : null; },
+    lerMembros: async (tid) => ler(`tenants/${tid}/members`),
     atualizar: async (updates) => {
       for (const [caminho, v] of Object.entries(updates)) {
         const partes = caminho.split('/');
         const ultima = partes.pop();
         let o = banco;
         for (const p of partes) { o[p] = o[p] || {}; o = o[p]; }
-        if (v == null) delete o[ultima]; else o[ultima] = v;
+        if (v == null) delete o[ultima]; else o[ultima] = JSON.parse(JSON.stringify(v));
       }
     },
-    uidDoIdToken: async (t) => (t === TOKEN_DONO ? DONO : t === 'id-token-prof' ? 'prof-qualquer' : null),
-    criarToken: async (uid, claims) => `token:${uid}:${claims.role}`,
+    uidDoIdToken: async (t) => ({ [TOKEN_DONO]: DONO, 'id-token-dona-outra': 'uid-dona-outra', 'id-token-prof': 'prof-qualquer' }[t] || null),
+    usuarioDoIdToken: async () => null,
+    criarToken: async (uid) => `token:${uid}`,
   };
+  return deps;
 }
 
-const ip = (x) => ({ get: (n) => (n === 'CF-Connecting-IP' ? x : null) });
-const post = (corpo, deIp = '1.2.3.4') => ({ method: 'POST', headers: ip(deIp), text: async () => JSON.stringify(corpo) });
+const post = (corpo) => ({ method: 'POST', text: async () => JSON.stringify(corpo) });
 const corpoDe = async (r) => JSON.parse(await r.text());
+const entrar = async (deps, email, pin) => {
+  const h = criarHandlerConta(deps);
+  const r = await h(new Request('https://x.dev/api/conta', { method: 'POST', body: JSON.stringify({ op: 'entrar', email, pin }) }));
+  return { status: r.status, d: await r.json() };
+};
 
 {
   const deps = fakeDeps();
   const h = criarHandlerProfessor(deps);
+  const novoAna = { op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'Ana', email: 'Ana@Exemplo.com', pin: '4829' };
 
   // Só o dono cria
-  let r = await h(post({ op: 'salvar', e: 'escola', nome: 'Ana', pin: '482915' }));
+  let r = await h(post({ ...novoAna, idToken: undefined }));
   checar('criar sem ID token = 403', r.status === 403);
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: 'id-token-prof', nome: 'Ana', pin: '482915' }));
+  r = await h(post({ ...novoAna, idToken: 'id-token-prof' }));
   checar('criar com token de quem não é dono = 403', r.status === 403);
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'Ana', pin: '123456' }));
+  r = await h(post({ ...novoAna, email: '' }));
+  checar('professor novo sem e-mail = 400', r.status === 400);
+  r = await h(post({ ...novoAna, pin: '482915' }));
+  checar('PIN de 6 números é recusado', r.status === 400);
+  r = await h(post({ ...novoAna, pin: '1234' }));
   checar('PIN fraco é recusado', r.status === 400);
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'Ana', pin: '482915' }));
+  r = await h(post({ ...novoAna, pin: undefined }));
+  checar('professor novo sem PIN = 400', r.status === 400);
+  r = await h(post(novoAna));
   checar('dono cria professor', r.status === 200, String(r.status));
   const { id: idAna } = await corpoDe(r);
   checar('uid do professor tem o formato certo', ehUidProfessor(idAna), idAna);
 
   const membroAna = deps.banco.tenants.escola.members[idAna];
-  checar('membro criado com papel professor', membroAna && membroAna.role === 'professor' && membroAna.nome === 'Ana');
-  checar('PIN não está no registro de membro', !JSON.stringify(deps.banco.tenants).includes('482915') && !('pin' in membroAna) && !('hash' in membroAna));
-  checar('hash guardado fora de /tenants', !!deps.banco.pinsProfessor.escola[idAna].hash);
+  checar('membro criado com papel, nome e e-mail', membroAna.role === 'professor' && membroAna.nome === 'Ana' && membroAna.email === 'ana@exemplo.com');
+  const chaveAna = await chaveDoEmail('ana@exemplo.com');
+  checar('conta criada para o e-mail, marcada como desta escola', deps.banco.contas[chaveAna].uid === idAna && deps.banco.contas[chaveAna].criadaPor === 'escola');
+  checar('PIN não está em texto puro em lugar nenhum', !JSON.stringify(deps.banco).includes('4829'));
 
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'ana ', pin: '739184' }));
+  r = await entrar(deps, 'ana@exemplo.com', '4829');
+  checar('professor entra com e-mail + PIN', r.status === 200 && r.d.token === `token:${idAna}`);
+  checar('e cai na escola certa, como professor', r.d.escolas.length === 1 && r.d.escolas[0].e === 'escola' && r.d.escolas[0].papel === 'professor');
+
+  r = await h(post({ ...novoAna, nome: 'ana ', email: 'outra@exemplo.com', pin: '7391' }));
   checar('nome repetido é recusado', r.status === 409);
+  r = await h(post({ ...novoAna, nome: 'Ana Clara' }));
+  checar('mesmo e-mail duas vezes é recusado', r.status === 409);
 
-  // Lista pública: só nomes de professores
-  r = await h(post({ op: 'listar', e: 'escola' }));
-  const lista = (await corpoDe(r)).professores;
-  checar('listar traz o professor', lista.length === 1 && lista[0].nome === 'Ana' && lista[0].id === idAna);
-  checar('listar não traz o dono', !JSON.stringify(lista).includes('Pedro'));
+  // Trocar PIN e nome
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: idAna, pin: '7391' }));
+  checar('dono troca o PIN do professor', r.status === 200 && deps.banco.tenants.escola.members[idAna].nome === 'Ana');
+  checar('PIN antigo deixa de valer', (await entrar(deps, 'ana@exemplo.com', '4829')).status === 403);
+  checar('PIN novo vale', (await entrar(deps, 'ana@exemplo.com', '7391')).status === 200);
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: idAna, nome: 'Ana Souza', email: 'troca@exemplo.com' }));
+  checar('editar troca o nome e mantém o e-mail', r.status === 200
+    && deps.banco.tenants.escola.members[idAna].nome === 'Ana Souza' && deps.banco.tenants.escola.members[idAna].email === 'ana@exemplo.com');
 
-  // Entrar
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '482915' }));
-  checar('PIN certo devolve token', r.status === 200 && (await corpoDe(r)).token === `token:${idAna}:professor`);
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '482916' }));
-  checar('PIN errado = 403', r.status === 403);
-  r = await h(post({ op: 'entrar', e: 'escola', id: DONO, pin: '482915' }));
-  checar('não dá para entrar como o dono por PIN', r.status === 403);
+  // Pessoa que já tem conta (a dona da outra escola vira professora aqui)
+  const chaveBia = await chaveDoEmail('bia@exemplo.com');
+  await deps.atualizar({ [`contas/${chaveBia}`]: { uid: 'uid-dona-outra', email: 'bia@exemplo.com', pin: await hashPinConta('5173') } });
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'Bia', email: 'bia@exemplo.com', pin: '9046' }));
+  const resBia = await corpoDe(r);
+  checar('e-mail com conta: entra na equipe com o uid dela', r.status === 200 && resBia.id === 'uid-dona-outra' && deps.banco.tenants.escola.members['uid-dona-outra'].role === 'professor');
+  checar('e-mail com conta: avisa que ela usa o PIN que já tem', /PIN que já usa/.test(resBia.aviso || ''));
+  checar('dono NÃO troca o PIN de conta de outra escola', (await entrar(deps, 'bia@exemplo.com', '9046')).status === 403);
+  r = await entrar(deps, 'bia@exemplo.com', '5173');
+  checar('ela entra com o PIN dela e vê as duas escolas', r.status === 200 && r.d.escolas.map((x) => x.e).sort().join() === 'escola,outra');
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'Pedro 2', email: 'x@exemplo.com', pin: '6082' }));
+  const chaveX = await chaveDoEmail('x@exemplo.com');
+  await deps.atualizar({ [`contas/${chaveX}/uid`]: DONO });
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'Outro', email: 'x@exemplo.com', pin: '6082' }));
+  checar('e-mail do próprio dono não vira professor', r.status === 409);
 
-  // Bloqueio por tentativas (o erro de cima já contou 2: PIN errado + dono)
-  for (let i = 0; i < MAX_ERROS; i++) await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '000001' }, '9.9.9.9'));
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '482915' }, '9.9.9.9'));
-  checar('depois de muitos erros, nem o PIN certo entra (429)', r.status === 429, String(r.status));
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '482915' }, '5.5.5.5'));
-  checar('bloqueio é por endereço, não trava a escola toda', r.status === 200);
-  deps.passar(JANELA_MS + 1);
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '482915' }, '9.9.9.9'));
-  checar('bloqueio expira', r.status === 200);
-  checar('acerto zera as tentativas', !Object.keys(deps.banco.pinTentativas.escola).some((k) => deps.banco.pinTentativas.escola[k].n >= MAX_ERROS));
-
-  // Trocar PIN
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: idAna, pin: '739184' }));
-  checar('dono troca o PIN', r.status === 200);
-  checar('nome mantido ao trocar só o PIN', deps.banco.tenants.escola.members[idAna].nome === 'Ana');
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '482915' }, '7.7.7.7'));
-  checar('PIN antigo deixa de valer', r.status === 403);
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '739184' }, '7.7.7.7'));
-  checar('PIN novo vale', r.status === 200);
+  // Professor antigo (nome + PIN de 6 números, sem e-mail) ganha e-mail
+  const antigo = 'prof-aaaaaaaaaaaaaaaaaaaa';
+  await deps.atualizar({ [`tenants/escola/members/${antigo}`]: { role: 'professor', nome: 'Caio', temPin: true }, [`pinsProfessor/escola/${antigo}`]: { hash: 'h' } });
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: antigo, nome: 'Caio' }));
+  checar('professor antigo sem e-mail: editar pede e-mail', r.status === 400);
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: antigo, nome: 'Caio', email: 'caio@exemplo.com' }));
+  checar('professor antigo: e-mail sem PIN novo = 400', r.status === 400);
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: antigo, nome: 'Caio', email: 'caio@exemplo.com', pin: '3958' }));
+  checar('professor antigo ganha conta com o mesmo uid', r.status === 200 && (await corpoDe(r)).id === antigo);
+  checar('professor antigo entra com e-mail + PIN', (await entrar(deps, 'caio@exemplo.com', '3958')).status === 200);
 
   // Não mexe no dono pelo caminho de professor
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: DONO, nome: 'X', pin: '739184' }));
+  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, id: DONO, nome: 'X', pin: '7391' }));
   checar('não edita o dono como professor', r.status === 404 && deps.banco.tenants.escola.members[DONO].role === 'owner');
   r = await h(post({ op: 'remover', e: 'escola', idToken: TOKEN_DONO, id: DONO }));
   checar('não remove o dono', r.status === 404 && !!deps.banco.tenants.escola.members[DONO]);
@@ -183,44 +181,19 @@ const corpoDe = async (r) => JSON.parse(await r.text());
   r = await h(post({ op: 'remover', e: 'escola', idToken: 'id-token-prof', id: idAna }));
   checar('remover sem ser dono = 403', r.status === 403);
   r = await h(post({ op: 'remover', e: 'escola', idToken: TOKEN_DONO, id: idAna }));
-  checar('dono remove professor', r.status === 200 && !deps.banco.tenants.escola.members[idAna] && !deps.banco.pinsProfessor.escola[idAna]);
-  r = await h(post({ op: 'entrar', e: 'escola', id: idAna, pin: '739184' }, '8.8.8.8'));
-  checar('removido não entra mais', r.status === 403);
+  checar('dono remove professor', r.status === 200 && !deps.banco.tenants.escola.members[idAna]);
+  r = await entrar(deps, 'ana@exemplo.com', '7391');
+  checar('removido entra, mas sem escola nenhuma', r.status === 200 && r.d.escolas.length === 0);
 
-  // PIN do próprio dono
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, proprio: true, pin: '111111' }));
-  checar('PIN fraco do dono é recusado', r.status === 400);
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: 'id-token-prof', proprio: true, pin: '582047' }));
-  checar('quem não é dono não cria PIN de dono', r.status === 403);
-  r = await h(post({ op: 'listar', e: 'escola' }));
-  checar('dono sem PIN não aparece no login', !(await corpoDe(r)).professores.some((p) => p.id === DONO));
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, proprio: true, pin: '582047' }));
-  checar('dono cria o próprio PIN', r.status === 200);
-  const membroDono = deps.banco.tenants.escola.members[DONO];
-  checar('dono continua dono, com o mesmo nome', membroDono.role === 'owner' && membroDono.nome === 'Pedro' && membroDono.temPin === true);
-  checar('PIN do dono guardado só como hash', !!deps.banco.pinsProfessor.escola[DONO].hash && !JSON.stringify(deps.banco).includes('582047'));
-  r = await h(post({ op: 'listar', e: 'escola' }));
-  checar('dono com PIN aparece no login', (await corpoDe(r)).professores.some((p) => p.id === DONO && p.nome === 'Pedro'));
-  r = await h(post({ op: 'entrar', e: 'escola', id: DONO, pin: '582047' }, '4.4.4.4'));
-  checar('dono entra com o PIN como dono', r.status === 200 && (await corpoDe(r)).token === `token:${DONO}:owner`);
-  r = await h(post({ op: 'entrar', e: 'escola', id: DONO, pin: '582048' }, '4.4.4.4'));
-  checar('PIN errado do dono = 403', r.status === 403);
-  r = await h(post({ op: 'salvar', e: 'escola', idToken: TOKEN_DONO, nome: 'pedro', pin: '739184' }));
-  checar('professor não pode ter o nome do dono', r.status === 409);
-  r = await h(post({ op: 'entrar', e: 'escola', id: '../billing', pin: '582047' }, '4.4.4.4'));
-  checar('id com caminho é recusado', r.status === 403);
-
-  // Escola inexistente ou excluída: nada é gravado
-  r = await h(post({ op: 'entrar', e: 'apagada', id: idAna, pin: '000001' }, '6.6.6.6'));
-  checar('entrar em escola inexistente = 403', r.status === 403);
-  checar('entrar em escola inexistente não grava tentativas', !deps.banco.pinTentativas.apagada && !deps.banco.tenants.apagada);
-  r = await h(post({ op: 'salvar', e: 'apagada', idToken: TOKEN_DONO, nome: 'Zé', pin: '739184' }));
-  checar('salvar em escola inexistente = 403 e não grava', r.status === 403 && !deps.banco.tenants.apagada && !deps.banco.pinsProfessor.apagada);
+  // Dono de uma escola não mexe na equipe da outra
+  r = await h(post({ op: 'remover', e: 'outra', idToken: TOKEN_DONO, id: 'uid-dona-outra' }));
+  checar('dono não mexe em outra escola', r.status === 403);
 
   // Encanamento
-  checar('GET = 405', (await h({ method: 'GET', headers: ip('1') })).status === 405);
-  checar('escola inválida = 400', (await h(post({ op: 'listar', e: 'Escola!' }))).status === 400);
+  checar('GET = 405', (await h({ method: 'GET' })).status === 405);
+  checar('escola inválida = 400', (await h(post({ op: 'salvar', e: 'Escola!' }))).status === 400);
   checar('operação desconhecida = 400', (await h(post({ op: 'toString', e: 'escola' }))).status === 400);
+  checar('login antigo por nome + PIN não existe mais', (await h(post({ op: 'entrar', e: 'escola', id: antigo, pin: '482915' }))).status === 400);
 }
 
 // ---- Regras do Firebase: nenhum cliente lê PIN nem tentativas ----
@@ -238,7 +211,8 @@ const corpoDe = async (r) => JSON.parse(await r.text());
   };
   checar('regras não liberam /pinsProfessor', soApagar(regras.pinsProfessor) && regras['.read'] !== true);
   checar('regras não liberam /pinTentativas', soApagar(regras.pinTentativas));
+  checar('regras não liberam /contas nem /loginTentativas', !regras.contas && !regras.loginTentativas && !regras['.read'] && !regras['.write']);
 }
 
-console.log(falhas ? `\n❌ ${falhas} falha(s) no login por PIN` : '\n✅ login por PIN ok');
+console.log(falhas ? `\n❌ ${falhas} falha(s) na equipe` : '\n✅ equipe (e-mail + PIN) ok');
 process.exit(falhas ? 1 : 0);

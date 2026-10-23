@@ -5,10 +5,8 @@ import { paths } from './lib/paths.js';
 import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, esquecerTenant, querEscolaNova } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, linkPedeEmail, watchAuth, logout } from './lib/auth.js';
 import { assumirEscola } from './lib/escolaApi.js';
-import { listarProfessores, entrarComPin } from './lib/professorApi.js';
 import { entrarComEmailPin, definirMeuPin, minhasEscolas } from './lib/contaApi.js';
 import { PIN_CONTA_TAMANHO, problemaDoPinConta } from './domain/conta.js';
-import { PIN_TAMANHO } from './domain/pin.js';
 import EscolaApp from './components/EscolaApp.jsx';
 import AlunoRoot from './components/aluno/AlunoRoot.jsx';
 import Onboarding from './onboarding/Onboarding.jsx';
@@ -143,26 +141,14 @@ function CampoPin({ value, onChange, tamanho = PIN_CONTA_TAMANHO, ...resto }) {
   );
 }
 
-// Entrada: e-mail + PIN de 4 números (dono). Professores ainda entram por
-// nome + PIN da escola até migrarem para e-mail + PIN.
+// Entrada: e-mail + PIN de 4 números, igual para dono e professor.
 export function Login({ tenant, erro }) {
-  const [modo, setModo] = useState('conta'); // conta | esqueci | professor
-  if (modo === 'esqueci') return <EsqueciPin tenant={tenant} onVoltar={() => setModo('conta')} />;
-  if (modo === 'professor') {
-    return (
-      <div>
-        <LoginPin tenant={tenant} />
-        <button onClick={() => setModo('conta')} style={{ ...s.link, marginTop: 14 }}>← Entrar com e-mail e PIN</button>
-      </div>
-    );
-  }
+  const [esqueci, setEsqueci] = useState(false);
+  if (esqueci) return <EsqueciPin tenant={tenant} onVoltar={() => setEsqueci(false)} />;
   return (
     <div>
       <LoginConta erro={erro} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
-        <button onClick={() => setModo('esqueci')} style={s.link}>Esqueci meu PIN</button>
-        {tenant && <button onClick={() => setModo('professor')} style={s.link}>Sou professor</button>}
-      </div>
+      <button onClick={() => setEsqueci(true)} style={{ ...s.link, marginTop: 14 }}>Esqueci meu PIN</button>
     </div>
   );
 }
@@ -233,64 +219,6 @@ export function EsqueciPin({ tenant, onVoltar }) {
       <button type="submit" disabled={enviando} style={s.btn}>{enviando ? 'Enviando…' : 'Enviar link'}</button>
       {falha && <p style={s.err}>{falha}</p>}
       <button type="button" onClick={onVoltar} style={{ ...s.link, marginTop: 14 }}>← Voltar</button>
-    </form>
-  );
-}
-
-export function LoginPin({ tenant, inicial }) {
-  const [professores, setProfessores] = useState(inicial); // undefined = carregando
-  const [id, setId] = useState('');
-  const [pin, setPin] = useState('');
-  const [entrando, setEntrando] = useState(false);
-  const [falha, setFalha] = useState(null);
-
-  useEffect(() => {
-    if (inicial) return;
-    let vivo = true;
-    listarProfessores(tenant)
-      .then((lista) => { if (vivo) setProfessores(lista); })
-      .catch((e) => { if (vivo) { setProfessores([]); setFalha(mensagemDeErro(e)); } });
-    return () => { vivo = false; };
-  }, [tenant, inicial]);
-
-  async function entrar(e) {
-    e.preventDefault();
-    setEntrando(true); setFalha(null);
-    // Sucesso: o watchAuth do App percebe a sessão nova e segue sozinho.
-    try { await entrarComPin(tenant, id, pin); }
-    catch (err) { setFalha(mensagemDeErro(err)); setPin(''); setEntrando(false); }
-  }
-
-  if (professores === undefined) return <p style={s.dim}>Carregando…</p>;
-
-  return (
-    <form onSubmit={entrar}>
-      <h2 style={s.h2}>Entrar — {tenant}</h2>
-      {professores.length === 0 ? (
-        <>
-          <p style={s.p}>Ainda ninguém tem PIN nesta escola.</p>
-          <p style={s.dim}>O responsável cria os PINs em Configurações → Equipe.</p>
-          {falha && <p style={s.err}>{falha}</p>}
-        </>
-      ) : (
-        <>
-          <p style={s.p}>Escolha seu nome e digite seu PIN.</p>
-          <select value={id} onChange={(e) => setId(e.target.value)} required style={s.input} aria-label="Seu nome">
-            <option value="" disabled>Seu nome…</option>
-            {professores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
-          <input
-            type="password" inputMode="numeric" autoComplete="current-password" required
-            placeholder={'PIN (' + PIN_TAMANHO + ' números)'} value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_TAMANHO))}
-            style={{ ...s.input, marginTop: 0 }} aria-label="PIN"
-          />
-          <button type="submit" disabled={entrando || !id || pin.length !== PIN_TAMANHO} style={s.btn}>
-            {entrando ? 'Entrando…' : 'Entrar'}
-          </button>
-          {falha && <p style={s.err}>{falha}</p>}
-        </>
-      )}
     </form>
   );
 }

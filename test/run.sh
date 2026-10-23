@@ -33,7 +33,7 @@ echo "── autenticação (conta de serviço) ──"
 node test/auth-smoke.mjs
 
 echo
-echo "── login do professor por PIN ──"
+echo "── equipe: professores com e-mail + PIN ──"
 node test/professor-smoke.mjs
 
 echo

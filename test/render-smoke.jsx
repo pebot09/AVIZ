@@ -20,7 +20,7 @@ import AlunoApp from '../src/components/aluno/AlunoApp.jsx';
 import RegrasModal from '../src/components/aluno/RegrasModal.jsx';
 import { fatiaAluno, vagasParaAluno } from '../src/domain/fatiaAluno.js';
 import { EquipeView } from '../src/components/EquipeSec.jsx';
-import { LoginPin, Login, NovoPin, EsqueciPin } from '../src/App.jsx';
+import { Login, NovoPin, EsqueciPin } from '../src/App.jsx';
 import EnderecoGuardar from '../src/components/EnderecoGuardar.jsx';
 import PrimeirosPassos from '../src/components/PrimeirosPassos.jsx';
 import ConfigScreen from '../src/components/ConfigScreen.jsx';
@@ -139,16 +139,13 @@ casos.push(['AlunoApp', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab}
 casos.push(['AlunoApp (ocupado+erro)', <AlunoApp fatia={fatiaBia} config={config} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado erro="Deu ruim" />]);
 casos.push(['AlunoApp (escola sem regras)', <AlunoApp fatia={fatiaBia} config={configMinimo} vocab={vocab} nomeEscola="Escola Teste" executar={okAcao} ocupado={false} erro={null} />]);
 // --- equipe e login por PIN ---
-const profs = [{ id: 'prof-aaaaaaaaaaaaaaaaaaaa', nome: 'Ana' }, { id: 'prof-bbbbbbbbbbbbbbbbbbbb', nome: 'Beto' }];
-casos.push(['EquipeView', <EquipeView tenant="t1" vocab={vocab} professores={profs} carregando={false} meuPin salvarMeuPin={okAcao} salvar={okAcao} remover={okAcao} onDone={noop} />]);
-casos.push(['EquipeView (dono sem PIN)', <EquipeView tenant="t1" vocab={vocab} professores={profs} carregando={false} meuPin={false} salvarMeuPin={okAcao} salvar={okAcao} remover={okAcao} onDone={noop} />]);
+const profs = [{ id: 'prof-aaaaaaaaaaaaaaaaaaaa', nome: 'Ana', email: 'ana@exemplo.com' }, { id: 'prof-bbbbbbbbbbbbbbbbbbbb', nome: 'Beto', email: '' }];
+casos.push(['EquipeView', <EquipeView vocab={vocab} professores={profs} carregando={false} salvarMeuPin={okAcao} salvar={okAcao} remover={okAcao} onDone={noop} />]);
+casos.push(['EquipeView (vazia)', <EquipeView vocab={vocab} professores={[]} carregando={false} salvarMeuPin={okAcao} salvar={okAcao} remover={okAcao} onDone={noop} />]);
 casos.push(['Login (com escola)', <Login tenant="t1" />]);
 casos.push(['Login (sem escola)', <Login tenant={null} erro="Algo deu errado" />]);
 casos.push(['NovoPin', <NovoPin tenant="t1" />]);
 casos.push(['EsqueciPin', <EsqueciPin tenant={null} onVoltar={noop} />]);
-casos.push(['EquipeView (vazia)', <EquipeView tenant="t1" vocab={vocab} professores={[]} carregando={false} salvar={okAcao} remover={okAcao} onDone={noop} />]);
-casos.push(['LoginPin', <LoginPin tenant="t1" inicial={profs} />]);
-casos.push(['LoginPin (sem equipe)', <LoginPin tenant="t1" inicial={[]} />]);
 casos.push(['EnderecoGuardar', <EnderecoGuardar slug="atelie-sol" onFechar={() => {}} />]);
 casos.push(['Onboarding', <Onboarding user={null} />]);
 casos.push(['RegrasModal', <RegrasModal config={config} vocab={vocab} onClose={noop} />]);
