@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db, auth } from '../lib/firebase.js';
 import { paths } from '../lib/paths.js';
-import { salvarProfessor, salvarMeuPin, removerProfessor } from '../lib/professorApi.js';
+import { salvarProfessor, removerProfessor } from '../lib/professorApi.js';
+import { definirMeuPin } from '../lib/contaApi.js';
+import { problemaDoPinConta, PIN_CONTA_TAMANHO } from '../domain/conta.js';
 import { problemaDoPin, PIN_TAMANHO } from '../domain/pin.js';
 import { makeVocab, cap } from '../domain/vocab.js';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -25,7 +27,7 @@ export default function EquipeSec({ tenant, config, onDone }) {
   return (
     <EquipeView
       tenant={tenant} vocab={makeVocab(config)} professores={professores} carregando={membros === undefined}
-      meuPin={!!(eu && eu.temPin)} salvarMeuPin={(pin) => salvarMeuPin(tenant, pin)}
+      meuPin={!!(eu && eu.temPin)} salvarMeuPin={(pin) => definirMeuPin(pin)}
       salvar={(dados) => salvarProfessor(tenant, dados)} remover={(id) => removerProfessor(tenant, id)} onDone={onDone}
     />
   );
@@ -49,12 +51,12 @@ export function EquipeView({ tenant, vocab, professores, carregando, meuPin, sal
         A equipe entra em <span className="font-medium break-all">{link}</span> escolhendo o próprio nome e digitando o PIN.
       </p>
       {!carregando && (
-        <div className={`flex items-center justify-between rounded-lg px-3 py-2.5 mb-4 border ${meuPin ? 'border-gray-200' : 'border-amber-200 bg-amber-50'}`}>
+        <div className="flex items-center justify-between rounded-lg px-3 py-2.5 mb-4 border border-gray-200">
           <span className="text-sm text-gray-800">
             <span className="font-medium">Seu PIN</span>
-            <span className="block text-xs text-gray-500">{meuPin ? 'Criado. Você também pode entrar pelo link no e-mail.' : 'Crie o seu para entrar sem precisar do e-mail.'}</span>
+            <span className="block text-xs text-gray-500">Você entra com seu e-mail e este PIN de {PIN_CONTA_TAMANHO} números, em qualquer aparelho.</span>
           </span>
-          <button onClick={() => setEditando({ proprio: true, nome: '' })} className="text-xs text-blue-600 hover:text-blue-800 shrink-0 ml-3">{meuPin ? 'trocar' : 'criar meu PIN'}</button>
+          <button onClick={() => setEditando({ proprio: true, nome: '' })} className="text-xs text-blue-600 hover:text-blue-800 shrink-0 ml-3">trocar meu PIN</button>
         </div>
       )}
       <p className="text-sm font-medium text-gray-700 mb-2">{cap(vocab.professores)}</p>
@@ -98,6 +100,10 @@ export function EquipeView({ tenant, vocab, professores, carregando, meuPin, sal
 function FormProfessor({ inicial, vocab, salvar, onFim }) {
   const proprio = !!inicial.proprio;
   const novo = !inicial.id;
+  // O PIN do próprio dono é o da conta (e-mail + 4 números); o do professor
+  // ainda é o da escola (nome + 6 números).
+  const tamanho = proprio ? PIN_CONTA_TAMANHO : PIN_TAMANHO;
+  const problemaDe = proprio ? problemaDoPinConta : problemaDoPin;
   const [nome, setNome] = useState(inicial.nome || '');
   const [pin, setPin] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -108,7 +114,7 @@ function FormProfessor({ inicial, vocab, salvar, onFim }) {
     setErro(null);
     if (!proprio && !nome.trim()) { setErro('Informe o nome.'); return; }
     if (novo || pin) {
-      const problema = problemaDoPin(pin);
+      const problema = problemaDe(pin);
       if (problema) { setErro(problema); return; }
     }
     setSalvando(true);
@@ -127,15 +133,15 @@ function FormProfessor({ inicial, vocab, salvar, onFim }) {
         </>
       )}
       <label className="block text-sm font-medium text-gray-600 mb-1.5">
-        {novo ? `PIN de ${PIN_TAMANHO} números` : `Novo PIN (deixe vazio para manter o atual)`}
+        {novo ? `PIN de ${tamanho} números` : `Novo PIN (deixe vazio para manter o atual)`}
       </label>
       <input
-        value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_TAMANHO))}
-        inputMode="numeric" autoComplete="off" placeholder={'•'.repeat(PIN_TAMANHO)}
+        value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, tamanho))}
+        inputMode="numeric" autoComplete="off" placeholder={'•'.repeat(tamanho)}
         className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm tracking-[0.4em]"
       />
       <p className="text-xs text-gray-400 mt-1.5">{proprio
-        ? 'Guarde bem: ele dá acesso de responsável. Se esquecer, entre pelo link no e-mail e crie outro.'
+        ? 'Guarde bem: ele dá acesso de responsável. Se esquecer, use "Esqueci meu PIN" na tela de entrada.'
         : 'Passe o PIN pessoalmente. Depois de salvo, ele não aparece mais aqui.'}</p>
       {erro && <p className="text-red-600 text-sm mt-2">{erro}</p>}
       <div className="flex gap-2 justify-end mt-4 border-t border-gray-100 pt-3">

@@ -169,7 +169,8 @@ export default function Onboarding({ user }) {
         window.location.href = `/?e=${slug}`;
         return;
       }
-      await sendLoginLink(emailDono, enderecoDaEscola(slug));
+      // Ao abrir o link, o dono já escolhe o PIN com que vai entrar dali em diante.
+      await sendLoginLink(emailDono, `${enderecoDaEscola(slug)}&novopin=1&email=${encodeURIComponent(emailDono)}`);
       setEnviado(slug);
     } catch (e) {
       setErro(mensagemDeErro(e));

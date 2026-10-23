@@ -58,13 +58,23 @@ async function derivar(pin, salBytes, iteracoes) {
 
 // Gera o registro guardado em /pinsProfessor: { alg, it, sal, hash }.
 export async function hashPin(pin) {
+  return hashSegredo(pin);
+}
+
+// Hash de qualquer segredo numérico (o PIN da conta usa o mesmo formato).
+export async function hashSegredo(pin) {
   const sal = crypto.getRandomValues(new Uint8Array(16));
   return { alg: 'pbkdf2-sha256', it: ITERACOES, sal: hex(sal), hash: await derivar(pin, sal, ITERACOES) };
 }
 
 // Compara em tempo constante (o tamanho é sempre o mesmo).
 export async function conferePin(pin, registro) {
-  if (!pinValido(pin) || !registro || !registro.sal || !registro.hash) return false;
+  if (!pinValido(pin)) return false;
+  return confereSegredo(pin, registro);
+}
+
+export async function confereSegredo(pin, registro) {
+  if (typeof pin !== 'string' || !registro || !registro.sal || !registro.hash) return false;
   const calc = await derivar(pin, deHex(registro.sal), Number(registro.it) || ITERACOES);
   if (calc.length !== registro.hash.length) return false;
   let dif = 0;

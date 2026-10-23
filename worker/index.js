@@ -8,9 +8,10 @@
 //      dono (worker/professor.js).
 //   3. /api/escola → criação de escola pelo onboarding, antes do login
 //      (worker/escola.js).
-//   4. /manifest.webmanifest → o app instalável, com o nome da escola
+//   4. /api/conta → login de dono por e-mail + PIN (worker/conta.js).
+//   5. /manifest.webmanifest → o app instalável, com o nome da escola
 //      (worker/manifest.js).
-//   5. qualquer outro caminho → o app (arquivos estáticos em ./dist).
+//   6. qualquer outro caminho → o app (arquivos estáticos em ./dist).
 //
 // Por que existe: o aluno não tem conta no Firebase, e as regras barram quem
 // não tem conta — senão ele leria os dados de todos os outros alunos. O Worker
@@ -27,6 +28,7 @@ import { getAccessToken, criarCustomToken } from './firebaseAuth.js';
 import { criarHandlerProfessor } from './professor.js';
 import { criarHandlerEscola } from './escola.js';
 import { criarHandlerManifesto } from './manifest.js';
+import { criarHandlerConta } from './conta.js';
 
 const DB = 'https://aviz-cb3c8-default-rtdb.firebaseio.com';
 // Chave pública do app web (a mesma de src/lib/firebase.js — não é segredo).
@@ -130,6 +132,13 @@ function depsProfessor(env) {
   }
   return {
     ler,
+    // Só as chaves do nó (?shallow=true): lista as escolas sem baixar dados.
+    async lerChaves(caminho) {
+      const auth = await paramAuth(env);
+      const r = await fetch(`${DB}/${caminho}.json?shallow=true&${auth}`);
+      if (!r.ok) throw new Error(`firebase read ${r.status}`);
+      return r.json();
+    },
     usuarioDoIdToken,
     lerMembros: (tid) => ler(`tenants/${tid}/members`),
     lerPin: (tid, uid) => ler(`pinsProfessor/${tid}/${uid}`),
@@ -232,6 +241,18 @@ export default {
         return await criarHandlerEscola(depsProfessor(env))(request);
       } catch (e) {
         console.error('[escola]', e && e.stack ? e.stack : e);
+        return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
+      }
+    }
+
+    if (url.pathname === '/api/conta') {
+      if (!env.FIREBASE_SERVICE_ACCOUNT) {
+        return json({ erro: 'O login por PIN ainda não foi ativado.' }, 503);
+      }
+      try {
+        return await criarHandlerConta(depsProfessor(env))(request);
+      } catch (e) {
+        console.error('[conta]', e && e.stack ? e.stack : e);
         return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
       }
     }
