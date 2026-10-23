@@ -258,8 +258,16 @@ export function reducer(state, action, config) {
 
     case 'ADD_REPOSICAO': {
       const { alunoNome, dataReposicao, turmaReposicaoId, tipo } = action;
-      // Regra: ninguém repõe na própria turma de origem (nenhuma data).
-      if (turmaReposicaoId && action.turmaOrigemId && turmaReposicaoId === action.turmaOrigemId) return state;
+      // Na própria turma não há reposição: é a mesma aula. A exceção é a vaga
+      // que a falta do próprio aluno liberou — repor nela desfaz o ciclo, e o
+      // resultado é exatamente o de cancelar a falta (decisão do Pedro: os dois
+      // caminhos levam ao mesmo lugar).
+      if (turmaReposicaoId && action.turmaOrigemId && turmaReposicaoId === action.turmaOrigemId) {
+        const propria = arr(state.faltas).find((f) => f.alunoNome === alunoNome && f.turmaId === turmaReposicaoId
+          && f.status === 'pendente' && !f.cancelamentoId && arr(f.datas).includes(dataReposicao));
+        if (propria) return reducer(state, { type: 'CANCEL_FALTA', id: propria.id, origem: action.origem, autor }, config);
+        return state;
+      }
       const repoId = genId('r');
       const semVagaOficial = action.semVagaOficial || false;
       const vagaRaw = action.vagaSelId ? state.vagas.find((v) => v.id === action.vagaSelId) : null;

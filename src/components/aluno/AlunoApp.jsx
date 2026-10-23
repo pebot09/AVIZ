@@ -57,12 +57,13 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
   // ---- Vagas ----
   const vagas = useMemo(() => vagasParaAluno(fatia), [fatia]);
   const emSeis = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 6); return dateToStr(d); }, []);
-  const vagasSemana = vagas.filter((v) => v.data <= emSeis);
+  const vagasSemana = vagas.filter((v) => !v.propria && v.data <= emSeis);
 
   // Falta sem antecedência só vira reposição dentro da janela final. Então
   // "tenho direito" depende de existir alguma vaga nessa janela — senão o
   // cartão prometeria "Marcar reposição" e todo botão diria "aula extra".
   const algumaNaJanela = vagas.some((v) => {
+    if (v.propria) return false; // a vaga da própria falta não é reposição
     const inicio = getClassDatetime(v.turmaId, v.data, fatia.turmas);
     if (!inicio) return false;
     const h = (inicio.getTime() - Date.now()) / 3600000;
@@ -88,6 +89,14 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
   // ---- Marcar reposição ----
   const [confirmar, setConfirmar] = useState(null); // { tipo, vaga, direito }
   const marcarRepo = async (vaga, direito) => {
+    // Vaga liberada pela própria falta: o servidor transforma em "cancelar a
+    // falta" — o aluno volta para a aula de sempre.
+    if (vaga.propria) {
+      const ok = await executar({ type: 'ADD_REPOSICAO', dataReposicao: vaga.data, turmaReposicaoId: vaga.turmaId, semVagaOficial: false, vagaSelId: vaga.id });
+      setConfirmar(null);
+      if (ok) avisar('Falta cancelada: você volta para a sua aula.', 'reposicao');
+      return;
+    }
     const ok = await executar({
       type: 'ADD_REPOSICAO',
       dataReposicao: vaga.data, turmaReposicaoId: vaga.turmaId,
@@ -384,6 +393,7 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
                   const esperandoSemAntec = !direito && direitos.some((r) => r.kind === 'falta' && r.semAntecedencia) && !dentroJanela;
                   const clique = () => {
                     if (jaTenho || ocupado) return;
+                    if (v.propria) return setConfirmar({ tipo: 'propria', vaga: v, direito: null });
                     // Dentro da janela final, marcar e depois cancelar queima o
                     // direito — o original avisava, e o aviso continua valendo.
                     if (dentroJanela && direito) return setConfirmar({ tipo: 'janela', vaga: v, direito });
@@ -392,7 +402,7 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
                     if (direito.kind === 'credito') return setConfirmar({ tipo: 'credito', vaga: v, direito });
                     marcarRepo(v, direito);
                   };
-                  const kind = direito?.kind;
+                  const kind = v.propria ? 'propria' : direito?.kind;
                   return (
                     <div key={v.id} className={`px-4 py-3 flex items-center justify-between gap-3 ${minhaVagaFerias && kind === 'ferias' ? 'bg-teal-50/50' : kind === 'credito' ? 'bg-purple-50/30' : ''}`}>
                       <div className="min-w-0">
@@ -400,9 +410,10 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
                         <div className="text-xs text-gray-500">
                           {rotuloTurma(v.turmaId)}
                           {minhaVagaFerias && <span className="ml-1 text-teal-600">· vaga das suas férias</span>}
+                          {v.propria && <span className="ml-1 text-blue-600">· a vaga da sua falta</span>}
                         </div>
                         {jaTenho && <div className="text-xs text-red-500 mt-0.5">Você já tem reposição nesse horário</div>}
-                        {!jaTenho && esperandoSemAntec && (
+                        {!jaTenho && !v.propria && esperandoSemAntec && (
                           <div className="text-xs text-orange-500 mt-0.5">
                             Liberada {janela}h antes da {vocab.aula} começar, se a vaga continuar disponível
                           </div>
@@ -410,11 +421,11 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
                       </div>
                       <button onClick={clique} disabled={jaTenho || ocupado}
                         className={`text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-40 shrink-0 border ${
-                          kind === 'falta' ? 'text-blue-600 border-blue-300 bg-blue-50'
+                          kind === 'falta' || kind === 'propria' ? 'text-blue-600 border-blue-300 bg-blue-50'
                             : kind === 'ferias' ? 'text-teal-700 border-teal-300 bg-teal-50'
                               : kind === 'credito' ? 'text-purple-700 border-purple-300 bg-purple-50'
                                 : 'text-green-700 border-green-300 bg-green-50'}`}>
-                        {kind === 'falta' ? 'Repor' : kind === 'ferias' ? 'Repor (férias)' : kind === 'credito' ? 'Repor (crédito)' : `${cap(vocab.aula)} extra`}
+                        {kind === 'propria' ? 'Voltar para a aula' : kind === 'falta' ? 'Repor' : kind === 'ferias' ? 'Repor (férias)' : kind === 'credito' ? 'Repor (crédito)' : `${cap(vocab.aula)} extra`}
                       </button>
                     </div>
                   );
@@ -576,7 +587,8 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
       {confirmar && (
         <ConfirmModal
           title={
-            confirmar.tipo === 'janela' ? `⚠️ ${cap(vocab.aula)} quase começando`
+            confirmar.tipo === 'propria' ? 'Voltar para a sua aula?'
+              : confirmar.tipo === 'janela' ? `⚠️ ${cap(vocab.aula)} quase começando`
               : confirmar.tipo === 'ferias' ? 'Usar crédito de férias?'
                 : confirmar.tipo === 'credito' ? 'Usar crédito extra?'
                   : `Confirmar ${vocab.aula} extra?`
@@ -593,6 +605,9 @@ export default function AlunoApp({ fatia, config, vocab, nomeEscola, executar, o
 
 function mensagemConfirmacao({ tipo, vaga, direito }, fatia, config, vocab, janela) {
   const onde = `${fmtBRFull(vaga.data)} (${turmaShortLabel(fatia.turmas.find((t) => t.id === vaga.turmaId))})`;
+  if (tipo === 'propria') {
+    return `Essa é a vaga que a sua falta de ${onde} liberou. Ao confirmar, a falta é cancelada e você volta para a sua ${vocab.aula} normal — é o mesmo que cancelar a falta.`;
+  }
   if (tipo === 'janela') {
     const oQue = direito?.kind === 'ferias' ? 'o crédito de férias'
       : direito?.kind === 'credito' ? 'o crédito extra' : 'a reposição desta falta';

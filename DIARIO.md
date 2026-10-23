@@ -5,6 +5,20 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-23 — Vaga da própria falta: repor nela = cancelar a falta
+
+### O que foi feito
+- Antes: a vaga que a falta do aluno liberou não aparecia para ele, e o
+  sistema recusava (em silêncio) reposição na própria turma.
+- Agora (decisão do Pedro: "dois meios que levam ao mesmo lugar"): no painel
+  do aluno, a vaga da própria falta aparece ("a vaga da sua falta", botão
+  "Voltar para a aula"), só enquanto ele ainda poderia cancelar a falta.
+  Confirmar = cancelar a falta. No reducer, ADD_REPOSICAO na própria turma
+  e data de uma falta pendente vira CANCEL_FALTA (vale também para a equipe).
+- Teste prova que os dois caminhos deixam faltas, vagas e reposições iguais.
+
+---
+
 ## 2026-10-23 — Configurações: rolagem, menu em grupos, sem excluir escola
 
 ### O que foi feito

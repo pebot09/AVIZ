@@ -125,9 +125,11 @@ checar('cancelar na última hora não devolve nada', faixaCancelamentoRepo(repoF
 const vagas = vagasParaAluno(fatia);
 const chaves = vagas.map((v) => `${v.data}|${v.turmaId}`);
 checar('uma vaga por turma+data', new Set(chaves).size === chaves.length);
-// O reducer recusa reposição na própria turma. Se a vaga aparecesse, o aluno
-// clicaria num botão que não faz nada — nem sucesso, nem erro.
-checar('não oferece vaga da própria turma do aluno', vagas.every((v) => v.turmaId !== t1.id));
+// Na própria turma, só aparece a vaga que a falta dela liberou (escolher essa
+// vaga cancela a falta). A vaga do Zoroastro, na mesma turma, não aparece:
+// é a aula que ela já frequenta.
+checar('da própria turma, só a vaga da própria falta', vagas.filter((v) => v.turmaId === t1.id).every((v) => v.propria && v.data === dataFaltaAna));
+checar('a vaga da própria falta aparece, marcada', vagas.some((v) => v.propria && v.turmaId === t1.id && v.data === dataFaltaAna && v.faltaId === fatia.faltas[0].id));
 checar('oferece vagas de outras turmas', vagas.some((v) => v.turmaId === t2.id));
 // Aula cancelada não recebe reposição.
 {
@@ -179,6 +181,25 @@ checar('não cancela falta de outro aluno', !rr.ok, rr.erro);
 
 checar('ação fora da lista é recusada', !acaoDoAluno({ type: 'DELETE_TURMA', id: t1.id }, acesso, s, config).ok);
 checar('ação do professor é recusada', !acaoDoAluno({ type: 'CANCEL_AULA', turmaId: t1.id }, acesso, s, config).ok);
+
+// ---- repor na vaga da própria falta = cancelar a falta ----
+{
+  const ana = s.acessos.find((a) => a.alunoNome === 'Anaquerida');
+  const pedido = { type: 'ADD_REPOSICAO', dataReposicao: dataFaltaAna, turmaReposicaoId: t1.id, semVagaOficial: false };
+  const r = acaoDoAluno(pedido, ana, s, config);
+  checar('aluno pode pedir a vaga da própria falta', r.ok);
+  const porVaga = reducer(s, r.acao, config);
+  const faltaAna = s.faltas.find((f) => f.alunoNome === 'Anaquerida' && f.datas.includes(dataFaltaAna));
+  const porBotao = reducer(s, { type: 'CANCEL_FALTA', id: faltaAna.id, autor: 'Anaquerida', origem: 'aluno' }, config);
+  checar('repor na própria vaga cancela a falta', !porVaga.faltas.some((f) => f.id === faltaAna.id));
+  checar('não cria reposição', porVaga.reposicoes.length === s.reposicoes.length);
+  const resumo = (st) => JSON.stringify({ faltas: st.faltas.map((f) => f.id).sort(), vagas: st.vagas.map((v) => `${v.turmaId}|${v.data}|${v.faltaId || ''}|${v.ausenciaId || ''}|${!!v.vagaExtra}`).sort(), repos: st.reposicoes.length });
+  checar('os dois caminhos levam ao mesmo lugar', resumo(porVaga) === resumo(porBotao));
+  // Outra data da própria turma (sem falta): continua recusado.
+  const outraData = prox1.find((x) => x !== dataFaltaAna && !s.faltas.some((f) => f.alunoNome === 'Anaquerida' && f.datas.includes(x)));
+  const r2 = acaoDoAluno({ ...pedido, dataReposicao: outraData }, ana, s, config);
+  checar('própria turma sem falta naquela data: nada muda', reducer(s, r2.acao, config) === s);
+}
 
 console.log(falhas ? `\n❌ ${falhas} falha(s) na fatia` : '\n✅ fatia do aluno ok');
 process.exit(falhas ? 1 : 0);

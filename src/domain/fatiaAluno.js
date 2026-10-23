@@ -199,14 +199,25 @@ export function mesesDeFeriasDisponiveis(fatia, config, hoje = new Date()) {
 
 // ---- Vagas que o aluno pode escolher ----
 // Uma por turma+data (a primeira serve), sem as que a aula já começou.
+// Falta do aluno naquela data da própria turma que ele ainda pode desfazer.
+function faltaDesfazivel(fatia, data) {
+  return arr(fatia.faltas).find((f) => f.turmaId === fatia.aluno.turmaId && f.status === 'pendente'
+    && arr(f.datas).includes(data) && getCancelFaltaStatus(f, fatia).pode) || null;
+}
+
 export function vagasParaAluno(fatia, agora = Date.now()) {
   const vistas = new Set();
   return [...fatia.vagas]
+    .map((v) => {
+      if (v.turmaId !== fatia.aluno.turmaId) return v;
+      // Na própria turma, só a vaga que a falta dele liberou: escolher essa
+      // vaga cancela a falta (volta para a aula de sempre). As outras vagas da
+      // própria turma não servem — é a mesma aula que ele já frequenta.
+      const falta = faltaDesfazivel(fatia, v.data);
+      return falta ? { ...v, propria: true, faltaId: falta.id } : null;
+    })
     .filter((v) => {
-      // Ninguém repõe na própria turma — é a mesma aula. Sem este filtro a
-      // vaga apareceria, o reducer recusaria em silêncio, e o aluno clicaria
-      // num botão que não faz nada.
-      if (v.turmaId === fatia.aluno.turmaId) return false;
+      if (!v) return false;
       const inicio = getClassDatetime(v.turmaId, v.data, fatia.turmas);
       if (inicio && inicio.getTime() <= agora) return false;
       // Aula cancelada não recebe reposição.
