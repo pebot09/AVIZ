@@ -1,4 +1,6 @@
-// Login do dono por link mágico (sem senha).
+// Link de acesso por e-mail. Hoje só serve para "Esqueci meu PIN" e para o
+// primeiro acesso do dono de uma escola nova: o dia a dia é e-mail + PIN
+// (src/lib/contaApi.js).
 //
 // Fluxo:
 //   1. dono digita o e-mail → enviamos um link para ele
@@ -43,7 +45,15 @@ export async function sendLoginLink(email, continueUrl) {
 // precisa pedir o e-mail numa tela própria antes de fechar o login.
 export function linkPedeEmail() {
   if (!isSignInWithEmailLink(auth, window.location.href)) return false;
+  if (emailDoLink()) return false;
   try { return !localStorage.getItem(EMAIL_KEY); } catch { return true; }
+}
+
+// O link de "Esqueci meu PIN" leva o e-mail junto (?email=…): assim quem abre
+// o link noutro navegador (o do app de e-mail, por exemplo) não precisa
+// digitar o e-mail de novo.
+function emailDoLink() {
+  return new URLSearchParams(window.location.search).get('email') || null;
 }
 
 // Passo 2: se a URL atual é um link de login, fecha o login. Chamar no load.
@@ -54,14 +64,18 @@ export async function completeLoginIfPresent(emailDigitado) {
 
   let email = emailDigitado || null;
   if (!email) { try { email = localStorage.getItem(EMAIL_KEY); } catch { /* ignore */ } }
+  if (!email) email = emailDoLink();
   if (!email) return null;
 
   const cred = await signInWithEmailLink(auth, email.trim().toLowerCase(), window.location.href);
   try { localStorage.removeItem(EMAIL_KEY); } catch { /* ignore */ }
 
-  // Limpa os parâmetros do link da URL, mantendo ?e=escola.
-  const tenant = new URLSearchParams(window.location.search).get('e');
-  const limpo = window.location.pathname + (tenant ? `?e=${tenant}` : '');
+  // Limpa os parâmetros do link da URL, mantendo ?e=escola e o pedido de PIN.
+  const atual = new URLSearchParams(window.location.search);
+  const fica = new URLSearchParams();
+  if (atual.get('e')) fica.set('e', atual.get('e'));
+  if (atual.has('novopin')) fica.set('novopin', '1');
+  const limpo = window.location.pathname + (fica.toString() ? `?${fica}` : '');
   window.history.replaceState({}, '', limpo);
 
   return cred.user;

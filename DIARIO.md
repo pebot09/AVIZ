@@ -5,6 +5,43 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-23 — Login por e-mail + PIN (entrega 1 de 3)
+
+### Decisões do Pedro
+- Dono e professores entram com e-mail + PIN de 4 números (teclado
+  numérico). Nada de link por e-mail no dia a dia.
+- Trava: 10 erros seguidos no mesmo e-mail → 15 min. Sem trava de 24 h.
+- Só o Pedro cria escolas (entrega 2). O dono recebe um link de convite e
+  escolhe o PIN antes de entrar.
+- Professor: o dono cadastra nome, e-mail e PIN (entrega 3).
+- "Esqueci meu PIN": link por e-mail para escolher um PIN novo.
+
+### O que foi feito
+- `/api/conta` (`worker/conta.js`): entrar (e-mail + PIN → custom token +
+  lista de escolas), definirPin (exige estar logado com e-mail confirmado;
+  mantém o uid da conta se já existir) e escolas. Contas em
+  `/contas/{sha256(email)}`, tentativas em `/loginTentativas/…`: caminhos que
+  as regras não liberam para ninguém, então não precisou mexer nas regras.
+- Tela de entrada nova: e-mail + PIN, "Esqueci meu PIN" e "Sou professor"
+  (nome + PIN antigo, até a entrega 3). Logado sem escola no endereço, o app
+  acha as escolas da conta (uma → entra direto; várias → lista).
+- "Esqueci meu PIN" leva o e-mail no próprio link: não pede o e-mail de novo.
+- Tela "sem acesso" ganhou "Ver minhas escolas".
+- Configurações → Equipe → "Seu PIN" agora troca o PIN da conta (4 números).
+- Escola nova pelo questionário: o link do e-mail já abre pedindo o PIN.
+
+### Pendente
+- Entrega 2: criação só pelo Pedro (marcar a conta dele como admin no
+  console) + link de convite para o dono escolher o PIN.
+- Entrega 3: professores com e-mail + PIN; telinha para o Pedro gerar novo
+  convite; tirar o login de professor por nome + PIN.
+- Pedro: entrar na escola-x com "Esqueci meu PIN" (drive1) e testar o app.
+
+### Próximo passo
+Entrega 2.
+
+---
+
 ## 2026-10-15 — App instalável (tela inicial do iOS e Android)
 
 ### O que foi feito

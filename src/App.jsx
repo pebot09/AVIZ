@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { ref, get } from 'firebase/database';
 import { db } from './lib/firebase.js';
 import { paths } from './lib/paths.js';
-import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, querEscolaNova } from './lib/tenant.js';
+import { resolveTenant, resolveAccessCode, ultimoTenant, lembrarTenant, esquecerTenant, querEscolaNova } from './lib/tenant.js';
 import { sendLoginLink, completeLoginIfPresent, linkPedeEmail, watchAuth, logout } from './lib/auth.js';
 import { assumirEscola } from './lib/escolaApi.js';
 import { listarProfessores, entrarComPin } from './lib/professorApi.js';
+import { entrarComEmailPin, definirMeuPin, minhasEscolas } from './lib/contaApi.js';
+import { PIN_CONTA_TAMANHO, problemaDoPinConta } from './domain/conta.js';
 import { PIN_TAMANHO } from './domain/pin.js';
 import EscolaApp from './components/EscolaApp.jsx';
 import AlunoRoot from './components/aluno/AlunoRoot.jsx';
@@ -47,46 +49,190 @@ export default function App() {
   // quem só abriu o app sem endereço — era assim que se criava uma escola
   // duplicada e vazia sem perceber.
   if (novo) return <Onboarding user={user || null} />;
-  if (!tenant) return <Shell><Entrada /></Shell>;
   if (!user) return <Shell><Login tenant={tenant} erro={erro} /></Shell>;
+  // Voltou do link "Esqueci meu PIN" (ou do convite): escolhe o PIN primeiro.
+  if (querNovoPin()) return <Shell><NovoPin tenant={tenant} /></Shell>;
+  // Logado sem escola no endereço: o app descobre de quais escolas a conta é.
+  if (!tenant) return <Shell><EscolherEscola user={user} /></Shell>;
   return <Dono tenant={tenant} user={user} />;
 }
 
-// Tela de partida quando não dá para saber a escola: escolher é do usuário,
-// não do app.
-function Entrada() {
-  const [slug, setSlug] = useState('');
+const querNovoPin = () => new URLSearchParams(window.location.search).has('novopin');
+
+// Logado, sem escola no endereço: busca as escolas da conta. Uma só → entra
+// direto; várias → a pessoa escolhe. Ninguém precisa digitar endereço.
+function EscolherEscola({ user }) {
+  const [escolas, setEscolas] = useState(undefined);
+  const [falha, setFalha] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    minhasEscolas()
+      .then((lista) => {
+        if (!vivo) return;
+        if (lista.length === 1) { irPara(lista[0].e); return; }
+        setEscolas(lista);
+      })
+      .catch((e) => { if (vivo) { setEscolas([]); setFalha(mensagemDeErro(e)); } });
+    return () => { vivo = false; };
+  }, [user.uid]);
+
+  if (escolas === undefined) return <p style={s.dim}>Abrindo sua escola…</p>;
   return (
     <div>
-      <h2 style={s.h2}>Bem-vindo</h2>
-      <p style={s.p}>Entre no seu espaço ou crie um novo.</p>
-      <form
-        onSubmit={(e) => { e.preventDefault(); const v = slug.trim(); if (v) window.location.href = `/?e=${encodeURIComponent(v)}`; }}
-        style={{ marginTop: 18 }}
-      >
-        <label style={s.dim}>Endereço do seu espaço</label>
-        <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="ex: meu-espaco" style={s.input} />
-        <button type="submit" style={s.btn}>Entrar</button>
-      </form>
-      <p style={{ ...s.dim, textAlign: 'center', margin: '18px 0 8px' }}>ou</p>
-      <button onClick={() => { window.location.href = '/?novo=1'; }} style={s.btnSec}>Criar um espaço novo</button>
+      <div style={s.rowTop}>
+        <h2 style={s.h2}>{escolas.length ? 'Suas escolas' : 'Nenhuma escola'}</h2>
+        <button onClick={() => logout()} style={s.link}>sair</button>
+      </div>
+      {user.email && <p style={s.dim}>{user.email}</p>}
+      {escolas.length === 0 && !falha && (
+        <p style={s.p}>Esta conta ainda não está em nenhuma escola. Se você é professor, peça ao responsável para te cadastrar com este e-mail.</p>
+      )}
+      {escolas.map((x) => (
+        <button key={x.e} onClick={() => irPara(x.e)} style={{ ...s.btnSec, marginTop: 10, textAlign: 'left' }}>{x.nome}</button>
+      ))}
+      {falha && <p style={s.err}>{falha}</p>}
     </div>
   );
 }
 
-// Duas portas: a equipe (professores e o dono que criou o próprio PIN) entra
-// com nome + PIN; o link mágico no e-mail fica para o responsável. PIN
-// primeiro: é o que se usa todo dia.
-function Login({ tenant, erro }) {
-  const [modo, setModo] = useState('professor');
+function irPara(slug) {
+  lembrarTenant(slug);
+  window.location.replace(`/?e=${encodeURIComponent(slug)}`);
+}
+
+// Escolher (ou trocar) o PIN da conta, depois de entrar pelo link do e-mail.
+export function NovoPin({ tenant }) {
+  const [pin, setPin] = useState('');
+  const [conf, setConf] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [falha, setFalha] = useState(null);
+  async function salvar(e) {
+    e.preventDefault();
+    setFalha(null);
+    const problema = problemaDoPinConta(pin);
+    if (problema) { setFalha(problema); return; }
+    if (pin !== conf) { setFalha('Os dois PINs não são iguais.'); return; }
+    setSalvando(true);
+    try {
+      await definirMeuPin(pin);
+      window.location.replace(tenant ? `/?e=${encodeURIComponent(tenant)}` : '/');
+    } catch (err) { setFalha(mensagemDeErro(err)); setSalvando(false); }
+  }
+  return (
+    <form onSubmit={salvar}>
+      <h2 style={s.h2}>Escolha seu PIN</h2>
+      <p style={s.p}>São {PIN_CONTA_TAMANHO} números. Você vai entrar no AVIZ com seu e-mail e este PIN.</p>
+      <CampoPin value={pin} onChange={setPin} placeholder="PIN" autoFocus autoComplete="new-password" />
+      <CampoPin value={conf} onChange={setConf} placeholder="Repita o PIN" autoComplete="new-password" />
+      <button type="submit" disabled={salvando || pin.length !== PIN_CONTA_TAMANHO || conf.length !== PIN_CONTA_TAMANHO} style={s.btn}>
+        {salvando ? 'Salvando…' : 'Salvar e entrar'}
+      </button>
+      {falha && <p style={s.err}>{falha}</p>}
+    </form>
+  );
+}
+
+// Campo de PIN: teclado numérico no celular, só dígitos, tamanho fixo.
+function CampoPin({ value, onChange, tamanho = PIN_CONTA_TAMANHO, ...resto }) {
+  return (
+    <input
+      type="password" inputMode="numeric" pattern="[0-9]*"
+      value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, tamanho))}
+      style={{ ...s.input, letterSpacing: value ? 8 : 0 }} {...resto}
+    />
+  );
+}
+
+// Entrada: e-mail + PIN de 4 números (dono). Professores ainda entram por
+// nome + PIN da escola até migrarem para e-mail + PIN.
+export function Login({ tenant, erro }) {
+  const [modo, setModo] = useState('conta'); // conta | esqueci | professor
+  if (modo === 'esqueci') return <EsqueciPin tenant={tenant} onVoltar={() => setModo('conta')} />;
+  if (modo === 'professor') {
+    return (
+      <div>
+        <LoginPin tenant={tenant} />
+        <button onClick={() => setModo('conta')} style={{ ...s.link, marginTop: 14 }}>← Entrar com e-mail e PIN</button>
+      </div>
+    );
+  }
   return (
     <div>
-      <div style={s.abas}>
-        <button onClick={() => setModo('professor')} style={modo === 'professor' ? s.abaOn : s.aba}>Entrar com PIN</button>
-        <button onClick={() => setModo('dono')} style={modo === 'dono' ? s.abaOn : s.aba}>Link por e-mail</button>
+      <LoginConta erro={erro} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
+        <button onClick={() => setModo('esqueci')} style={s.link}>Esqueci meu PIN</button>
+        {tenant && <button onClick={() => setModo('professor')} style={s.link}>Sou professor</button>}
       </div>
-      {modo === 'professor' ? <LoginPin tenant={tenant} /> : <LoginEmail tenant={tenant} erro={erro} />}
     </div>
+  );
+}
+
+function LoginConta({ erro }) {
+  const [email, setEmail] = useState('');
+  const [pin, setPin] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const [falha, setFalha] = useState(null);
+  async function entrar(e) {
+    e.preventDefault();
+    setEntrando(true); setFalha(null);
+    // Sucesso: o watchAuth do App percebe a sessão nova e segue sozinho.
+    try { await entrarComEmailPin(email, pin); }
+    catch (err) { setFalha(mensagemDeErro(err)); setPin(''); setEntrando(false); }
+  }
+  return (
+    <form onSubmit={entrar}>
+      <h2 style={s.h2}>Entrar</h2>
+      <input type="email" required placeholder="seu@email.com" value={email} autoComplete="username"
+        onChange={(e) => setEmail(e.target.value)} style={s.input} aria-label="E-mail" />
+      <CampoPin value={pin} onChange={setPin} placeholder={`PIN (${PIN_CONTA_TAMANHO} números)`}
+        autoComplete="current-password" aria-label="PIN" style={{ ...s.input, marginTop: 0 }} />
+      <button type="submit" disabled={entrando || !email || pin.length !== PIN_CONTA_TAMANHO} style={s.btn}>
+        {entrando ? 'Entrando…' : 'Entrar'}
+      </button>
+      {(falha || erro) && <p style={s.err}>{falha || erro}</p>}
+    </form>
+  );
+}
+
+// "Esqueci meu PIN": manda um link para o e-mail; ao abrir, a pessoa escolhe
+// um PIN novo (NovoPin). O e-mail vai no próprio link, para não precisar
+// digitar de novo se ele abrir noutro navegador.
+export function EsqueciPin({ tenant, onVoltar }) {
+  const [email, setEmail] = useState('');
+  const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [falha, setFalha] = useState(null);
+  async function enviar(e) {
+    e.preventDefault();
+    setEnviando(true); setFalha(null);
+    try {
+      const limpo = email.trim().toLowerCase();
+      const q = new URLSearchParams({ ...(tenant ? { e: tenant } : {}), novopin: '1', email: limpo });
+      await sendLoginLink(limpo, `${window.location.origin}/?${q}`);
+      setEnviado(true);
+    } catch (err) { setFalha(mensagemDeErro(err)); }
+    finally { setEnviando(false); }
+  }
+  if (enviado) {
+    return (
+      <div>
+        <h2 style={s.h2}>Confira seu e-mail</h2>
+        <p style={s.p}>Mandamos um link para <b>{email}</b>. Abra o link e escolha um PIN novo.</p>
+        {ehAppIos() && <p style={s.dim}>No iPhone, o link abre no Safari. Crie o PIN por lá e depois volte aqui e entre com ele.</p>}
+        <button onClick={onVoltar} style={{ ...s.link, marginTop: 14 }}>← Voltar para entrar</button>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={enviar}>
+      <h2 style={s.h2}>Esqueci meu PIN</h2>
+      <p style={s.p}>Enviamos um link para o seu e-mail. Ao abrir, você escolhe um PIN novo.</p>
+      <input type="email" required placeholder="seu@email.com" value={email}
+        onChange={(e) => setEmail(e.target.value)} style={s.input} autoFocus aria-label="E-mail" />
+      <button type="submit" disabled={enviando} style={s.btn}>{enviando ? 'Enviando…' : 'Enviar link'}</button>
+      {falha && <p style={s.err}>{falha}</p>}
+      <button type="button" onClick={onVoltar} style={{ ...s.link, marginTop: 14 }}>← Voltar</button>
+    </form>
   );
 }
 
@@ -122,7 +268,7 @@ export function LoginPin({ tenant, inicial }) {
       {professores.length === 0 ? (
         <>
           <p style={s.p}>Ainda ninguém tem PIN nesta escola.</p>
-          <p style={s.dim}>O responsável entra pelo link por e-mail e cria os PINs em Configurações → Equipe.</p>
+          <p style={s.dim}>O responsável cria os PINs em Configurações → Equipe.</p>
           {falha && <p style={s.err}>{falha}</p>}
         </>
       ) : (
@@ -144,51 +290,6 @@ export function LoginPin({ tenant, inicial }) {
           {falha && <p style={s.err}>{falha}</p>}
         </>
       )}
-    </form>
-  );
-}
-
-function LoginEmail({ tenant, erro }) {
-  const [email, setEmail] = useState('');
-  const [enviado, setEnviado] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [falha, setFalha] = useState(null);
-
-  async function enviar(e) {
-    e.preventDefault();
-    setEnviando(true); setFalha(null);
-    try { await sendLoginLink(email); setEnviado(true); }
-    catch (err) { setFalha(mensagemDeErro(err)); }
-    finally { setEnviando(false); }
-  }
-
-  if (enviado) {
-    return (
-      <div>
-        <h2 style={s.h2}>Confira seu e-mail</h2>
-        <p style={s.p}>Mandamos um link de acesso para <b>{email}</b>. Abra o e-mail e clique para entrar.</p>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={enviar}>
-      <h2 style={s.h2}>Entrar — {tenant}</h2>
-      <p style={s.p}>Acesso do responsável pela escola. Enviamos um link, sem senha.</p>
-      {ehAppIos() && (
-        <p style={s.dim}>
-          No app do iPhone, o link do e-mail abre no Safari e você entra por lá. Para entrar
-          aqui no app, use seu PIN (crie em Configurações → Equipe → Seu PIN).
-        </p>
-      )}
-      <input
-        type="email" required placeholder="seu@email.com" value={email}
-        onChange={(e) => setEmail(e.target.value)} style={s.input} autoFocus
-      />
-      <button type="submit" disabled={enviando} style={s.btn}>
-        {enviando ? 'Enviando…' : 'Receber link de acesso'}
-      </button>
-      {(falha || erro) && <p style={s.err}>{falha || erro}</p>}
     </form>
   );
 }
@@ -233,10 +334,15 @@ function Dono({ tenant, user }) {
         <div style={s.aviso}>
           <p style={s.p}>Esta conta não tem acesso à escola <b>{tenant}</b>.</p>
           <p style={s.dim}>{user.email
-            ? 'Se você é o responsável, use o link de acesso enviado ao e-mail cadastrado.'
+            ? 'Confira se este é o e-mail cadastrado nesta escola.'
             : 'Seu acesso de professor foi removido. Fale com o responsável pela escola.'}</p>
           {falhaAssumir && <p style={s.err}>{falhaAssumir}</p>}
         </div>
+        {user.email && (
+          <button onClick={() => { esquecerTenant(tenant); window.location.replace('/'); }} style={{ ...s.btnSec, marginTop: 12 }}>
+            Ver minhas escolas
+          </button>
+        )}
       </Shell>
     );
   }
