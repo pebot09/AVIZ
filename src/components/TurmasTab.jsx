@@ -10,6 +10,7 @@ import Modal from './Modal.jsx';
 import HistoricoAluno from './HistoricoAluno.jsx';
 import NotasTurmaModal from './NotasTurmaModal.jsx';
 import GerarLinkModal from './GerarLinkModal.jsx';
+import { lerListaDeAlunos } from '../domain/listaAlunos.js';
 
 // Aba Turmas — porte fiel do SectionTurmas do Passarinho, com vocabulário
 // configurável e o seletor de horário 24h do AVIZ.
@@ -94,6 +95,7 @@ function TurmaCard({ turma, state, dispatch, vocab, config, tenantId, autor, ext
   const in7 = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 7); return dateToStr(d); }, []);
   const [editObs, setEditObs] = useState(undefined);
   const [addingAluno, setAddingAluno] = useState(false);
+  const [colando, setColando] = useState(false);
   const [novoNome, setNovoNome] = useState('');
   const [erro, setErro] = useState(null);
   const [historico, setHistorico] = useState({}); // nome -> bool
@@ -228,8 +230,17 @@ function TurmaCard({ turma, state, dispatch, vocab, config, tenantId, autor, ext
               <button onClick={tryAdd} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">OK</button>
               <button onClick={() => { setAddingAluno(false); setErro(null); }} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">✕</button>
             </div>
+          ) : colando ? (
+            <ColarLista
+              turma={turma} vocab={vocab}
+              onAdicionar={(nomes) => { dispatch({ type: 'ADD_ALUNOS', turmaId: turma.id, nomes }); setColando(false); }}
+              onCancelar={() => setColando(false)}
+            />
           ) : (
-            <button onClick={() => setAddingAluno(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Adicionar {vocab.aluno}</button>
+            <div className="flex gap-4">
+              <button onClick={() => setAddingAluno(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Adicionar {vocab.aluno}</button>
+              <button onClick={() => setColando(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium">Colar lista</button>
+            </div>
           )}
           {erro && <p className="text-xs text-red-500 mt-1">{erro}</p>}
         </div>
@@ -405,5 +416,40 @@ function NovaTurmaModal({ dispatch, vocab, existentes, capacidadePadrao, capacid
         </div>
       </div>
     </Modal>
+  );
+}
+
+// Cadastro em lote: cola os nomes (um por linha), vê quem entra e confirma.
+export function ColarLista({ turma, vocab, onAdicionar, onCancelar, textoInicial = '' }) {
+  const [texto, setTexto] = useState(textoInicial);
+  const { novos, jaNaTurma } = lerListaDeAlunos(texto, arr(turma.alunos));
+  const total = arr(turma.alunos).length + novos.length;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-500">Cole os nomes, um por linha. Pode copiar de uma planilha ou do WhatsApp.</p>
+      <textarea
+        value={texto} onChange={(e) => setTexto(e.target.value)} rows={6} autoFocus
+        placeholder={'Ana Souza\nBruno Lima\nCarla Dias'}
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+      />
+      {novos.length > 0 && (
+        <p className="text-xs text-gray-600">
+          Vão entrar <b>{novos.length}</b>: {novos.join(', ')}
+        </p>
+      )}
+      {jaNaTurma.length > 0 && (
+        <p className="text-xs text-gray-400">Já estão na {vocab.turma} (ficam como estão): {jaNaTurma.join(', ')}</p>
+      )}
+      {turma.id !== TURMA_EXTRA_ID && total > turma.capacidade && novos.length > 0 && (
+        <p className="text-xs text-amber-600">A {vocab.turma} vai ficar com {total} {vocab.alunos}, acima da capacidade ({turma.capacidade}).</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onAdicionar(novos)} disabled={!novos.length}
+          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-40"
+        >{novos.length ? `Adicionar ${novos.length}` : 'Adicionar'}</button>
+        <button onClick={onCancelar} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">Cancelar</button>
+      </div>
+    </div>
   );
 }
