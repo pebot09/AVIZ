@@ -218,6 +218,7 @@ export function EsqueciPin({ tenant, onVoltar }) {
       <div>
         <h2 style={s.h2}>Confira seu e-mail</h2>
         <p style={s.p}>Mandamos um link para <b>{email}</b>. Abra o link e escolha um PIN novo.</p>
+        <p style={s.dim}>O e-mail vem do Firebase e fala em "fazer login": é esse mesmo. Ao tocar no link, o AVIZ abre a tela para escolher o PIN.</p>
         {ehAppIos() && <p style={s.dim}>No iPhone, o link abre no Safari. Crie o PIN por lá e depois volte aqui e entre com ele.</p>}
         <button onClick={onVoltar} style={{ ...s.link, marginTop: 14 }}>← Voltar para entrar</button>
       </div>
