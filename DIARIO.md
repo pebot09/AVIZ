@@ -21,6 +21,21 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 - As regras do banco ainda deixam o dono apagar a escola (só a tela saiu).
   Fechar isso exige mudar database.rules.json e o Pedro publicar no console.
 - Ferramenta para o Pedro excluir uma escola (hoje: pelo console do Firebase).
+## 2026-10-23 — Cadastro de alunos em lote
+
+### O que foi feito
+- Em cada turma, "Colar lista": o dono cola os nomes (um por linha), vê quem
+  entra e quem já estava, e confirma. Tira numeração e marcadores ("1.",
+  "2)", "-", "•"); ignora repetidos sem diferença de maiúsculas e acentos;
+  avisa se a turma passa da capacidade. Uma linha só no histórico.
+  (`src/domain/listaAlunos.js`, ação `ADD_ALUNOS` no reducer.)
+- Os links continuam sendo gerados um por um (decisão do Pedro).
+- CLAUDE.md: saiu o bloco "PARA [NOME]:"; recados para outros agentes vão
+  só no mural (seção 9 da Bíblia do AVIZ).
+
+### Próximo passo
+Pedro testar o "Colar lista" no celular. Depois: ajuda curta nas telas (item 11
+do diagnóstico), se o Pedro concordar.
 
 ---
 
@@ -29,8 +44,8 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 ### O que foi feito
 - Pedro testou no celular as entregas 1, 2 e 3 do login novo: tudo
   funcionou (incluindo marcar a conta dele como admin no console).
-- Cadastro de alunos em lote: DESCARTADO (decisão do Pedro). O botão de gerar
-  link do aluno já basta.
+- Links de aluno em lote: descartado (decisão do Pedro); continuam um por
+  um. O cadastro de nomes em lote foi feito depois (entrada acima).
 - Testes que travariam o deploy em certas datas:
   - fatia do aluno falhava do fim de cada mês em diante (a partir de 28/10)
     e de 29 a 31/12: férias de teste no mês atual sem aula restante.

@@ -12,7 +12,7 @@ import PainelVisual, { DetalheModal } from '../src/components/PainelVisual.jsx';
 import PainelRegistro from '../src/components/PainelRegistro.jsx';
 import ResumoDia from '../src/components/ResumoDia.jsx';
 import SnapshotsModal, { snapshotFromState } from '../src/components/Snapshots.jsx';
-import TurmasTab from '../src/components/TurmasTab.jsx';
+import TurmasTab, { ColarLista } from '../src/components/TurmasTab.jsx';
 import FaltasReposicoesTab from '../src/components/FaltasReposicoesTab.jsx';
 import NotasTurmaModal from '../src/components/NotasTurmaModal.jsx';
 import GerarLinkModal from '../src/components/GerarLinkModal.jsx';
@@ -92,6 +92,8 @@ const casos = [
   ['FaltasReposicoesTab', <FaltasReposicoesTab state={s} dispatch={noop} vocab={vocab} config={config} />],
   ['NotasTurmaModal', <NotasTurmaModal turma={turma} state={s} dispatch={noop} tenantId="t1" autor="Ana" onClose={noop} />],
   ['GerarLinkModal', <GerarLinkModal state={s} dispatch={noop} vocab={vocab} onClose={noop} />],
+  ['ColarLista (vazia)', <ColarLista turma={turma} vocab={vocab} onAdicionar={noop} onCancelar={noop} />],
+  ['ColarLista (com nomes)', <ColarLista turma={turma} vocab={vocab} onAdicionar={noop} onCancelar={noop} textoInicial={'1. Zeca\n2. Bia\n3. Lia'} />],
   ['TurmasTab (pedido do guia)', <TurmasTab state={s} dispatch={noop} vocab={vocab} config={config} capacidadePadrao={7} tenantId="t1" autor="Ana" pedido={{ tipo: 'link', n: 1 }} />],
   ['PrimeirosPassos (escola vazia)', <PrimeirosPassos state={normalizeState({})} vocab={vocab} marcados={{}} onPasso={noop} onEsconder={noop} />],
   ['PrimeirosPassos (com dados)', <PrimeirosPassos state={s} vocab={vocab} marcados={{ regras: true }} onPasso={noop} onEsconder={noop} />],
