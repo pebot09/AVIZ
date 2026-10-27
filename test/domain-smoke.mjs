@@ -6,6 +6,7 @@ import { getNextOccurrences, horarioNaData, getClassDatetime, isDataBloqueada } 
 import { fatiaAluno } from '../src/domain/fatiaAluno.js';
 import { primeirosPassos, guiaConcluido } from '../src/domain/primeirosPassos.js';
 import { lerListaDeAlunos, limparNome } from '../src/domain/listaAlunos.js';
+import { OPCOES_ABERTURA_VAGA_EXTRA, ABERTURA_HORAS } from '../src/domain/reposicao.js';
 
 // console.assert só imprime; aqui uma falha tem que derrubar o teste (e o deploy).
 const _assert = console.assert;
@@ -268,6 +269,14 @@ if (dataResumo) {
   gd({ type: 'ADD_ALUNOS', turmaId: 'nao-existe', nomes: ['Zé'] });
   console.assert(g === antes, 'turma inexistente não muda nada');
   console.log('alunos em lote ok');
+}
+
+// --- opções de abertura da vaga extra: em ordem cronológica ---
+{
+  const horas = OPCOES_ABERTURA_VAGA_EXTRA.map((o) => ABERTURA_HORAS[o.value]);
+  console.assert(horas.every((h) => typeof h === 'number'), 'toda opção tem horas');
+  console.assert(horas.every((h, i) => i === 0 || h > horas[i - 1]), 'opções em ordem cronológica: ' + horas.join(','));
+  console.assert(OPCOES_ABERTURA_VAGA_EXTRA.length === Object.keys(ABERTURA_HORAS).length, 'nenhuma opção esquecida');
 }
 
 console.log(process.exitCode ? '\n❌ smoke test falhou' : '\n✅ smoke test passou');

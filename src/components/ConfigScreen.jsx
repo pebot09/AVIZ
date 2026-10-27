@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { OPCOES_ABERTURA_VAGA_EXTRA } from '../domain/reposicao.js';
 import Modal from './Modal.jsx';
 import { saveConfig, saveTenantPublic } from '../lib/store.js';
 import { feriadosNacionais } from '../domain/calendario.js';
@@ -182,7 +183,7 @@ function VagaExtraSec({ tenant, config, onDone }) {
     <div>
       <Campo label="Liberar vaga extra?"><SimNao value={on} onChange={setOn} /></Campo>
       {on && (
-        <Campo label="Quando a vaga extra abre"><Select value={abertura} onChange={setAbertura} options={[{ value: 'vespera', label: 'Na véspera' }, { value: '6h', label: '6 horas antes' }, { value: '12h', label: '12 horas antes' }, { value: '2d', label: '2 dias antes' }, { value: '3d', label: '3 dias antes' }]} /></Campo>
+        <Campo label="Quando a vaga extra abre"><Select value={abertura} onChange={setAbertura} options={OPCOES_ABERTURA_VAGA_EXTRA} /></Campo>
       )}
       <Acoes onSalvar={salvar} salvando={salvando} erro={erro} onCancel={onDone} />
     </div>

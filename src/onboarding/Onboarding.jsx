@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { OPCOES_ABERTURA_VAGA_EXTRA } from '../domain/reposicao.js';
 import { Campo, TextInput, NumberSelect, Select, OptionCards, SimNao, ArtigoNome } from './widgets.jsx';
 import { slugify, slugDisponivel, slugDisponivelAuto } from '../lib/provision.js';
 import { criarEscola, enderecoDaEscola, souAdmin, listarConvites, linkDoConvite } from '../lib/escolaApi.js';
@@ -321,7 +322,7 @@ export function Questionario() {
             <Campo>
               <Select
                 value={r.vagaExtraQuando} onChange={(v) => set({ vagaExtraQuando: v })}
-                options={[{ value: 'vespera', label: 'Na véspera' }, { value: '6h', label: '6 horas antes' }, { value: '12h', label: '12 horas antes' }, { value: '2d', label: '2 dias antes' }, { value: '3d', label: '3 dias antes' }]}
+                options={OPCOES_ABERTURA_VAGA_EXTRA}
               />
             </Campo>
           </Passo>

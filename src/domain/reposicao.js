@@ -84,7 +84,17 @@ export function stripVagasCanceladas(vagas, aulasCanceladas) {
 }
 
 // Deslocamento (horas) de abertura da vaga extra antes do início da aula.
-const ABERTURA_HORAS = { vespera: 24, '6h': 6, '12h': 12, '2d': 48, '3d': 72 };
+export const ABERTURA_HORAS = { vespera: 24, '6h': 6, '12h': 12, '2d': 48, '3d': 72 };
+
+// Opções de "quando a vaga extra abre", da mais perto da aula para a mais
+// longe (as telas mostram nesta ordem).
+export const OPCOES_ABERTURA_VAGA_EXTRA = [
+  { value: '6h', label: '6 horas antes' },
+  { value: '12h', label: '12 horas antes' },
+  { value: 'vespera', label: 'Na véspera' },
+  { value: '2d', label: '2 dias antes' },
+  { value: '3d', label: '3 dias antes' },
+];
 
 // Recalcula as vagas extras (residuais) por turma/data, respeitando o config.
 export function computeVagasExtras(turmas, faltas, reposicoes, vagasBase, td, ausencias, config) {
