@@ -5,6 +5,18 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-10-27 — Vaga extra: opções em ordem cronológica
+
+- "Quando a vaga extra abre" (cadastro de escola nova e Configurações) agora
+  vem em ordem: 6 horas antes · 12 horas antes · Na véspera · 2 dias antes ·
+  3 dias antes (pedido do Pedro). Lista única em `src/domain/reposicao.js`.
+- Mural lido: preço decidido (por faixa de alunos, a partir de R$ 134,90/mês,
+  recebimento no CPF do Pedro); Asaas em aberto com a Adriana. Vídeo 1: gravar
+  os 5 clipes quando o Pedro aprovar o roteiro (recado do Jovem). Semana da
+  Maria (cliente-teste): prioridade é corrigir rápido o que aparecer.
+
+---
+
 ## 2026-10-23 — Vaga da própria falta: repor nela = cancelar a falta
 
 ### O que foi feito
