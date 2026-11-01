@@ -57,20 +57,27 @@ function limparFeiraLog(log) {
 //      datas da falta já passaram. O `.every(... < td)` evita a vaga sumir antes
 //      de a aula acontecer (nota do Passarinho: falta reposta ANTES da aula não
 //      pode ser limpa cedo demais).
-function fecharCiclosPassados(faltas, reposicoes, td) {
+//   3) ...e só depois que o resumo daquele dia foi congelado (ou o dia saiu da
+//      janela de congelamento). Sem isso, quem repôs antes ou no mesmo dia da
+//      falta aparecia como PRESENTE no resumo: a falta sumia antes de o resumo
+//      do dia ser montado (mesmo erro corrigido no Passarinho).
+function fecharCiclosPassados(faltas, reposicoes, td, resumos) {
+  const congelados = resumos && typeof resumos === 'object' ? resumos : {};
+  const limiteJanela = (() => { const d = parseDate(td); d.setDate(d.getDate() - RESUMO_JANELA_DIAS); return dateToStr(d); })();
+  const resumoFeito = (d) => !!congelados[d] || d < limiteJanela;
   const fs = arr(faltas);
   const rs = arr(reposicoes);
   const repos = rs.map((r) => (r && !r.realizada && r.dataReposicao && r.dataReposicao < td ? { ...r, realizada: true } : r));
   const realizadasIds = new Set(repos.filter((r) => r && r.realizada).map((r) => r.id));
   const ativas = fs.filter((f) =>
-    !(f.status === 'marcada' && f.reposicaoId && realizadasIds.has(f.reposicaoId) && arr(f.datas).every((d) => d < td)));
+    !(f.status === 'marcada' && f.reposicaoId && realizadasIds.has(f.reposicaoId) && arr(f.datas).every((d) => d < td && resumoFeito(d))));
   const reposMudou = repos.some((r, i) => r !== rs[i]);
   return { faltas: ativas.length === fs.length ? fs : ativas, reposicoes: reposMudou ? repos : rs };
 }
 
 export function normalizeState(data) {
   const s = data && typeof data === 'object' ? data : {};
-  const { faltas, reposicoes } = fecharCiclosPassados(s.faltas, s.reposicoes, todayStr());
+  const { faltas, reposicoes } = fecharCiclosPassados(s.faltas, s.reposicoes, todayStr(), s.resumosDiarios);
   return {
     ...EMPTY_STATE,
     ...s,
@@ -212,6 +219,9 @@ export function reducer(state, action, config) {
     case 'RENAME_ALUNO': {
       const { turmaId, oldNome, newNome } = action;
       if (!newNome || newNome === oldNome) return state;
+      // Nome que já existe na turma: recusado (seriam duas pessoas iguais).
+      const turmaRen = state.turmas.find((t) => t.id === turmaId);
+      if (turmaRen && arr(turmaRen.alunos).some((a) => a !== oldNome && a.toLowerCase() === newNome.toLowerCase())) return state;
       next = {
         ...state,
         turmas: state.turmas.map((t) => t.id === turmaId
@@ -221,6 +231,8 @@ export function reducer(state, action, config) {
         reposicoes: state.reposicoes.map((r) => (r.turmaOrigemId === turmaId && r.alunoNome === oldNome ? { ...r, alunoNome: newNome } : r)),
         ausencias: state.ausencias.map((a) => (a.turmaId === turmaId && a.alunoNome === oldNome ? { ...a, alunoNome: newNome } : a)),
         acessos: arr(state.acessos).map((a) => (a.turmaId === turmaId && a.alunoNome === oldNome ? { ...a, alunoNome: newNome } : a)),
+        // Os créditos extras acompanham o nome novo (antes ficavam no antigo).
+        creditos: arr(state.creditos).map((c) => (c.turmaId === turmaId && c.alunoNome === oldNome ? { ...c, alunoNome: newNome } : c)),
       };
       next.log = addLog(state.log, autor, `Renomeou ${oldNome} → ${newNome} (${getTurmaLabel(state.turmas, turmaId)})`);
       break;

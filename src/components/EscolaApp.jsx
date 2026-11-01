@@ -4,6 +4,7 @@ import { db } from '../lib/firebase.js';
 import { paths } from '../lib/paths.js';
 import { useTenantStore, useConfig } from '../lib/store.js';
 import { makeVocab, cap } from '../domain/vocab.js';
+import { todayStr } from '../domain/helpers.js';
 import { logout } from '../lib/auth.js';
 import TurmasTab from './TurmasTab.jsx';
 import FaltasReposicoesTab from './FaltasReposicoesTab.jsx';
@@ -73,12 +74,27 @@ export default function EscolaApp({ tenant, user, membro }) {
   // dias já passados — como o Passarinho faz logo depois do sync. Tem que ser
   // no load, e não ao abrir o Painel: senão, quem passa semanas sem abrir a aba
   // deixa dias saírem da janela de congelamento sem nunca terem sido salvos.
-  const cleanupFeito = useRef(false);
+  // O resumo é congelado ANTES da limpeza: a limpeza tira faltas da lista, e o
+  // resumo montado depois mostraria como presente quem faltou.
+  //
+  // E de novo quando o dia vira com o app aberto, ou quando a pessoa volta para
+  // ele (app da tela inicial fica dias em segundo plano no celular): senão o
+  // resumo de ontem só seria congelado quando alguém reabrisse o app.
+  const ultimoDia = useRef(null);
   useEffect(() => {
-    if (carregando || cleanupFeito.current) return;
-    cleanupFeito.current = true;
-    dispatch({ type: 'CLEANUP' });
-    dispatch({ type: 'FREEZE_RESUMOS' });
+    if (carregando) return undefined;
+    const rodarDoDia = () => {
+      const hoje = todayStr();
+      if (ultimoDia.current === hoje) return;
+      ultimoDia.current = hoje;
+      dispatch({ type: 'FREEZE_RESUMOS' });
+      dispatch({ type: 'CLEANUP' });
+    };
+    rodarDoDia();
+    const aoVoltar = () => { if (document.visibilityState === 'visible') rodarDoDia(); };
+    document.addEventListener('visibilitychange', aoVoltar);
+    const relogio = setInterval(rodarDoDia, 60 * 1000);
+    return () => { document.removeEventListener('visibilitychange', aoVoltar); clearInterval(relogio); };
   }, [carregando]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

@@ -117,10 +117,27 @@ export function getLastDayOfMonth(mesAno) {
   return dateToStr(new Date(y, m, 0));
 }
 
-// Casa o nome como palavra inteira dentro de um texto de log.
-export function nomeExatoMatch(texto, nome) {
-  const escaped = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp('(^|[\\s(,/—])' + escaped + '($|[\\s),/—])', 'i').test(texto);
+// O registro (log) fala deste aluno? Aluno = nome + turma: a "Bia" de outra
+// turma é outra pessoa, e "Bia" não é "Ana Bia". Casa só os formatos que o
+// reducer escreve, com o nome inteiro logo antes do rótulo da turma.
+// `rotulo` = getTurmaLabel da turma do aluno, ou null para qualquer turma.
+const esc = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function logEhDoAluno(descricao, nome, rotulo) {
+  const texto = String(descricao || '');
+  if (!nome) return false;
+  const N = esc(nome);
+  const L = rotulo ? esc(rotulo) : '[^)]+';
+  const antes = '(?:^|de |Adicionou |Moveu |Renomeou |→ |para |— )';
+  const padroes = [
+    new RegExp(antes + N + ' \\(' + L + '\\)'),
+    new RegExp('^Adicionou ' + N + ' à turma ' + L + '$'),
+    new RegExp('^Moveu ' + N + ' de ' + (rotulo ? '(?:' + L + ' → |.* → ' + L + '$)' : '')),
+    new RegExp('^Renomeou ' + N + ' → .* \\(' + L + '\\)$'),
+  ];
+  if (padroes.some((r) => r.test(texto))) return true;
+  // Cadastro em lote: "Adicionou à turma <rótulo> (N): Ana, Bia".
+  const lote = texto.match(new RegExp('^Adicionou à turma ' + L + ' \\(\\d+\\): (.*)$'));
+  return !!lote && lote[1].split(', ').includes(nome);
 }
 
 // Cor determinística do autor no histórico (substitui PROFESSOR_COLORS fixo).

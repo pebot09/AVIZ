@@ -1,7 +1,7 @@
 import { reducer, normalizeState, EMPTY_STATE } from '../src/domain/reducer.js';
 import { computeResumoDia } from '../src/domain/resumo.js';
 import { construirDados } from '../src/domain/painel.js';
-import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros } from '../src/domain/helpers.js';
+import { todayStr, dateToStr, TURMA_EXTRA_ID, turmaShortLabel, turmaEncontros, logEhDoAluno } from '../src/domain/helpers.js';
 import { getNextOccurrences, horarioNaData, getClassDatetime, isDataBloqueada } from '../src/domain/calendario.js';
 import { fatiaAluno } from '../src/domain/fatiaAluno.js';
 import { primeirosPassos, guiaConcluido } from '../src/domain/primeirosPassos.js';
@@ -277,6 +277,76 @@ if (dataResumo) {
   console.assert(horas.every((h) => typeof h === 'number'), 'toda opção tem horas');
   console.assert(horas.every((h, i) => i === 0 || h > horas[i - 1]), 'opções em ordem cronológica: ' + horas.join(','));
   console.assert(OPCOES_ABERTURA_VAGA_EXTRA.length === Object.keys(ABERTURA_HORAS).length, 'nenhuma opção esquecida');
+}
+
+// --- resumo: quem repôs antes/no mesmo dia continua como falta no resumo ---
+{
+  const hoje = new Date();
+  const dia = (n) => { const d = new Date(hoje); d.setDate(d.getDate() + n); return dateToStr(d); };
+  const dow = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  // Um dia com aula: passado, dentro da janela de congelamento, nem domingo
+  // nem feriado. A reposição foi no mesmo dia (caso que mais acontecia).
+  const comAula = (d) => new Date(d + 'T12:00:00').getDay() !== 0 && !isDataBloqueada(d, { calendario: { recessos: [], feriadosMunicipais: [], feriadosIgnorados: [] } });
+  let n = -2; while (!comAula(dia(n))) n -= 1;
+  const dFalta = dia(n), dRepo = dFalta;
+  const enc = (d) => [{ diaSemana: dow[new Date(d + 'T12:00:00').getDay()], hora: 9, minuto: 0 }];
+  const bruto = {
+    turmas: [
+      { id: 'tA', encontros: enc(dFalta), capacidade: 5, alunos: ['Bia', 'Caio'] },
+      { id: 'tB', encontros: [{ ...enc(dRepo)[0], hora: 18 }], capacidade: 5, alunos: ['Rui'] },
+    ],
+    faltas: [{ id: 'f1', alunoNome: 'Bia', turmaId: 'tA', datas: [dFalta], status: 'marcada', reposicaoId: 'r1' }],
+    reposicoes: [{ id: 'r1', alunoNome: 'Bia', turmaOrigemId: 'tA', turmaReposicaoId: 'tB', dataReposicao: dRepo, realizada: true, faltaId: 'f1' }],
+    log: [{ id: 'l0', ts: dia(-10) + 'T08:00:00.000Z', professor: 'Ana', descricao: 'Criou turma' }],
+  };
+  const cfg0 = { regras: {}, calendario: { recessos: [], feriadosMunicipais: [], feriadosIgnorados: [] }, vocab: {} };
+  let st = normalizeState(bruto);
+  console.assert(st.faltas.some((f) => f.id === 'f1'), 'falta reposta fica até o resumo do dia ser congelado');
+  st = reducer(st, { type: 'FREEZE_RESUMOS', autor: 'Ana' }, cfg0);
+  const linha = st.resumosDiarios[dFalta] && st.resumosDiarios[dFalta].turmas.find((t) => t.turmaId === 'tA' || t.id === 'tA' || (t.label || '').length);
+  const txt = JSON.stringify(st.resumosDiarios[dFalta] || {});
+  console.assert(txt.includes('Bia'), 'resumo do dia tem a Bia: ' + txt.slice(0, 200));
+  const presentes = (st.resumosDiarios[dFalta].turmas[0] || {}).presentes || [];
+  console.assert(!presentes.includes('Bia'), 'Bia NÃO aparece como presente: ' + JSON.stringify(presentes));
+  const depois = normalizeState(st);
+  console.assert(!depois.faltas.some((f) => f.id === 'f1'), 'depois de congelado, a falta reposta é limpa');
+  console.log('resumo com falta reposta ok');
+}
+
+// --- renomear: não repete nome na turma; créditos acompanham ---
+{
+  let g = normalizeState({});
+  const gd = (a) => { g = reducer(g, { ...a, autor: 'Ana' }, config); };
+  gd({ type: 'ADD_TURMA', encontros: [{ diaSemana: 'segunda', hora: 9, minuto: 0 }], capacidade: 5 });
+  const tr = g.turmas.find((t) => t.id !== TURMA_EXTRA_ID);
+  gd({ type: 'ADD_ALUNOS', turmaId: tr.id, nomes: ['Bia', 'Caio'] });
+  gd({ type: 'ADD_CREDITO', alunoNome: 'Bia', turmaId: tr.id, dataExpiracao: '2099-01-01' });
+  const antes = g;
+  gd({ type: 'RENAME_ALUNO', turmaId: tr.id, oldNome: 'Bia', newNome: 'caio' });
+  console.assert(g === antes, 'renomear para nome que já existe na turma é recusado');
+  gd({ type: 'RENAME_ALUNO', turmaId: tr.id, oldNome: 'Bia', newNome: 'Beatriz' });
+  console.assert(g.turmas.find((t) => t.id === tr.id).alunos.includes('Beatriz'), 'renomeou');
+  console.assert(!g.creditos.length || g.creditos.every((c) => c.alunoNome === 'Beatriz'), 'crédito extra acompanha o nome novo: ' + JSON.stringify(g.creditos));
+  console.log('renomear ok');
+}
+
+// --- histórico: aluno = nome + turma ---
+{
+  const L = 'Seg 19h', O = 'Qui 09h';
+  const casos = [
+    [`Registrou falta de Bia (${L}) — 01/11`, 'Bia', L, true],
+    [`Registrou falta de Bia (${O}) — 01/11`, 'Bia', L, false],
+    [`Registrou falta de Ana Bia (${L}) — 01/11`, 'Bia', L, false],
+    [`Agendou reposição de Bia (${O}) → ${L}, 01/11`, 'Bia', L, false],
+    [`Agendou reposição de Bia (${L}) → ${O}, 01/11`, 'Bia', L, true],
+    [`Adicionou Ana Bia à turma ${L}`, 'Bia', L, false],
+    [`Moveu Bia de ${O} → ${L}`, 'Bia', L, true],
+    [`Renomeou Bia → Bea (${L})`, 'Bia', L, true],
+    [`Adicionou à turma ${L} (3): Ana Bia, Caio, Bia`, 'Bia', L, true],
+    [`Adicionou à turma ${L} (2): Ana Bia, Caio`, 'Bia', L, false],
+  ];
+  for (const [t, n, l, e] of casos) console.assert(logEhDoAluno(t, n, l) === e, `histórico: "${t}" para ${n} devia ser ${e}`);
+  console.log('histórico por nome + turma ok');
 }
 
 console.log(process.exitCode ? '\n❌ smoke test falhou' : '\n✅ smoke test passou');
