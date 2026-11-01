@@ -6,7 +6,7 @@ import {
 } from '../domain/helpers.js';
 import {
   getNextOccurrences, getClassDatesInRange, getClassDatetime,
-  getDiaSemanaFromDateStr, feriadoNome, recessoNome, isRecesso,
+  getDiaSemanaFromDateStr, feriadoNome, recessoNome, isRecesso, turmaOcorreEm, isDataBloqueada,
 } from '../domain/calendario.js';
 import {
   reposicaoRights, pickReposicaoRight, rightToActionFields, calcOccupancy, fmtDatesText,
@@ -274,6 +274,14 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
   }, [state.vagas, state.turmas, td, turmaOrigemId]);
 
   const isManual = vagaSel === 'livre';
+  const turmasNaData = useMemo(() => sorted.filter((t) => t.id !== turmaOrigemId && t.id !== TURMA_EXTRA_ID
+    && (!extraData || (turmaOcorreEm(t, extraData) && !isDataBloqueada(extraData, config)
+      && !arr(state.aulasCanceladas).some((a) => a.turmaId === t.id && a.data === extraData)))),
+  [sorted, turmaOrigemId, extraData, config, state.aulasCanceladas]);
+  // Mudou a data e a turma escolhida não tem aula nela: limpa a escolha.
+  useEffect(() => {
+    if (extraTurma && !turmasNaData.some((t) => t.id === extraTurma)) setExtraTurma('');
+  }, [turmasNaData, extraTurma]);
   const vagaObj = !isManual && vagaSel ? state.vagas.find((v) => v.id === vagaSel) : null;
   const dataRepo = isManual ? extraData : (vagaObj?.data || '');
   const turmaRepoId = isManual ? extraTurma : (vagaObj?.turmaId || '');
@@ -291,14 +299,15 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
 
   const faltaInfo = useMemo(() => {
     if (!alunoNome) return null;
-    const pend = state.faltas.filter((f) => f.alunoNome === alunoNome && f.status === 'pendente').sort((a, b) => getFaltaEarliest(a).localeCompare(getFaltaEarliest(b)));
+    // Aluno = nome + turma: a Bia de outra turma é outra pessoa.
+    const pend = state.faltas.filter((f) => f.alunoNome === alunoNome && f.turmaId === turmaOrigemId && f.status === 'pendente').sort((a, b) => getFaltaEarliest(a).localeCompare(getFaltaEarliest(b)));
     if (!pend.length) return null;
     const o = pend[0];
     return { turmaId: o.turmaId, datas: o.datas, expiry: getFaltaExpiry(o, config) };
-  }, [alunoNome, state.faltas, config]);
+  }, [alunoNome, turmaOrigemId, state.faltas, config]);
 
   const occupancy = useMemo(() => (turmaRepoId && dataRepo ? calcOccupancy(turmaRepoId, dataRepo, state) : null), [turmaRepoId, dataRepo, state]);
-  const jaTemRepo = !!(alunoNome && dataRepo && turmaRepoId && state.reposicoes.some((r) => r.alunoNome === alunoNome && r.dataReposicao === dataRepo && r.turmaReposicaoId === turmaRepoId && !r.realizada));
+  const jaTemRepo = !!(alunoNome && dataRepo && turmaRepoId && state.reposicoes.some((r) => r.alunoNome === alunoNome && r.turmaOrigemId === turmaOrigemId && r.dataReposicao === dataRepo && r.turmaReposicaoId === turmaRepoId && !r.realizada));
   const canSubmit = turmaOrigemId && alunoNome && vagaSel && dataRepo && turmaRepoId && !jaTemRepo;
 
   const pickedLabel = (r) => {
@@ -374,7 +383,8 @@ function TabRegistrarReposicao({ state, dispatch, vocab, config }) {
             <select value={extraTurma} onChange={(e) => setExtraTurma(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">— Selecione a {vocab.turma} —</option>
               {/* A extra pode ser origem (o aluno avulso tem falta), mas nunca destino: não tem data de aula. */}
-              {sorted.filter((t) => t.id !== turmaOrigemId && t.id !== TURMA_EXTRA_ID).map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
+              {/* Só turmas com aula nessa data (sem feriado, recesso ou aula cancelada). */}
+              {turmasNaData.map((t) => <option key={t.id} value={t.id}>{getTurmaLabel(state.turmas, t.id)}</option>)}
             </select>
           </div>
         </div>
@@ -523,7 +533,7 @@ function TabCancelarReposicao({ state, dispatch, vocab }) {
           <div><span className="font-medium">{cap(vocab.aluno)}:</span> {repo.alunoNome}</div>
           <div><span className="font-medium">Data:</span> {fmtBRFull(repo.dataReposicao)}</div>
           <div><span className="font-medium">{cap(vocab.turma)}:</span> {getTurmaLabel(state.turmas, repo.turmaReposicaoId)}</div>
-          <div><span className="font-medium">Tipo:</span> {repo.tipo === 'aula_extra' ? 'Aula extra' : 'Reposição'}</div>
+          <div><span className="font-medium">Tipo:</span> {repo.tipo === 'aula_extra' ? 'Aula extra' : repo.tipo === 'reposicao_ferias' ? 'Reposição (férias)' : repo.tipo === 'reposicao_credito' ? 'Reposição (crédito extra)' : 'Reposição'}</div>
           {repo.tipo !== 'aula_extra' && <div className="text-blue-600">O direito consumido volta e a vaga é reaberta.</div>}
         </div>
       )}

@@ -279,9 +279,18 @@ function GerenciarAlunoModal({ turma, state, dispatch, vocab, config, onClose })
   const hasPendencies = (nome) =>
     arr(state.faltas).some((f) => f.turmaId === turma.id && f.alunoNome === nome && f.status === 'pendente') ||
     arr(state.reposicoes).some((r) => r.turmaOrigemId === turma.id && r.alunoNome === nome && !r.realizada);
+  const [erroRenome, setErroRenome] = useState(null);
+  // true = pode fechar. Nome que já existe na turma é recusado: seriam duas
+  // pessoas com a mesma identidade (nome + turma).
   const handleRename = (oldNome) => {
     const nn = (renames[oldNome] ?? oldNome).trim();
-    if (nn && nn !== oldNome) dispatch({ type: 'RENAME_ALUNO', turmaId: turma.id, oldNome, newNome: nn });
+    if (!nn || nn === oldNome) return true;
+    if (arr(turma.alunos).some((a) => a !== oldNome && a.toLowerCase() === nn.toLowerCase())) {
+      setErroRenome(`Já existe ${vocab.aluno} "${nn}" nesta ${vocab.turma}.`);
+      return false;
+    }
+    dispatch({ type: 'RENAME_ALUNO', turmaId: turma.id, oldNome, newNome: nn });
+    return true;
   };
 
   return (
@@ -330,14 +339,15 @@ function GerenciarAlunoModal({ turma, state, dispatch, vocab, config, onClose })
                   <div className="flex gap-2 items-center">
                     <input
                       className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm" value={renameVal}
-                      onChange={(e) => setRenames((r) => ({ ...r, [nome]: e.target.value }))}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { handleRename(nome); onClose(); } }}
+                      onChange={(e) => { setRenames((r) => ({ ...r, [nome]: e.target.value })); setErroRenome(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && handleRename(nome)) onClose(); }}
                       placeholder="Renomear…"
                     />
                     {renameVal.trim() !== nome && renameVal.trim() !== '' && (
-                      <button onClick={() => { handleRename(nome); onClose(); }} className="text-xs px-2.5 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shrink-0">Salvar</button>
+                      <button onClick={() => { if (handleRename(nome)) onClose(); }} className="text-xs px-2.5 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shrink-0">Salvar</button>
                     )}
                   </div>
+                  {erroRenome && <p className="text-xs text-red-500">{erroRenome}</p>}
                   <select
                     value=""
                     onChange={(e) => { if (!e.target.value) return; if (!canChange(nome, e.target.value).can) return; dispatch({ type: 'CHANGE_TURMA_ALUNO', oldTurmaId: turma.id, newTurmaId: e.target.value, nome }); onClose(); }}

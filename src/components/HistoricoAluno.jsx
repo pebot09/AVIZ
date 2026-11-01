@@ -1,4 +1,4 @@
-import { arr, getTurmaLabel, todayStr, fmtBRFull, nomeExatoMatch, corDoAutor } from '../domain/helpers.js';
+import { arr, getTurmaLabel, todayStr, fmtBRFull, logEhDoAluno, corDoAutor } from '../domain/helpers.js';
 
 // Histórico do aluno — portado do Passarinho (HistoricoAlunoContent).
 // Junta entradas do log + faltas passadas + reposições realizadas, em ordem.
@@ -7,12 +7,8 @@ export default function HistoricoAluno({ alunoNome, turmaId, state }) {
   const turmaLabel = turmaId ? getTurmaLabel(state.turmas, turmaId) : null;
 
   const logEntries = arr(state.log)
-    .filter((e) => {
-      const atuouComoAluno = e.origem === 'aluno' && e.professor === alunoNome;
-      if (!atuouComoAluno && !nomeExatoMatch(e.descricao, alunoNome)) return false;
-      if (turmaLabel) return e.descricao.includes(turmaLabel);
-      return true;
-    })
+    // Aluno = nome + turma (homônimo de outra turma e nome composto ficam de fora).
+    .filter((e) => logEhDoAluno(e.descricao, alunoNome, turmaLabel))
     .map((e) => ({ ts: e.ts, texto: e.descricao, tipo: 'log', autor: e.professor, origem: e.origem }));
 
   const faltaEvents = arr(state.faltas)
@@ -41,7 +37,11 @@ export default function HistoricoAluno({ alunoNome, turmaId, state }) {
         const dt = new Date(e.ts);
         const dataHora = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) +
           (e.tipo === 'log' ? ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
-        const cores = e.autor ? corDoAutor(e.autor) : null;
+        // Ação do próprio aluno em cinza; da equipe, na cor de quem fez.
+        const doAluno = e.origem === 'aluno' || e.autor === alunoNome;
+        const cores = !e.autor ? null : doAluno
+          ? { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' }
+          : corDoAutor(e.autor);
         return (
           <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-gray-50 last:border-0">
             <span className={`shrink-0 mt-0.5 ${e.tipo === 'falta' ? 'text-red-400' : e.tipo === 'repo' ? 'text-blue-400' : 'text-gray-400'}`}>

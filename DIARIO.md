@@ -5,6 +5,38 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-11-01 — Correções trazidas do outro app (Passarinho)
+
+O Pedro corrigiu vários problemas no app original; conferi um a um no AVIZ.
+
+### Corrigido aqui
+- Aluno = nome + turma (homônimo de outra turma é outra pessoa):
+  - "Falta mais antiga a consumir" e "já tem reposição nesse horário"
+    (Registrar Reposição) olhavam todas as turmas.
+  - Histórico do aluno: casa só os formatos de registro com o nome inteiro +
+    a turma (`logEhDoAluno` em helpers.js); "Ana Bia" não aparece para "Bia".
+    Ação do próprio aluno em cinza; da equipe, na cor de quem fez.
+  - Renomear: recusa nome que já existe na turma; créditos extras acompanham.
+- Resumo marcando como presente quem faltou: a falta reposta (antes ou no
+  mesmo dia) sumia antes de o resumo do dia ser congelado. Agora ela só é
+  limpa depois do congelamento; o resumo é congelado antes da limpeza; e isso
+  roda de novo quando o dia vira com o app aberto ou quando se volta a ele.
+- "Escolher data / turma": só turmas com aula na data (sem feriado, recesso,
+  aula cancelada).
+- Cancelar reposição: o tipo diz "Reposição (férias)" / "(crédito extra)".
+
+### Não se aplica ao AVIZ
+- Clique no nome da professora no registro (aqui só abre para ação de aluno).
+- Janelas fora da tela (corrigido em 23/10). Cópias automáticas sem limite
+  (aqui são só as 10 últimas). Botão de backup escondido (não existe aqui).
+
+### Em aberto (decisão do Pedro)
+- Reposição retroativa (data passada) e ajuste de resumo já congelado: no
+  AVIZ a data mínima é hoje. Só vale fazer se a escola precisar.
+- Reconexão forçada ao voltar ao app: o Firebase reconecta sozinho; não mexi.
+
+---
+
 ## 2026-10-27 — Vaga extra: opções em ordem cronológica
 
 - "Quando a vaga extra abre" (cadastro de escola nova e Configurações) agora
