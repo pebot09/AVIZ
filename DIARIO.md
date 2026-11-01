@@ -30,10 +30,11 @@ O Pedro corrigiu vários problemas no app original; conferi um a um no AVIZ.
 - Janelas fora da tela (corrigido em 23/10). Cópias automáticas sem limite
   (aqui são só as 10 últimas). Botão de backup escondido (não existe aqui).
 
-### Em aberto (decisão do Pedro)
-- Reposição retroativa (data passada) e ajuste de resumo já congelado: no
-  AVIZ a data mínima é hoje. Só vale fazer se a escola precisar.
-- Reconexão forçada ao voltar ao app: o Firebase reconecta sozinho; não mexi.
+### Decidido pelo Pedro (01/11): fica como está
+- Sem reposição retroativa (data mínima continua sendo hoje) e sem ajuste de
+  resumo já congelado.
+- Sem reconexão forçada ao voltar ao app (o Firebase reconecta sozinho).
+  Voltar nisso só se aparecer "sem registro do dia" no uso real.
 
 ---
 
