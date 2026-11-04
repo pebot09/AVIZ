@@ -102,7 +102,7 @@ O Pedro corrigiu vários problemas no app original; conferi um a um no AVIZ.
   (`src/domain/listaAlunos.js`, ação `ADD_ALUNOS` no reducer.)
 - Os links continuam sendo gerados um por um (decisão do Pedro).
 - CLAUDE.md: saiu o bloco "PARA [NOME]:"; recados para outros agentes vão
-  só no mural (seção 9 da Bíblia do AVIZ).
+  só no mural (hoje o MURAL.md do repositório pebot09/aviz-equipe).
 
 ### Próximo passo
 Pedro testar o "Colar lista" no celular. Depois: ajuda curta nas telas (item 11
