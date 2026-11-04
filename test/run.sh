@@ -45,6 +45,10 @@ echo "── criação de escola e convite do dono ──"
 node test/escola-smoke.mjs
 
 echo
+echo "── escola de demonstração (vídeo) ──"
+node test/escola-demo-smoke.mjs
+
+echo
 echo "── mensagens de erro em português ──"
 node test/erros-smoke.mjs
 

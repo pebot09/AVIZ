@@ -5,6 +5,21 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-11-04 — Escola de demonstração para o vídeo 1
+
+- `scripts/escola-demo.mjs` cria a escola fictícia "Ateliê Barro Bom" (4
+  turmas, 25 alunos, 2 faltas perto de vencer, vagas para repor, 1 reposição
+  marcada, 1 aluno de férias) e imprime o link da aluna Marina Costa. As
+  datas saem do dia em que roda. Dados montados em `scripts/escolaDemo.js`,
+  testados em `test/escola-demo-smoke.mjs` (varredura de 90 dias ok).
+- Roda no computador do Pedro, com a chave da conta de serviço do Firebase
+  (nunca vai para o repositório): `node scripts/escola-demo.mjs --chave
+  <chave.json> --dono <email>`. `--simular` mostra sem gravar; só mexe na
+  escola `atelie-barro-bom`. A gravação no banco não foi testada daqui (sem
+  acesso ao banco); usa o mesmo PATCH do Worker.
+
+---
+
 ## 2026-11-04 — Termos e Política do teste alinhados ao login novo
 
 - Aplicados os 4 ajustes aprovados pelo Pedro (texto final da Adriana,
