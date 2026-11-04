@@ -5,6 +5,27 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-11-04 — Link de demonstração para possíveis compradores
+
+- Link: `https://aviz.pedrobotafogodrive2.workers.dev/?e=escola-x&demo=1`.
+  Abre a Escola X sem login, como se fosse o dono: todas as abas, turmas,
+  painel, configurações e equipe. Toda ação que grava (adicionar aluno,
+  falta, reposição, salvar config, gerar/revogar link, baixar dados…) mostra
+  o balão "Versão de demonstração" perto do toque e não faz nada. Faixa
+  amarela no topo avisa que é demonstração.
+- "Link do aluno" funciona: o link sai com `&demo=1` e abre a tela do aluno,
+  também só leitura (mesmo balão).
+- Servidor: `/api/demo` (worker/demo.js) só serve escolas da lista
+  `ESCOLAS_DEMO` (hoje só `escola-x`); e-mails da equipe vão mascarados.
+  Na escola-x, o link do aluno virou só leitura para todos (mesmo sem
+  `&demo=1`), para ninguém mexer nos dados com um código visto no demo.
+- Testes: `test/demo-smoke.jsx`; conferido no navegador (Playwright) com
+  servidor de mentira: nenhuma gravação sai.
+- Pendente: aluno da Escola X sem link gerado mostra "Gerar link" (bloqueado
+  no demo). Pedro gera os links dos alunos que quiser mostrar, logado.
+
+---
+
 ## 2026-11-04 — Escola de demonstração para o vídeo 1
 
 - `scripts/escola-demo.mjs` cria a escola fictícia "Ateliê Barro Bom" (4

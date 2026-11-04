@@ -14,6 +14,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import EnderecoGuardar from './EnderecoGuardar.jsx';
 import PrimeirosPassos from './PrimeirosPassos.jsx';
 import { primeirosPassos, guiaConcluido } from '../domain/primeirosPassos.js';
+import { ehDemo, dadosDemo } from '../lib/demo.js';
 
 // Painel da escola (dono/professor autenticado). Estrutura das abas espelha o
 // Passarinho: Turmas · Faltas & Reposições · Painel. Por ora, Turmas está
@@ -28,7 +29,8 @@ export default function EscolaApp({ tenant, user, membro }) {
   // Regras, equipe e identidade são do dono; o professor (PIN) só opera o dia a dia.
   const ehDono = (membro && membro.role) === 'owner';
   const { state, dispatch, erro } = useTenantStore(tenant, autor, config);
-  const [pub, setPub] = useState(null);
+  const demo = ehDemo();
+  const [pub, setPub] = useState(() => (demo ? (dadosDemo().pub || {}) : null));
   const [aba, setAba] = useState('Turmas');
   // false = fechado; true = menu; 'equipe' etc. = abre direto nessa seção.
   const [configAberto, setConfigAberto] = useState(false);
@@ -38,7 +40,7 @@ export default function EscolaApp({ tenant, user, membro }) {
   // Na primeira entrada do dono, mostra o endereço do espaço para ele guardar.
   const chaveEndereco = `aviz_endereco_visto_${tenant}`;
   const [verEndereco, setVerEndereco] = useState(() => {
-    if (!ehDono) return false;
+    if (!ehDono || demo) return false;
     try { return !localStorage.getItem(chaveEndereco); } catch { return false; }
   });
   const fecharEndereco = () => {
@@ -63,12 +65,12 @@ export default function EscolaApp({ tenant, user, membro }) {
     setPedidoTurmas({ tipo: key, n: Date.now() });
   };
 
-  useEffect(() => onValue(ref(db, paths.tenantPublic(tenant)), (snap) => setPub(snap.val() || {})), [tenant]);
+  useEffect(() => (demo ? undefined : onValue(ref(db, paths.tenantPublic(tenant)), (snap) => setPub(snap.val() || {}))), [tenant, demo]);
   const nomeEscola = (pub && pub.nome) || tenant;
 
   const vocab = makeVocab(config);
   const carregando = state === undefined || config === undefined;
-  const verGuia = ehDono && !carregando && !marcados.escondido && !guiaConcluido(primeirosPassos(state, marcados));
+  const verGuia = ehDono && !demo && !carregando && !marcados.escondido && !guiaConcluido(primeirosPassos(state, marcados));
 
   // Uma vez, após carregar: recalcula as vagas extras e congela o resumo dos
   // dias já passados — como o Passarinho faz logo depois do sync. Tem que ser
@@ -110,7 +112,7 @@ export default function EscolaApp({ tenant, user, membro }) {
               {ehDono && <button onClick={() => setConfigAberto(true)} className="text-gray-400 hover:text-gray-600 text-lg" title="Configurações">⚙</button>}
               {/* Sair pede confirmação: era um clique só, fácil de acertar sem
                   querer, e voltar exige o link mágico por e-mail (ou o PIN). */}
-              <button onClick={() => setConfirmarSair(true)} className="text-gray-300 hover:text-gray-500 text-xs" title="Sair da conta">sair</button>
+              {!demo && <button onClick={() => setConfirmarSair(true)} className="text-gray-300 hover:text-gray-500 text-xs" title="Sair da conta">sair</button>}
             </div>
           </div>
           <nav className="flex gap-1 mt-3 -mb-px">

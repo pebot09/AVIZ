@@ -82,3 +82,11 @@ export const fake = {
   // faz o próximo remove() neste caminho falhar (simula regra/rede)
   falharRemove(caminho, ligar = true) { if (ligar) falharEm.add(caminho); else falharEm.delete(caminho); },
 };
+
+// ---- auth de mentira (só para telas que importam o login poderem montar) ----
+export async function sendSignInLinkToEmail() {}
+export function isSignInWithEmailLink() { return false; }
+export async function signInWithEmailLink() { return {}; }
+export function onAuthStateChanged() { return () => {}; }
+export async function signOut() {}
+export async function signInWithCustomToken() { return {}; }

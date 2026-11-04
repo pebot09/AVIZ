@@ -8,6 +8,7 @@ import { db } from './firebase.js';
 import { paths } from './paths.js';
 import { esquecerTenant } from './tenant.js';
 import { montarExportacao, planoExclusao } from '../domain/dadosEscola.js';
+import { ehDemo, bloquearDemo } from './demo.js';
 
 async function ler(caminho) {
   const snap = await get(ref(db, caminho));
@@ -15,6 +16,7 @@ async function ler(caminho) {
 }
 
 export async function exportarDadosEscola(tid, agora = Date.now()) {
+  if (ehDemo()) bloquearDemo();
   const [pub, config, state, members, snapshots] = await Promise.all([
     ler(paths.tenantPublic(tid)),
     ler(paths.config(tid)),
@@ -42,6 +44,7 @@ export function baixarJson(obj, nomeArquivo) {
 // lança dizendo onde parou; rodar de novo continua de onde ficou, porque
 // apagar o que já não existe não é erro.
 export async function excluirEscola(tid, uidDono) {
+  if (ehDemo()) bloquearDemo();
   const members = (await ler(paths.members(tid))) || {};
   const plano = planoExclusao(tid, Object.keys(members), uidDono);
   for (const caminho of plano) {
