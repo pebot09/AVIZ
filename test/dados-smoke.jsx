@@ -191,6 +191,9 @@ async function main() {
     ['Teste: exportação e exclusão (a pedido)', /baixar uma cópia/.test(tt) && /excluir a escola/.test(tt) && /pedir à equipe do AVIZ/.test(tt)],
     ['Teste: não promete o que não existe (auditoria, 90 dias)', !/auditoria|90 dias/.test(tt + pt)],
     ['Teste: Política cobre arts. 14, 18 e 33', /art\. 14/.test(pt) && /art\. 18/.test(pt) && /art\. 33/.test(pt)],
+    ['Teste: aceite ao abrir o convite', /Ao abrir o convite/.test(tt)],
+    ['Teste: PIN guardado de forma protegida (dono e professores)', (pt.match(/guardado de forma protegida/g) || []).length === 2],
+    ['Teste: AVIZ controlador só dos dados de acesso', /dados de acesso \(e-mail e PIN/.test(pt) && !/acesso por link/.test(pt)],
     ['Teste: suboperadores nomeados', /Firebase/.test(pt) && /Cloudflare/.test(pt)],
   ]) checar(nome, ok);
   const preenchido = Object.fromEntries(Object.keys(OPERADOR).map((k) => [k, 'x']));
