@@ -7,7 +7,7 @@
 # e abrem os acordeões e modais, que é onde esse tipo de erro se esconde.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-trap 'rm -f ./.render-smoke.cjs ./.store-smoke.cjs ./.dados-smoke.cjs' EXIT
+trap 'rm -f ./.render-smoke.cjs ./.store-smoke.cjs ./.dados-smoke.cjs ./.demo-smoke.cjs' EXIT
 
 echo "── imports ──"
 node test/audit-imports.mjs
@@ -79,6 +79,16 @@ echo "── dados e LGPD (exportar, excluir, termos) ──"
   --alias:firebase/app=./test/fake-firebase.js \
   --alias:firebase/auth=./test/fake-firebase.js
 node ./.dados-smoke.cjs
+
+echo
+echo "── demonstração (só leitura) ──"
+./node_modules/.bin/esbuild test/demo-smoke.jsx \
+  --bundle --platform=node --format=cjs --outfile=./.demo-smoke.cjs \
+  --loader:.jsx=jsx --jsx=automatic --log-level=error \
+  --alias:firebase/database=./test/fake-firebase.js \
+  --alias:firebase/app=./test/fake-firebase.js \
+  --alias:firebase/auth=./test/fake-firebase.js
+node ./.demo-smoke.cjs
 
 echo
 echo "── render ──"

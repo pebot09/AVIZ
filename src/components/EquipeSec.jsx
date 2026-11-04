@@ -8,19 +8,26 @@ import { problemaDoPinConta, emailValido, PIN_CONTA_TAMANHO } from '../domain/co
 import { makeVocab, cap } from '../domain/vocab.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { mensagemDeErro } from '../lib/erros.js';
+import { ehDemo, dadosDemo, bloquearDemo } from '../lib/demo.js';
 
 // Configurações → Equipe (só o dono). Todo mundo entra com e-mail + PIN de 4
 // números: o dono troca o próprio PIN e cadastra cada professor com nome,
 // e-mail e PIN. O PIN nunca volta para a tela: o servidor guarda só o hash,
 // então "trocar PIN" é definir um novo.
 export default function EquipeSec({ tenant, config, onDone }) {
-  const [membros, setMembros] = useState(undefined);
-  useEffect(() => onValue(ref(db, paths.members(tenant)), (snap) => setMembros(snap.val() || {}), () => setMembros({})), [tenant]);
+  const demo = ehDemo();
+  const [membros, setMembros] = useState(() => (demo ? (dadosDemo().membros || {}) : undefined));
+  useEffect(() => (demo ? undefined : onValue(ref(db, paths.members(tenant)), (snap) => setMembros(snap.val() || {}), () => setMembros({}))), [tenant, demo]);
+  if (demo) {
+    return (
+      <EquipeView
+        vocab={makeVocab(config)} professores={listaProfessores(membros)} carregando={false}
+        salvarMeuPin={async () => bloquearDemo()} salvar={async () => bloquearDemo()} remover={async () => bloquearDemo()} onDone={onDone}
+      />
+    );
+  }
 
-  const professores = Object.entries(membros || {})
-    .filter(([, m]) => m && m.role === 'professor')
-    .map(([id, m]) => ({ id, nome: m.nome, email: m.email || '' }))
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const professores = listaProfessores(membros);
 
   return (
     <EquipeView
@@ -29,6 +36,13 @@ export default function EquipeSec({ tenant, config, onDone }) {
       salvar={(dados) => salvarProfessor(tenant, dados)} remover={(id) => removerProfessor(tenant, id)} onDone={onDone}
     />
   );
+}
+
+function listaProfessores(membros) {
+  return Object.entries(membros || {})
+    .filter(([, m]) => m && m.role === 'professor')
+    .map(([id, m]) => ({ id, nome: m.nome || '', email: m.email || '' }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 // Parte visual, separada para o teste de render.

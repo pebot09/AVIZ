@@ -3,6 +3,7 @@ import QRCodeLib from 'qrcode';
 import { arr, sortTurmas, getTurmaLabel, TURMA_EXTRA_ID } from '../domain/helpers.js';
 import { cap } from '../domain/vocab.js';
 import Modal from './Modal.jsx';
+import { ehDemo } from '../lib/demo.js';
 
 // Link pessoal do aluno (?c=CÓDIGO). O código é a credencial — não há senha.
 // Porte do GerarLinkModal do Passarinho; o QR é gerado localmente (o original
@@ -20,7 +21,7 @@ export default function GerarLinkModal({ state, dispatch, vocab, tenantId, onClo
   // O link leva escola E código: é assim que o servidor sabe onde procurar,
   // sem precisar de um índice global de códigos (que seria enumerável).
   const link = acesso
-    ? `${window.location.origin}${window.location.pathname}?e=${encodeURIComponent(tenantId)}&c=${acesso.codigo}`
+    ? `${window.location.origin}${window.location.pathname}?e=${encodeURIComponent(tenantId)}&c=${acesso.codigo}${ehDemo() ? '&demo=1' : ''}`
     : '';
 
   const copiar = () => {

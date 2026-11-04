@@ -3,10 +3,14 @@ import { buscarFatia, enviarAcao } from '../../lib/alunoApi.js';
 import { makeVocab } from '../../domain/vocab.js';
 import AlunoApp from './AlunoApp.jsx';
 import { mensagemDeErro } from '../../lib/erros.js';
+import { avisarDemo } from '../../lib/demo.js';
+import DemoBalao, { DemoFaixa } from '../DemoBalao.jsx';
 
 // Carrega a fatia do aluno e envia as ações dele. Toda a decisão de "o que ele
 // pode ver e fazer" é do servidor; aqui só transportamos.
-export default function AlunoRoot({ tenant, codigo }) {
+// demo: link aberto pela demonstração — mostra tudo, mas nenhuma ação vai ao
+// servidor (balão "Versão de demonstração").
+export default function AlunoRoot({ tenant, codigo, demo = false }) {
   const [dados, setDados] = useState(undefined); // undefined = carregando
   const [erroCarga, setErroCarga] = useState(null);
   const [erroAcao, setErroAcao] = useState(null);
@@ -27,6 +31,7 @@ export default function AlunoRoot({ tenant, codigo }) {
   // Devolve true quando a ação foi aplicada, para a tela saber se limpa o
   // formulário e mostra o "pronto".
   const executar = async (acao) => {
+    if (demo) { avisarDemo(); return false; }
     setOcupado(true);
     setErroAcao(null);
     try {
@@ -55,6 +60,8 @@ export default function AlunoRoot({ tenant, codigo }) {
   }
 
   return (
+    <>
+    {demo && <DemoFaixa />}
     <AlunoApp
       fatia={dados.fatia}
       config={dados.config}
@@ -64,6 +71,8 @@ export default function AlunoRoot({ tenant, codigo }) {
       ocupado={ocupado}
       erro={erroAcao}
     />
+    {demo && <DemoBalao />}
+    </>
   );
 }
 

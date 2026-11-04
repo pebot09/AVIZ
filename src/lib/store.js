@@ -13,6 +13,11 @@ import { db } from './firebase.js';
 import { paths } from './paths.js';
 import { reducer, normalizeState } from '../domain/reducer.js';
 import { deveFazerBackup, chavesParaPodar, montarBackup, estadoTemConteudo } from '../domain/backup.js';
+import { ehDemo, dadosDemo, bloquearDemo } from './demo.js';
+
+// Na demonstração, estas ações rodam sozinhas na abertura: congelar o
+// resumo e limpar o que venceu. Aplicamos só na memória, sem balão.
+const AUTOMATICAS_DEMO = new Set(['FREEZE_RESUMOS', 'CLEANUP']);
 
 // O Firebase recusa QUALQUER `undefined` num write — o runTransaction lança
 // "Data returned contains undefined in property ...". Algumas ações deixam
@@ -50,8 +55,9 @@ async function manterBackup(tid, state) {
 }
 
 export function useConfig(tid) {
-  const [config, setConfig] = useState(undefined);
+  const [config, setConfig] = useState(() => (ehDemo() ? (dadosDemo().config || {}) : undefined));
   useEffect(() => {
+    if (ehDemo()) return undefined;
     const r = ref(db, paths.config(tid));
     return onValue(r, (snap) => setConfig(snap.exists() ? snap.val() : {}), () => setConfig({}));
   }, [tid]);
@@ -60,6 +66,7 @@ export function useConfig(tid) {
 
 // Lê os backups automáticos (mais novo primeiro), para uma tela de restauração.
 export async function listarBackups(tid) {
+  if (ehDemo()) bloquearDemo();
   const snap = await get(ref(db, paths.backups(tid)));
   const obj = snap.val() || {};
   return Object.values(obj).sort((a, b) => (Number(b && b.ts) || 0) - (Number(a && a.ts) || 0));
@@ -68,11 +75,13 @@ export async function listarBackups(tid) {
 // Restaura um backup por cima do estado atual. É uma escrita deliberada do
 // dono, então vence a versão do servidor (mas registra _updatedAt novo).
 export async function restaurarBackup(tid, dados) {
+  if (ehDemo()) bloquearDemo();
   await runTransaction(ref(db, paths.state(tid)), () => limparUndefined({ ...dados, _updatedAt: Date.now() }));
 }
 
 // Salva o config da escola (só o dono, pelas regras). Merge raso com o atual.
 export async function saveConfig(tid, patch) {
+  if (ehDemo()) bloquearDemo();
   const snap = await get(ref(db, paths.config(tid)));
   const atual = snap.exists() ? snap.val() : {};
   await set(ref(db, paths.config(tid)), { ...atual, ...patch });
@@ -80,18 +89,21 @@ export async function saveConfig(tid, patch) {
 
 // Salva a vitrine pública (nome, artigo, cor).
 export async function saveTenantPublic(tid, patch) {
+  if (ehDemo()) bloquearDemo();
   const snap = await get(ref(db, paths.tenantPublic(tid)));
   const atual = snap.exists() ? snap.val() : {};
   await set(ref(db, paths.tenantPublic(tid)), { ...atual, ...patch });
 }
 
 export function useTenantStore(tid, autor, config) {
-  const [state, setState] = useState(undefined);
+  // Demonstração: o estado veio do Worker e fica só na memória.
+  const demo = ehDemo();
+  const [state, setState] = useState(() => (demo ? normalizeState(dadosDemo().state) : undefined));
   // null = nunca carregou. Nunca começar em "vazio": como gravamos o estado
   // inteiro de uma vez, tratar "ainda não carregou" como "escola vazia" apaga
   // a escola na primeira ação.
-  const stateRef = useRef(null);
-  const carregadoRef = useRef(false);
+  const stateRef = useRef(demo ? state : null);
+  const carregadoRef = useRef(demo);
   const backupFeitoRef = useRef(false); // backup só uma vez por sessão
   const versaoRef = useRef(0); // _updatedAt do que temos em mãos
   const configRef = useRef(config);
@@ -109,6 +121,7 @@ export function useTenantStore(tid, autor, config) {
   }
 
   useEffect(() => {
+    if (demo) return undefined;
     carregadoRef.current = false;
     backupFeitoRef.current = false;
     stateRef.current = null;
@@ -140,6 +153,15 @@ export function useTenantStore(tid, autor, config) {
   }, [tid]);
 
   function dispatch(action) {
+    if (demo) {
+      // Só as automáticas, na memória. Qualquer outra é um clique de alguém:
+      // balão e para ali (o resto do clique não roda).
+      if (!AUTOMATICAS_DEMO.has(action.type)) bloquearDemo();
+      const atual = stateRef.current;
+      const prox = reducer(atual, { ...action, autor }, configRef.current);
+      if (prox !== atual) { stateRef.current = prox; setState(prox); }
+      return;
+    }
     // Sem ter carregado ainda não dá para agir com segurança.
     if (!carregadoRef.current) {
       setErro('Os dados ainda estão carregando. Tente de novo em um instante.');

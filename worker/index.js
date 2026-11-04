@@ -9,9 +9,11 @@
 //   3. /api/escola → criação de escola pelo onboarding, antes do login
 //      (worker/escola.js).
 //   4. /api/conta → login por e-mail + PIN, de dono e professor (worker/conta.js).
-//   5. /manifest.webmanifest → o app instalável, com o nome da escola
+//   5. /api/demo → a demonstração pública, só das escolas de mentira
+//      (worker/demo.js).
+//   6. /manifest.webmanifest → o app instalável, com o nome da escola
 //      (worker/manifest.js).
-//   6. qualquer outro caminho → o app (arquivos estáticos em ./dist).
+//   7. qualquer outro caminho → o app (arquivos estáticos em ./dist).
 //
 // Por que existe: o aluno não tem conta no Firebase, e as regras barram quem
 // não tem conta — senão ele leria os dados de todos os outros alunos. O Worker
@@ -29,6 +31,7 @@ import { criarHandlerProfessor } from './professor.js';
 import { criarHandlerEscola } from './escola.js';
 import { criarHandlerManifesto } from './manifest.js';
 import { criarHandlerConta } from './conta.js';
+import { criarHandlerDemo, ehEscolaDemo } from './demo.js';
 
 const DB = 'https://aviz-cb3c8-default-rtdb.firebaseio.com';
 // Chave pública do app web (a mesma de src/lib/firebase.js — não é segredo).
@@ -183,6 +186,9 @@ export function criarHandlerAluno(deps) {
 
     if (request.method === 'GET') return responder(state);
 
+    // Escola de demonstração: o link do aluno é só leitura.
+    if (ehEscolaDemo(tid)) return json({ erro: 'Versão de demonstração' }, 403);
+
     const check = acaoDoAluno(fonte.acao, acesso, state, config);
     if (!check.ok) return json({ erro: check.erro }, 403);
 
@@ -212,6 +218,18 @@ export default {
         // Mostra o motivo real (ajuda a diagnosticar em produção; a mensagem é
         // curta e técnica, tipo "firebase read 401", sem dado sensível).
         console.error('[aluno]', e && e.stack ? e.stack : e);
+        return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
+      }
+    }
+
+    if (url.pathname === '/api/demo') {
+      if (!temCredencial(env)) return json({ erro: 'A demonstração ainda não foi ativada.' }, 503);
+      try {
+        const fb = depsFirebase(env);
+        const prof = depsProfessor(env);
+        return await criarHandlerDemo({ lerTudo: fb.lerTudo, lerMembros: prof.lerMembros })(request, url);
+      } catch (e) {
+        console.error('[demo]', e && e.stack ? e.stack : e);
         return json({ erro: 'Erro no servidor: ' + String((e && e.message) || e) }, 500);
       }
     }

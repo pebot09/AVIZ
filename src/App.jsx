@@ -15,6 +15,8 @@ import PaginaLegal from './legal/PaginaLegal.jsx';
 import { paginaLegal, LINK_TERMOS, LINK_PRIVACIDADE } from './legal/rota.js';
 import { mensagemDeErro } from './lib/erros.js';
 import { ehAppIos } from './lib/instalavel.js';
+import { querDemo, carregarDemo, ligarDemo, silenciarBloqueios } from './lib/demo.js';
+import DemoBalao, { DemoFaixa } from './components/DemoBalao.jsx';
 
 export default function App() {
   const noEndereco = resolveTenant();
@@ -36,6 +38,13 @@ export default function App() {
   // Termos e Privacidade abrem para qualquer um, logado ou não.
   const legal = paginaLegal();
   if (legal) return <PaginaLegal qual={legal} />;
+
+  // Demonstração (?e=escola&demo=1): sem login, só leitura. Vem antes de
+  // tudo para que nem quem está logado consiga gravar por este link.
+  if (querDemo() && noEndereco) {
+    if (accessCode) return <AlunoRoot tenant={noEndereco} codigo={accessCode} demo />;
+    return <Demo tenant={noEndereco} />;
+  }
 
   // Link do aluno: precisa de escola + código. O link é gerado com os dois.
   if (accessCode) {
@@ -342,6 +351,31 @@ function Dono({ tenant, user }) {
   }
 
   return <EscolaApp tenant={tenant} user={user} membro={membro} />;
+}
+
+// Demonstração da escola: os dados vêm do Worker (só escolas da lista de
+// demonstração) e ficam na memória. A pessoa entra como se fosse o dono, para
+// ver todas as telas, mas toda gravação é barrada com o balão.
+function Demo({ tenant }) {
+  const [pronto, setPronto] = useState(false);
+  const [falha, setFalha] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    silenciarBloqueios();
+    carregarDemo(tenant)
+      .then((d) => { if (!vivo) return; ligarDemo(d); setPronto(true); })
+      .catch((e) => { if (vivo) setFalha(e.message); });
+    return () => { vivo = false; };
+  }, [tenant]);
+  if (falha) return <Shell><h2 style={s.h2}>Demonstração indisponível</h2><p style={s.p}>{falha}</p></Shell>;
+  if (!pronto) return <Shell><p style={s.dim}>Abrindo a demonstração…</p></Shell>;
+  return (
+    <>
+      <DemoFaixa />
+      <EscolaApp tenant={tenant} user={{ uid: 'demo', email: null }} membro={{ role: 'owner', nome: 'Demonstração' }} />
+      <DemoBalao />
+    </>
+  );
 }
 
 // Link de login aberto noutro aparelho: o Firebase exige o mesmo e-mail para
