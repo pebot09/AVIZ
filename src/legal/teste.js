@@ -12,7 +12,7 @@ export const TERMOS_TESTE = {
       titulo: '1. O que é este teste',
       blocos: [
         'O AVIZ é um serviço on-line de controle de faltas e reposições para escolas, ateliês, estúdios e outros negócios que funcionam em turmas recorrentes. Neste momento ele está em período de teste gratuito, oferecido a convite da equipe do AVIZ.',
-        'Ao criar um espaço e marcar a caixa de aceite, quem faz o cadastro aceita estes Termos e a Política de Privacidade em nome da escola.',
+        'Ao abrir o convite e marcar a caixa de aceite, o responsável pela escola aceita estes Termos e a Política de Privacidade em nome dela.',
       ],
     },
     {
@@ -61,14 +61,14 @@ export const PRIVACIDADE_TESTE = {
     {
       titulo: '1. Resumo',
       blocos: [
-        'O AVIZ guarda o mínimo possível. De alunos, só o nome, a turma e o histórico de faltas e reposições. Da escola, o e-mail de quem é dono. Não pedimos CPF, telefone, endereço nem data de nascimento de ninguém, não vendemos dados e não usamos cookies de rastreamento ou publicidade.',
+        'O AVIZ guarda o mínimo possível. De alunos, só o nome, a turma e o histórico de faltas e reposições. Da escola, o e-mail de quem é dono e dos professores. Não pedimos CPF, telefone, endereço nem data de nascimento de ninguém, não vendemos dados e não usamos cookies de rastreamento ou publicidade.',
       ],
     },
     {
       titulo: '2. Quem decide sobre os dados',
       blocos: [
         'Para os dados que a escola cadastra (alunos, equipe, turmas e histórico), a escola é a controladora e o AVIZ é o operador: guarda e processa esses dados só para prestar o serviço.',
-        'Para o e-mail do dono, usado no acesso por link, o AVIZ é o controlador.',
+        'Para os dados de acesso (e-mail e PIN de donos e professores), usados só para entrar no app e trocar o PIN, o AVIZ é o controlador.',
       ],
     },
     {
@@ -76,8 +76,8 @@ export const PRIVACIDADE_TESTE = {
       blocos: [
         {
           lista: [
-            'Dono: e-mail e o nome pelo qual quer ser chamado.',
-            'Professores: nome e o PIN de acesso.',
+            'Dono: e-mail, o nome pelo qual quer ser chamado e o PIN de acesso (guardado de forma protegida, sem que ninguém consiga ver o número).',
+            'Professores: nome, e-mail e o PIN de acesso (guardado de forma protegida, sem que ninguém consiga ver o número).',
             'Alunos: nome, turma(s), faltas, reposições, férias, créditos e o código do link pessoal.',
             'Histórico de ações dentro da escola (quem lançou o quê e quando), para a escola conferir o que aconteceu.',
           ],
@@ -88,7 +88,7 @@ export const PRIVACIDADE_TESTE = {
     {
       titulo: '4. Com quem compartilhamos',
       blocos: [
-        'Só com os fornecedores necessários para o AVIZ funcionar: Google (Firebase), para o banco de dados e os e-mails de acesso, e Cloudflare, para a hospedagem. Alguns guardam dados fora do Brasil, como permite o art. 33 da LGPD.',
+        'Só com os fornecedores necessários para o AVIZ funcionar: Google (Firebase), para o banco de dados, o login e o e-mail de troca de PIN, e Cloudflare, para a hospedagem. Alguns guardam dados fora do Brasil, como permite o art. 33 da LGPD.',
         'Também podemos fornecer dados quando uma autoridade exigir, nos termos da lei.',
       ],
     },

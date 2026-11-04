@@ -23,7 +23,7 @@ export const MODO_TESTE = true;
 
 // Data da versão vigente. Muda a cada revisão do texto; o aceite do
 // onboarding guarda qual versão a escola aceitou.
-export const VERSAO_TEXTOS = MODO_TESTE ? '2026-10-15-teste' : '2026-09-29-rascunho';
+export const VERSAO_TEXTOS = MODO_TESTE ? '2026-11-04-teste' : '2026-09-29-rascunho';
 
 // Vira `true` quando um advogado revisar os textos. Até lá, as páginas mostram
 // a faixa de rascunho.

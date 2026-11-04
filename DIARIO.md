@@ -5,6 +5,18 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-11-04 — Termos e Política do teste alinhados ao login novo
+
+- Aplicados os 4 ajustes aprovados pelo Pedro (texto final da Adriana,
+  Entregas 02/11): aceite ao abrir o convite; AVIZ controlador só dos dados de
+  acesso (e-mail e PIN); PIN do dono e e-mail dos professores na lista de
+  dados ("guardado de forma protegida…"); Firebase para "o banco de dados, o
+  login e o e-mail de troca de PIN". Versão dos textos: 2026-11-04-teste.
+- Vídeo 1 (5 clipes no celular): não dá para gravar daqui (este ambiente não
+  acessa o app publicado nem o banco). Avisado no mural.
+
+---
+
 ## 2026-11-01 — Correções trazidas do outro app (Passarinho)
 
 O Pedro corrigiu vários problemas no app original; conferi um a um no AVIZ.
