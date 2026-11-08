@@ -5,6 +5,31 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-11-08 — Tutorial em PDF: "Guia completo do AVIZ"
+
+- Pedido do Pedro: PDF diagramado, com imagens, ensinando todas as ações do
+  app, com FAQ no fim.
+- Feito: 44 páginas, 10 capítulos (bem-vindo e glossário, primeiro acesso e
+  PIN, turmas e alunos, faltas e reposições, painel, configurações,
+  professores, app do aluno com mensagem pronta para os alunos, rotina
+  sugerida, FAQ com ~40 perguntas). 59 capturas reais do app (escola fictícia
+  Ateliê Barro Bom) com marcadores numerados ligados ao texto. Sumário com
+  páginas automáticas.
+- PDF entregue no aviz-equipe: `tutorial/AVIZ-guia-completo.pdf` (+ ENTREGAS.md).
+- Gerador em `scripts/tutorial/` (`npm run tutorial`): o app de verdade com um
+  Firebase de mentira em memória, capturas no Chromium e PDF impresso pelo
+  Chromium. Não fala com o banco de produção e não entra no build do app.
+  Refazer quando alguma tela mudar.
+- Fora do guia de propósito: criação de escola (só o Pedro) e preço.
+- Conferido no código ao escrever (sem mudar nada): se a escola não usa falta
+  sem antecedência e o aluno cancela a reposição depois do prazo de aviso, a
+  falta volta como "sem antecedência" e na prática não dá mais para repor. Bate
+  com o que as Regras dizem ao aluno ("o direito não volta").
+- Próximo passo: Pedro ler o PDF e dizer o que mudar; Gustavo usar no
+  onboarding da Maria (recado no mural).
+
+---
+
 ## 2026-11-04 — Link de demonstração para possíveis compradores
 
 - Link: `https://aviz.pedrobotafogodrive2.workers.dev/?e=escola-x&demo=1`.

@@ -11,3 +11,5 @@ service-account*.json
 *serviceaccount*.json
 aviz-cb3c8-*.json
 .wrangler
+# Tutorial em PDF: capturas e PDF gerados (o PDF entregue fica no aviz-equipe)
+scripts/tutorial/saida/
