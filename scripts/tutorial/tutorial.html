@@ -1,0 +1,1561 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Guia completo do AVIZ</title>
+<style>
+  /* ============ Base ============ */
+  @page {
+    size: A4; margin: 15mm 15mm 17mm 15mm;
+    @bottom-left { content: "AVIZ  ·  Guia completo"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: #94a3b8; vertical-align: middle; }
+    @bottom-right { content: counter(page); font-family: 'Inter', sans-serif; font-size: 7.5pt; color: #94a3b8; vertical-align: middle; }
+  }
+  @page :first { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+  :root {
+    --azul: #2563eb; --azul-esc: #1e3a8a; --tinta: #0f172a; --texto: #334155; --suave: #64748b; --linha: #e2e8f0;
+    --fundo: #f8fafc; --marca: #e11d48; --cor: var(--azul); --cor-clara: #eff6ff;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; font-size: 9.6pt; line-height: 1.5; color: var(--texto); font-feature-settings: 'cv11', 'ss01'; }
+  h1, h2, h3, h4 { font-family: 'Inter Display', 'Inter', sans-serif; color: var(--tinta); margin: 0; line-height: 1.2; }
+  p { margin: 0 0 2.2mm; }
+  b, strong { color: var(--tinta); font-weight: 650; }
+  ul, ol { margin: 0 0 2.5mm; padding-left: 5mm; }
+  li { margin-bottom: 1.1mm; }
+  .ancora { position: absolute; font: 400 1pt sans-serif; letter-spacing: 0; color: #fff; line-height: 1; }
+
+  /* ============ Capa ============ */
+  .capa { width: 210mm; height: 296.5mm; position: relative; overflow: hidden; break-after: page;
+    background: radial-gradient(120% 80% at 85% 10%, #3b82f6 0%, #1d4ed8 45%, #172554 100%); color: #fff; }
+  .capa .marca { position: absolute; left: 20mm; top: 20mm; font-weight: 800; letter-spacing: 3.5mm; font-size: 15pt; opacity: .95; }
+  .capa .marca img { width: 10mm; height: 10mm; border-radius: 2.5mm; vertical-align: middle; margin-right: 3mm; box-shadow: 0 1mm 3mm rgba(0,0,0,.25); }
+  .capa .titulo { position: absolute; left: 20mm; top: 44mm; width: 175mm; }
+  .capa h1 { color: #fff; font-size: 40pt; font-weight: 800; letter-spacing: -0.5pt; line-height: 1.04; }
+  .capa .sub { margin-top: 6mm; font-size: 13pt; line-height: 1.45; color: #dbeafe; width: 150mm; }
+  .capa .slogan { margin-top: 7mm; display: inline-block; font-size: 10.5pt; font-weight: 600; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); padding: 2mm 4mm; border-radius: 10mm; }
+  .capa .celulares { position: absolute; left: 0; right: 0; top: 118mm; height: 150mm; }
+  .capa .cel { position: absolute; width: 62mm; padding: 2.2mm; background: #0b1220; border-radius: 9mm; box-shadow: 0 6mm 14mm rgba(2,6,23,.45); }
+  .capa .cel img { width: 100%; display: block; border-radius: 7mm; }
+  .capa .cel.c1 { left: 17mm; top: 16mm; transform: rotate(-7deg); }
+  .capa .cel.c2 { left: 74mm; top: 0; z-index: 2; }
+  .capa .cel.c3 { left: 131mm; top: 16mm; transform: rotate(7deg); }
+  .capa .rodape { position: absolute; left: 20mm; right: 20mm; bottom: 12mm; font-size: 8.5pt; color: #bfdbfe; display: flex; justify-content: space-between; }
+
+  /* ============ Sumário e páginas de abertura ============ */
+  .pagina-sumario { break-after: page; }
+  .sumario-topo { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid var(--tinta); padding-bottom: 2.5mm; margin-bottom: 4mm; }
+  .sumario-topo h1 { font-size: 26pt; font-weight: 800; }
+  .sumario-topo span { color: var(--suave); font-size: 9pt; }
+  .sumario { columns: 2; column-gap: 9mm; font-size: 8.4pt; line-height: 1.3; }
+  .sumario .cap { break-inside: avoid; margin-bottom: 2.4mm; }
+  .sumario .cap-tit { display: flex; align-items: baseline; gap: 2mm; font-weight: 700; color: var(--tinta); font-size: 10pt; padding: 1mm 0; border-bottom: 1px solid var(--linha); }
+  .sumario .cap-tit .n { display: inline-block; min-width: 7mm; height: 5.2mm; line-height: 5.2mm; text-align: center; border-radius: 1.4mm; color: #fff; font-size: 8pt; }
+  .sumario .linha { display: flex; align-items: baseline; gap: 1.5mm; padding: .35mm 0 .35mm 9mm; color: var(--texto); }
+  .sumario .linha .t, .sumario .cap-tit .t { flex: 0 1 auto; }
+  .sumario .pontos { flex: 1; border-bottom: 1px dotted #cbd5e1; transform: translateY(-1mm); }
+  .sumario .pg { font-variant-numeric: tabular-nums; color: var(--suave); min-width: 5mm; text-align: right; }
+  .sumario .cap-tit .pg { color: var(--tinta); }
+
+  .como-ler { margin: 0 0 5mm; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; break-inside: avoid; }
+  .como-ler > div { border: 1px solid var(--linha); border-radius: 2.5mm; padding: 2.2mm 2.6mm; font-size: 7.6pt; line-height: 1.4; background: var(--fundo); }
+  .como-ler h4 { font-size: 9pt; margin-bottom: 1.2mm; display: flex; align-items: center; gap: 1.5mm; }
+
+  /* ============ Capítulos ============ */
+  .capitulo { break-before: page; position: relative; padding-top: .8mm; }
+  .abertura { position: relative; margin: 0 0 6mm; padding: 7mm 7mm 6mm; border-radius: 4mm; background: var(--cor); color: #fff; overflow: hidden; }
+  .abertura::after { content: ''; position: absolute; right: -18mm; top: -22mm; width: 70mm; height: 70mm; border-radius: 50%; background: rgba(255,255,255,.08); }
+  .abertura .num { font-size: 9pt; font-weight: 700; letter-spacing: 1.2mm; text-transform: uppercase; opacity: .85; }
+  .abertura h1 { color: #fff; font-size: 25pt; font-weight: 800; margin: 1.5mm 0 2.5mm; letter-spacing: -.3pt; }
+  .abertura p { color: rgba(255,255,255,.92); font-size: 10.2pt; max-width: 150mm; margin: 0; }
+  .abertura .papeis { margin-top: 3.5mm; display: flex; gap: 1.5mm; }
+
+  .secao { margin-top: 6.5mm; }
+  .secao:first-of-type { margin-top: 0; }
+  h2.s { display: flex; align-items: center; gap: 2.5mm; font-size: 14pt; font-weight: 750; margin-bottom: 2.6mm; break-after: avoid; break-inside: avoid; position: relative; }
+  .cabeca { break-inside: avoid; }
+  h2.s .n { display: inline-flex; align-items: center; justify-content: center; min-width: 9mm; height: 6.2mm; padding: 0 1.6mm; border-radius: 1.6mm; background: var(--cor-clara); color: var(--cor); font-size: 9pt; font-weight: 800; }
+  h2.s .papel { margin-left: auto; }
+  h3 { font-size: 10.6pt; font-weight: 700; margin: 3.5mm 0 1.6mm; break-after: avoid; }
+  .intro { font-size: 10.3pt; color: var(--texto); }
+
+  /* Papéis (quem pode) */
+  .papel { display: inline-flex; gap: 1mm; }
+  .pp { font-size: 7pt; font-weight: 700; letter-spacing: .3pt; text-transform: uppercase; padding: .6mm 1.8mm; border-radius: 5mm; border: 1px solid; white-space: nowrap; }
+  .pp.dono { color: #6d28d9; border-color: #ddd6fe; background: #f5f3ff; }
+  .pp.equipe { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+  .pp.aluno { color: #c2410c; border-color: #fed7aa; background: #fff7ed; }
+  .abertura .pp { color: #fff; border-color: rgba(255,255,255,.45); background: rgba(255,255,255,.14); }
+
+  /* ============ Layout texto + figura ============ */
+  .lado { display: grid; grid-template-columns: 1fr auto; gap: 7mm; align-items: start; break-inside: avoid; margin-bottom: 3mm; }
+  .lado.inv { grid-template-columns: auto 1fr; }
+  .lado.inv > .fig { order: -1; }
+  .lado > div:not(.fig) { min-width: 0; }
+  .fileira { display: flex; gap: 6mm; justify-content: center; align-items: flex-start; break-inside: avoid; margin: 2mm 0 4mm; flex-wrap: wrap; }
+  .junto { break-inside: avoid; }
+  /* Blocos empurrados para a página seguinte: uma folga em cima evita que
+     a borda deles "vaze" 1 pixel no pé da página anterior. */
+  .lado, .cabeca, .junto, .fileira, .cartoes, .gloss, .rotina, .mapa, .fluxo { padding-top: .7mm; }
+
+  /* Passos numerados */
+  ol.passos { list-style: none; padding: 0; counter-reset: p; margin: 0 0 3mm; }
+  ol.passos > li { counter-increment: p; position: relative; padding-left: 8.5mm; margin-bottom: 2mm; }
+  ol.passos > li::before { content: counter(p); position: absolute; left: 0; top: -.2mm; width: 5.6mm; height: 5.6mm; border-radius: 50%; background: var(--tinta); color: #fff; font-size: 8pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  /* Marcadores (nas imagens e no texto) */
+  .m { display: inline-flex; align-items: center; justify-content: center; width: 4.4mm; height: 4.4mm; border-radius: 50%; background: var(--marca); color: #fff; font-size: 7pt; font-weight: 800; vertical-align: .2mm; margin: 0 .4mm; font-style: normal; line-height: 1; }
+  ul.legenda { list-style: none; padding: 0; margin: 0 0 3mm; }
+  ul.legenda > li { position: relative; padding-left: 7mm; margin-bottom: 1.8mm; }
+  ul.legenda > li > .m:first-child { position: absolute; left: 0; top: .5mm; margin: 0; }
+
+  /* Figuras */
+  .fig { margin: 0; display: flex; flex-direction: column; align-items: center; break-inside: avoid; }
+  .fig .quadro { position: relative; }
+  .fig .quadro img { display: block; width: 100%; }
+  .fig.recorte .quadro { border: 1px solid #dbe3ee; box-shadow: 0 1.2mm 3.5mm rgba(15,23,42,.10); background: #fff; overflow: visible; }
+  .fig.recorte .quadro img { border-radius: inherit; }
+  .fig.tela .quadro { padding: 2mm; background: #0b1220; border-radius: 8.5mm; box-shadow: 0 2mm 5mm rgba(15,23,42,.22); }
+  .fig.tela .quadro img { border-radius: 6.5mm; }
+  .fig.tela .quadro::before { content: ''; position: absolute; top: 3.3mm; left: 50%; transform: translateX(-50%); width: 13mm; height: 1.7mm; border-radius: 1mm; background: #0b1220; z-index: 2; }
+  .fig figcaption { margin-top: 2.2mm; font-size: 7.6pt; color: var(--suave); text-align: center; max-width: 70mm; line-height: 1.35; }
+  .fig .mk { position: absolute; z-index: 3; width: 4.8mm; height: 4.8mm; border-radius: 50%; background: var(--marca); color: #fff; font-size: 7.2pt; font-weight: 800; display: flex; align-items: center; justify-content: center; border: .45mm solid #fff; box-shadow: 0 .6mm 1.6mm rgba(0,0,0,.35); }
+  .mk.a-c { transform: translate(-50%, -50%); }
+  .mk.a-r { transform: translate(.6mm, -50%); }
+  .mk.a-l { transform: translate(calc(-100% - .6mm), -50%); }
+  .mk.a-b { transform: translate(-50%, .4mm); }
+  .mk.a-t { transform: translate(-50%, calc(-100% - .4mm)); }
+
+  /* Caixas de destaque */
+  .caixa { border-radius: 2.6mm; padding: 2.8mm 3.4mm 2.8mm 11mm; margin: 2.5mm 0 3mm; position: relative; font-size: 9.1pt; break-inside: avoid; }
+  .caixa::before { position: absolute; left: 3.2mm; top: 2.6mm; font-size: 10.5pt; }
+  .caixa > b:first-child { display: block; margin-bottom: .5mm; }
+  .caixa p:last-child { margin-bottom: 0; }
+  .dica { background: #ecfdf5; border: 1px solid #a7f3d0; } .dica::before { content: '💡'; }
+  .atencao { background: #fffbeb; border: 1px solid #fde68a; } .atencao::before { content: '⚠️'; }
+  .saber { background: #f1f5f9; border: 1px solid #e2e8f0; } .saber::before { content: 'ℹ️'; }
+  .regra { background: #eff6ff; border: 1px solid #bfdbfe; } .regra::before { content: '📏'; }
+
+  /* Cartões e tabelas */
+  .cartoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3.5mm; margin: 3mm 0 4mm; }
+  .cartoes.dois { grid-template-columns: repeat(2, 1fr); }
+  .cartao { border: 1px solid var(--linha); border-radius: 3mm; padding: 3.4mm; background: #fff; break-inside: avoid; }
+  .cartao .ic { font-size: 15pt; line-height: 1; margin-bottom: 1.6mm; }
+  .cartao h4 { font-size: 10.2pt; margin-bottom: 1.2mm; }
+  .cartao p, .cartao li { font-size: 8.8pt; }
+  .cartao ul { padding-left: 4mm; margin: 0; }
+  .gloss { display: grid; grid-template-columns: 1fr 1fr; gap: 2.6mm 4mm; margin: 2mm 0 4mm; }
+  .gloss > div { border-left: 1.1mm solid var(--c, var(--azul)); background: var(--fundo); border-radius: 0 2mm 2mm 0; padding: 2.2mm 3mm; font-size: 8.8pt; break-inside: avoid; }
+  .gloss > div > b:first-child { display: block; font-size: 9.4pt; margin-bottom: .4mm; }
+
+  table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 8.8pt; margin: 2mm 0 4mm; break-inside: avoid; border: 1px solid var(--linha); border-radius: 2.6mm; overflow: hidden; }
+  table.t th { background: var(--tinta); color: #fff; text-align: left; font-weight: 650; padding: 2mm 2.6mm; font-size: 8.4pt; }
+  table.t td { padding: 1.8mm 2.6mm; border-top: 1px solid var(--linha); vertical-align: top; }
+  table.t tr:nth-child(even) td { background: var(--fundo); }
+  table.t td.c, table.t th.c { text-align: center; width: 21mm; white-space: nowrap; }
+  .sim { color: #16a34a; font-weight: 800; } .nao { color: #cbd5e1; }
+
+  /* Fluxo (diagrama) */
+  .fluxo { display: grid; grid-template-columns: 1fr 6mm 1fr 6mm 1fr 6mm 1fr; align-items: stretch; margin: 3mm 0 2mm; break-inside: avoid; }
+  .fluxo .etapa { border-radius: 3mm; padding: 3mm; background: var(--bg); border: 1px solid var(--bd); }
+  .fluxo .etapa .ic { font-size: 14pt; }
+  .fluxo .etapa > b { display: block; font-size: 9.4pt; margin: 1mm 0 .6mm; }
+  .fluxo .etapa span { font-size: 8.2pt; display: block; line-height: 1.38; }
+  .fluxo .seta { display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13pt; }
+
+  .mapa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 2mm 0 4mm; break-inside: avoid; }
+  .mapa > div { border-radius: 3mm; padding: 3mm; border: 1px solid var(--linha); background: #fff; }
+  .mapa .aba { font-size: 8pt; font-weight: 700; color: var(--azul); border-bottom: 2px solid var(--azul); display: inline-block; margin-bottom: 1.6mm; padding-bottom: .4mm; }
+  .mapa p { font-size: 8.5pt; margin: 0; }
+
+  .lista-check { list-style: none; padding: 0; }
+  .lista-check li { padding-left: 6.5mm; position: relative; }
+  .lista-check li::before { content: ''; position: absolute; left: 0; top: .9mm; width: 3.4mm; height: 3.4mm; border: 1.3px solid #94a3b8; border-radius: .9mm; }
+
+  .rotina { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .rotina .cartao h4 { display: flex; align-items: center; gap: 2mm; }
+  .tag-tempo { margin-left: auto; font-size: 7.4pt; font-weight: 700; color: var(--suave); background: var(--fundo); border: 1px solid var(--linha); border-radius: 4mm; padding: .3mm 2mm; }
+
+  .mensagem { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 3mm; padding: 4mm 4.5mm; font-size: 9.4pt; position: relative; break-inside: avoid; }
+  .mensagem .bolha { background: #fff; border-radius: 2.6mm; padding: 3mm 3.5mm; box-shadow: 0 .6mm 1.6mm rgba(0,0,0,.08); }
+
+  /* FAQ */
+  .faq-grupo { margin: 4.5mm 0 2mm; display: flex; align-items: center; gap: 2.5mm; font-size: 11.5pt; font-weight: 750; color: var(--tinta); break-after: avoid; }
+  .faq-grupo::after { content: ''; flex: 1; height: 1px; background: var(--linha); }
+  .faq { columns: 2; column-gap: 7mm; }
+  .faq .q { break-inside: avoid; margin-bottom: 3.6mm; }
+  .faq .q h4 { font-size: 9.5pt; font-weight: 700; margin-bottom: 1mm; display: flex; gap: 1.8mm; align-items: flex-start; }
+  .faq .q h4::before { content: '?'; flex: 0 0 4.6mm; height: 4.6mm; border-radius: 50%; background: var(--cor); color: #fff; font-size: 7.6pt; display: flex; align-items: center; justify-content: center; margin-top: .2mm; }
+  .faq .q p { font-size: 8.9pt; margin: 0 0 0 6.4mm; }
+
+  .fim { margin-top: 8mm; border-radius: 4mm; padding: 6mm 7mm; background: linear-gradient(120deg, #1d4ed8, #2563eb); color: #fff; display: flex; align-items: center; gap: 5mm; break-inside: avoid; }
+  .fim img { width: 16mm; height: 16mm; border-radius: 4mm; }
+  .fim h3 { color: #fff; font-size: 13pt; margin: 0 0 1mm; }
+  .fim p { margin: 0; color: #dbeafe; }
+
+  .sm { font-size: 8.4pt; color: var(--suave); }
+  .nowrap { white-space: nowrap; }
+  kbd { font-family: inherit; font-size: 8.2pt; font-weight: 650; color: var(--tinta); background: #fff; border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 1.2mm; padding: 0 1.3mm; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- ======================= CAPA ======================= -->
+<section class="capa">
+  <div class="marca"><img src="../../public/icons/icon-192.png" alt="" />AVIZ</div>
+  <div class="titulo">
+    <h1>Guia completo<br />do AVIZ</h1>
+    <div class="sub">Passo a passo de todas as telas do app: para quem cuida da escola, para a equipe que dá aula e para os alunos.</div>
+    <div class="slogan">Mais facilidade pra eles, mais tempo pra você.</div>
+  </div>
+  <div class="celulares">
+    <div class="cel c1"><img src="saida/capturas/fr-visao.png" alt="" /></div>
+    <div class="cel c2"><img src="saida/capturas/turmas.png" alt="" /></div>
+    <div class="cel c3"><img src="saida/capturas/aluno.png" alt="" /></div>
+  </div>
+  <div class="rodape"><span>Edição de <span id="edicao">novembro de 2026</span></span><span>As telas mostram o Ateliê Barro Bom, uma escola de exemplo.</span></div>
+</section>
+
+<!-- ======================= SUMÁRIO ======================= -->
+<section class="pagina-sumario">
+  <div class="sumario-topo"><h1>Sumário</h1><span>Guia completo do AVIZ</span></div>
+  <div class="como-ler">
+    <div><h4><span class="m">1</span> Marcadores</h4>Os números vermelhos nas telas batem com os números do texto ao lado.</div>
+    <div><h4><span class="pp dono">Dono</span></h4>Só quem é responsável pela escola. <span class="pp equipe">Equipe</span> dono e professores. <span class="pp aluno">Aluno</span> pelo link pessoal.</div>
+    <div><h4>💡 Dicas e ⚠️ avisos</h4>Caixas coloridas com atalhos e cuidados importantes.</div>
+    <div><h4>📱 Celular ou computador</h4>O AVIZ funciona nos dois. As telas deste guia são de celular.</div>
+  </div>
+  <div class="sumario" id="sumario"></div>
+</section>
+
+<!-- ======================= 1. BEM-VINDO ======================= -->
+<section class="capitulo" data-cor="#2563eb" data-clara="#eff6ff" data-cap="1" data-titulo="Bem-vindo ao AVIZ">
+  <div class="abertura"><div class="num">Capítulo 1</div><h1>Bem-vindo ao AVIZ</h1>
+    <p>O AVIZ organiza alunos, turmas, faltas e reposições num lugar só, e aplica sozinho as regras da sua escola. Este capítulo mostra a ideia geral e as palavras que aparecem no app.</p></div>
+
+  <div class="secao" data-sec="O que o AVIZ faz por você">
+    <h2 class="s"><span class="n">1.1</span>O que o AVIZ faz por você</h2>
+    <p class="intro">Em escolas com aulas que se repetem toda semana, falta e reposição costumam ficar no caderno, na planilha ou no WhatsApp. O AVIZ troca isso por três telas simples, uma para cada pessoa:</p>
+    <div class="cartoes">
+      <div class="cartao"><div class="ic">🏫</div><h4>Quem cuida da escola</h4><p>Cria as turmas, define as regras (prazos, férias, vagas) e acompanha tudo pelo Painel. É o <b>dono</b> no app.</p></div>
+      <div class="cartao"><div class="ic">🧑‍🏫</div><h4>Professores</h4><p>Entram com e-mail e PIN e cuidam do dia a dia: faltas, reposições, alunos e o resumo de quem vem.</p></div>
+      <div class="cartao"><div class="ic">🙋</div><h4>Alunos</h4><p>Recebem um link pessoal. Por ele avisam a falta e marcam a reposição sozinhos, a qualquer hora, sem precisar falar com ninguém.</p></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Como funciona, em 4 passos">
+    <h2 class="s"><span class="n">1.2</span>Como funciona, em 4 passos</h2>
+    <div class="fluxo">
+      <div class="etapa" style="--bg:#fffbeb;--bd:#fde68a"><div class="ic">🙋</div><b>O aluno avisa a falta</b><span>Pelo link dele, ou a equipe registra. A falta vira um <b>direito de reposição</b>, com prazo.</span></div>
+      <div class="seta">→</div>
+      <div class="etapa" style="--bg:#f0fdfa;--bd:#99f6e4"><div class="ic">🪑</div><b>A vaga fica livre</b><span>O lugar dele naquela aula vira uma <b>vaga</b>, que outros alunos podem usar para repor.</span></div>
+      <div class="seta">→</div>
+      <div class="etapa" style="--bg:#eff6ff;--bd:#bfdbfe"><div class="ic">✅</div><b>Alguém repõe</b><span>Um aluno escolhe a vaga. O AVIZ usa sozinho o direito dele que <b>vence primeiro</b>.</span></div>
+      <div class="seta">→</div>
+      <div class="etapa" style="--bg:#f5f3ff;--bd:#ddd6fe"><div class="ic">📋</div><b>Tudo fica anotado</b><span>Painel, Resumo do dia e Registro mostram quem vem, quem faltou e quem fez cada coisa.</span></div>
+    </div>
+    <p class="sm">Ninguém precisa fazer conta: o AVIZ controla prazos, vagas e lotação de cada turma conforme as regras que a escola escolheu.</p>
+  </div>
+
+  <div class="secao" data-sec="Palavras que aparecem no app">
+    <h2 class="s"><span class="n">1.3</span>Palavras que aparecem no app</h2>
+    <div class="gloss">
+      <div style="--c:#f59e0b"><b>✋ Falta</b>Aula que o aluno não vai (ou não foi). Dá direito a uma reposição até a data de validade.</div>
+      <div style="--c:#14b8a6"><b>🪑 Vaga</b>Lugar livre numa aula, aberto pela falta (ou pelas férias) de outro aluno.</div>
+      <div style="--c:#2563eb"><b>🔄 Reposição</b>Aula em outra turma para compensar uma falta. Consome um direito do aluno.</div>
+      <div style="--c:#0d9488"><b>✦ Vaga extra</b>Lugar que sobra na sala (abaixo do máximo físico). Abre um tempo antes da aula, se a escola quiser.</div>
+      <div style="--c:#f97316"><b>⏱️ Falta sem antecedência</b>Falta avisada em cima da hora. Se a escola permitir, ainda dá direito a repor, mas só numa aula prestes a começar.</div>
+      <div style="--c:#0f766e"><b>🏖️ Férias</b>Mês inteiro fora. Libera as vagas do aluno no mês e pode dar crédito de reposição.</div>
+      <div style="--c:#9333ea"><b>🎟️ Crédito extra</b>Direito de reposição dado pela escola, sem precisar de falta (cortesia, compensação…).</div>
+      <div style="--c:#7c3aed"><b>➕ Aula extra</b>Aula a mais para quem não tem direito pendente. Pode ter custo: a equipe marca como <b>PAGO</b>.</div>
+      <div style="--c:#dc2626"><b>🚫 Aula cancelada</b>A escola cancela a aula inteira: todos ficam com falta e direito a repor, sem punição.</div>
+      <div style="--c:#64748b"><b>🏠 Recesso e 🎌 feriado</b>Dias sem aula. Não geram falta nem vaga. Os feriados nacionais já vêm marcados.</div>
+    </div>
+    <div class="caixa saber"><b>Os nomes podem ser outros na sua escola</b><p>Se a escola chama "turma" de "classe" ou "aluno" de "praticante", o app inteiro troca as palavras (Configurações → Vocabulário). Este guia usa os nomes padrão.</p></div>
+  </div>
+
+  <div class="secao" data-sec="O mapa do app">
+    <h2 class="s"><span class="n">1.4</span>O mapa do app</h2>
+    <p>Para a equipe, o AVIZ tem três abas no alto da tela e um botão de configurações:</p>
+    <div class="mapa">
+      <div><span class="aba">Turmas</span><p>Turmas, horários, alunos, notas da turma e o link de cada aluno.</p></div>
+      <div><span class="aba">Faltas &amp; Reposições</span><p>Registrar e cancelar faltas e reposições, férias, crédito extra e cancelar aula.</p></div>
+      <div><span class="aba">Painel</span><p>A foto do momento: faltas, reposições, vagas, alertas, registro e resumo do dia.</p></div>
+      <div><span class="aba">⚙ Configurações</span><p>Só do dono: nome, regras, calendário, equipe e cópia dos dados.</p></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Quem pode fazer o quê">
+    <h2 class="s"><span class="n">1.5</span>Quem pode fazer o quê</h2>
+    <table class="t">
+      <tr><th>Ação</th><th class="c">Dono</th><th class="c">Professor</th><th class="c">Aluno</th></tr>
+      <tr><td>Criar turmas, cadastrar e gerenciar alunos</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c nao">—</td></tr>
+      <tr><td>Gerar e enviar o link do aluno</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c nao">—</td></tr>
+      <tr><td>Registrar e cancelar faltas</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c sim">só as dele</td></tr>
+      <tr><td>Marcar e cancelar reposições</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c sim">só as dele</td></tr>
+      <tr><td>Registrar férias</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c sim">só as dele</td></tr>
+      <tr><td>Dar crédito extra, cancelar aula, ocultar vagas</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c nao">—</td></tr>
+      <tr><td>Ver Painel, Registro e Resumo do dia</td><td class="c sim">✓</td><td class="c sim">✓</td><td class="c nao">—</td></tr>
+      <tr><td>Apagar itens do Registro</td><td class="c sim">✓</td><td class="c nao">—</td><td class="c nao">—</td></tr>
+      <tr><td>Configurações: regras, calendário, equipe, dados</td><td class="c sim">✓</td><td class="c nao">—</td><td class="c nao">—</td></tr>
+    </table>
+    <p class="sm">O aluno nunca vê os dados dos colegas: no link dele aparecem só as faltas, reposições e férias dele, e as vagas aparecem só como dia e turma.</p>
+  </div>
+</section>
+
+<!-- ======================= 2. PRIMEIRO ACESSO ======================= -->
+<section class="capitulo" data-cor="#4f46e5" data-clara="#eef2ff" data-cap="2" data-titulo="Primeiro acesso e entrada">
+  <div class="abertura"><div class="num">Capítulo 2</div><h1>Primeiro acesso e entrada</h1>
+    <p>Como aceitar o convite, criar o PIN, guardar o endereço da escola, colocar o app na tela do celular e entrar no dia a dia.</p>
+    <div class="papeis"><span class="pp">Dono</span><span class="pp">Equipe</span></div></div>
+
+  <div class="secao" data-sec="Aceitar o convite e criar seu PIN">
+    <h2 class="s"><span class="n">2.1</span>Aceitar o convite e criar seu PIN <span class="papel"><span class="pp dono">Dono</span></span></h2>
+    <div class="lado">
+      <div>
+        <p>A equipe do AVIZ cria a sua escola e manda um <b>link de convite</b> (por e-mail ou WhatsApp). O convite vale por 30 dias e só pode ser usado uma vez.</p>
+        <ol class="passos">
+          <li>Abra o link do convite no celular ou no computador. Aparece o nome da escola e o seu e-mail.</li>
+          <li>Escolha um <b>PIN de 4 números</b> <span class="m">1</span> e repita <span class="m">2</span>. É com ele (e o seu e-mail) que você vai entrar sempre.</li>
+          <li>Leia e marque o aceite dos Termos de Uso e da Política de Privacidade <span class="m">3</span>.</li>
+          <li>Toque em <b>Entrar no app</b> <span class="m">4</span>. Pronto: você já está dentro da escola, como responsável.</li>
+        </ol>
+        <div class="caixa dica"><b>Já usa o AVIZ em outra escola?</b><p>Então o convite não pede PIN novo: aceite e entre com o PIN que você já usa.</p></div>
+        <div class="caixa atencao"><b>Guarde bem o seu PIN</b><p>Ele dá acesso de responsável. Não use datas óbvias e não compartilhe. Se esquecer, dá para criar outro (seção 2.4).</p></div>
+      </div>
+      <div class="fig" data-id="convite" data-cap="Tela do convite, com o PIN escolhido e o aceite marcado."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="A primeira entrada: endereço e primeiros passos">
+    <h2 class="s"><span class="n">2.2</span>A primeira entrada: endereço e primeiros passos <span class="papel"><span class="pp dono">Dono</span></span></h2>
+    <div class="lado">
+      <div>
+        <h3>Guarde o endereço do seu espaço</h3>
+        <p>Na primeira vez, o app mostra o <b>endereço da sua escola</b>. É por ele que você e a equipe entram em qualquer aparelho. Toque em <b>Copiar endereço</b> <span class="m">1</span> e guarde (num bloco de notas, num grupo da equipe). Depois toque em <b>Entendi</b>.</p>
+        <h3>Siga o guia "Primeiros passos"</h3>
+        <p>Logo abaixo aparece um roteiro com os passos para deixar a escola pronta. Cada passo tem um botão que leva direto ao lugar certo:</p>
+        <ol class="passos">
+          <li><b>Conferir as regras</b> <span class="m">2</span>: prazo de reposição, férias, feriados e recessos (capítulo 6).</li>
+          <li><b>Cadastrar turmas e horários</b> <span class="m">3</span> (seção 3.2).</li>
+          <li><b>Cadastrar alunos</b> em cada turma (seção 3.4).</li>
+          <li><b>Enviar o link aos alunos</b> (seção 3.9).</li>
+          <li><b>Adicionar professores</b>, se houver (opcional, seção 6.8).</li>
+        </ol>
+        <p>Os passos ganham um ✓ verde quando ficam prontos. O guia some sozinho quando os quatro primeiros estão feitos, ou quando você toca em <b>Esconder guia</b> <span class="m">4</span>.</p>
+      </div>
+      <div class="fig" data-id="primeira" data-cap="Primeira entrada: o endereço da escola e o guia de primeiros passos."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Entrar no dia a dia">
+    <h2 class="s"><span class="n">2.3</span>Entrar no dia a dia <span class="papel"><span class="pp equipe">Equipe</span></span></h2>
+    <div class="lado">
+      <div>
+        <p>Dono e professores entram do mesmo jeito, pelo endereço da escola:</p>
+        <ol class="passos">
+          <li>Digite o seu <b>e-mail</b> <span class="m">1</span>.</li>
+          <li>Digite o seu <b>PIN de 4 números</b> <span class="m">2</span>. No celular, abre o teclado numérico.</li>
+          <li>Toque em <b>Entrar</b> <span class="m">3</span>.</li>
+        </ol>
+        <p>O aparelho fica conectado: você não precisa digitar de novo toda vez, só se tocar em <b>sair</b>.</p>
+        <div class="caixa atencao"><b>Errou o PIN várias vezes?</b><p>Depois de 10 erros seguidos no mesmo e-mail, a entrada fica travada por 15 minutos. Espere ou use <b>Esqueci meu PIN</b> <span class="m">4</span>.</p></div>
+        <div class="caixa saber"><b>Tem mais de uma escola?</b><p>Com a mesma conta você pode estar em várias escolas (por exemplo, dono de uma e professor de outra). Ao entrar sem o endereço de uma escola, o AVIZ mostra a lista <b>Suas escolas</b> para você escolher.</p></div>
+      </div>
+      <div class="fig" data-id="login" data-cap="Tela de entrada: e-mail e PIN."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Esqueci meu PIN">
+    <h2 class="s"><span class="n">2.4</span>Esqueci meu PIN <span class="papel"><span class="pp equipe">Equipe</span></span></h2>
+    <div class="junto">
+    <ol class="passos">
+      <li>Na tela de entrada, toque em <b>Esqueci meu PIN</b>. Digite o seu e-mail <span class="m">1</span> e toque em <b>Enviar link</b> <span class="m">2</span>.</li>
+      <li>Abra o e-mail que chegou. Ele vem do Firebase (o sistema de login do AVIZ) e fala em "fazer login": é esse mesmo. Toque no link.</li>
+      <li>O AVIZ abre a tela <b>Escolha seu PIN</b>: digite o PIN novo <span class="m">1</span>, repita <span class="m">2</span> e toque em <b>Salvar e entrar</b> <span class="m">3</span>.</li>
+    </ol>
+    <div class="fileira">
+      <div class="fig" data-id="esqueci" data-w="50" data-cap="1. Pedir o link."></div>
+      <div class="fig" data-id="esqueci-enviado" data-w="50" data-cap="2. Conferir o e-mail."></div>
+      <div class="fig" data-id="novopin" data-w="50" data-cap="3. Escolher o PIN novo."></div>
+    </div>
+    </div>
+    <div class="caixa dica"><b>No iPhone, com o app na tela de início</b><p>O link do e-mail abre no Safari, não no app. Crie o PIN novo no Safari mesmo; depois volte ao app e entre com o e-mail e o PIN novo.</p></div>
+    <div class="caixa saber"><b>Professor esqueceu o PIN?</b><p>Ele mesmo pode usar "Esqueci meu PIN". Ou o dono define um PIN novo para ele em Configurações → Professores e seu PIN (seção 6.8).</p></div>
+  </div>
+
+  <div class="secao" data-sec="Colocar o AVIZ na tela do celular">
+    <h2 class="s"><span class="n">2.5</span>Colocar o AVIZ na tela do celular <span class="papel"><span class="pp equipe">Equipe</span> <span class="pp aluno">Aluno</span></span></h2>
+    <p>O AVIZ não precisa ser baixado de loja: ele vira um ícone na tela do celular, abre em tela cheia e já entra na escola (ou no link do aluno). O ícone leva o <b>nome da sua escola</b>.</p>
+    <div class="cartoes dois">
+      <div class="cartao"><div class="ic">📱</div><h4>iPhone (Safari)</h4>
+        <ol class="passos">
+          <li>Abra o endereço da escola (ou o link do aluno) no <b>Safari</b>.</li>
+          <li>Toque em <b>Compartilhar</b> (o quadrado com a seta para cima).</li>
+          <li>Role e toque em <b>Adicionar à Tela de Início</b>, depois em <b>Adicionar</b>.</li>
+          <li>Abra pelo ícone novo e entre com e-mail e PIN.</li>
+        </ol></div>
+      <div class="cartao"><div class="ic">🤖</div><h4>Android (Chrome)</h4>
+        <ol class="passos">
+          <li>Abra o endereço da escola (ou o link do aluno) no <b>Chrome</b>.</li>
+          <li>Toque nos <b>três pontinhos</b> ⋮ no canto de cima.</li>
+          <li>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li>
+          <li>Confirme. O ícone aparece junto dos outros apps.</li>
+        </ol></div>
+    </div>
+    <div class="caixa saber"><b>Duas escolas no mesmo celular?</b><p>Cada endereço vira um ícone próprio. No iPhone, o app instalado não usa o login do Safari: entre de novo dentro dele, com e-mail e PIN.</p></div>
+  </div>
+
+  <div class="secao" data-sec="Sair da conta">
+    <h2 class="s"><span class="n">2.6</span>Sair da conta <span class="papel"><span class="pp equipe">Equipe</span></span></h2>
+    <div class="lado">
+      <div>
+        <p>No alto da tela, à direita, toque em <b>sair</b>. O AVIZ pede confirmação, para ninguém sair sem querer. Sair <b>não apaga nada</b>: para voltar, entre com e-mail e PIN.</p>
+        <p class="sm">Use "sair" em aparelhos que outras pessoas também usam, como o computador da recepção.</p>
+      </div>
+      <div class="fig" data-id="sair"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 3. TURMAS ======================= -->
+<section class="capitulo" data-cor="#0284c7" data-clara="#e0f2fe" data-cap="3" data-titulo="Turmas e alunos">
+  <div class="abertura"><div class="num">Capítulo 3</div><h1>Turmas e alunos</h1>
+    <p>A aba Turmas é onde a escola é montada: horários, alunos, capacidade, notas para a equipe e o link pessoal de cada aluno.</p>
+    <div class="papeis"><span class="pp">Equipe</span></div></div>
+
+  <div class="secao" data-sec="A tela de Turmas">
+    <h2 class="s"><span class="n">3.1</span>A tela de Turmas</h2>
+    <div class="lado">
+      <div>
+        <ul class="legenda">
+          <li><span class="m">1</span><b>Abas</b> do app: Turmas, Faltas &amp; Reposições e Painel.</li>
+          <li><span class="m">2</span><b>⚙ Configurações</b> (só o dono vê).</li>
+          <li><span class="m">3</span><b>🔗 Link</b>: gerar e enviar o link pessoal de um aluno.</li>
+          <li><span class="m">4</span><b>+ Nova turma</b>.</li>
+          <li><span class="m">5</span><b>Dia, horário e observação</b> da turma. Toque no cartão para abrir a turma e ver os alunos.</li>
+          <li><span class="m">6</span><b>📋 Notas</b> da turma, recados para a equipe. Um <b style="color:#ef4444">!</b> vermelho avisa que há nota nova.</li>
+          <li><span class="m">7</span><b>Gerenciar</b>: capacidade, renomear, mover e remover alunos.</li>
+        </ul>
+        <h3>A cor da lotação</h3>
+        <p>Embaixo do nome aparece quantos alunos a turma tem e o máximo (ex.: <b>5/7</b>):</p>
+        <ul>
+          <li><b style="color:#16a34a">verde</b>: tem lugar;</li>
+          <li><b style="color:#d97706">amarelo</b>: cheia ou com só um lugar;</li>
+          <li><b style="color:#dc2626">vermelho</b>: acima da capacidade.</li>
+        </ul>
+        <p>No fim da lista fica o cartão tracejado <b>Alunos extras &amp; ex-alunos</b> (seção 3.8).</p>
+      </div>
+      <div class="fig" data-id="turmas" data-cap="Aba Turmas do Ateliê Barro Bom."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Criar uma turma">
+    <h2 class="s"><span class="n">3.2</span>Criar uma turma</h2>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Toque em <b>+ Nova turma</b>.</li>
+          <li>Escolha o <b>dia da semana</b> <span class="m">1</span> e o <b>horário</b> <span class="m">2</span> (hora e minutos, de 5 em 5).</li>
+          <li>A turma se encontra mais de uma vez por semana? Toque em <b>+ Adicionar outro dia</b> <span class="m">3</span> e escolha o outro dia e horário. Para tirar um dia, toque no ✕ vermelho.</li>
+          <li>Se quiser, escreva uma <b>observação</b> <span class="m">4</span> (ex.: "Torno", "Iniciantes", "Sala 2"). Ela aparece ao lado do nome.</li>
+          <li>Toque em <b>Criar</b> <span class="m">5</span>.</li>
+        </ol>
+        <p>A turma recebe o nome pelo dia e horário (ex.: <b>Terça 19h</b>) e a capacidade padrão da escola, que dá para mudar depois em <b>Gerenciar</b>.</p>
+        <div class="caixa saber"><b>Excluir uma turma</b><p>O botão <b>Excluir</b> aparece no cartão só quando a turma está vazia. Antes, mova ou remova os alunos dela.</p></div>
+      </div>
+      <div class="fig" data-id="nova-turma" data-cap="Nova turma com dois encontros por semana."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Abrir a turma: observação e contadores">
+    <h2 class="s"><span class="n">3.3</span>Abrir a turma: observação e contadores</h2>
+    <div class="lado">
+      <div>
+        <p>Toque no cartão para abrir a turma. Lá dentro:</p>
+        <ul class="legenda">
+          <li><span class="m">1</span><b>Observação</b>: edite e toque em <b>Salvar</b>.</li>
+          <li><span class="m">2</span><b>Contadores</b> de cada aluno:
+            <br />✋ faltas ativas (a repor e já com reposição) · 🔄 reposições agendadas · 🎟️ créditos extras · 🏖️ créditos de férias.
+            <br />O ✋ fica <b style="color:#dc2626">vermelho</b> quando uma falta vence nos próximos 7 dias.</li>
+          <li><span class="m">3</span><b>ⓘ Legenda</b>: mostra o que é cada ícone.</li>
+          <li><span class="m">4</span><b>📋 Histórico</b> do aluno (seção 3.5).</li>
+          <li><span class="m">5</span><b>+ Adicionar aluno</b> e <span class="m">6</span> <b>Colar lista</b> (seção 3.4).</li>
+        </ul>
+      </div>
+      <div class="fig" data-id="turma-aberta" data-cap="Turma de terça aberta, com a legenda dos ícones."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Cadastrar alunos">
+    <h2 class="s"><span class="n">3.4</span>Cadastrar alunos</h2>
+    <div class="lado">
+      <div>
+        <h3>Um por um</h3>
+        <ol class="passos">
+          <li>Abra a turma e toque em <b>+ Adicionar aluno</b>.</li>
+          <li>Digite o nome <span class="m">1</span> e toque em <b>OK</b> <span class="m">2</span> (ou aperte Enter). O ✕ cancela.</li>
+        </ol>
+        <h3>Vários de uma vez: Colar lista</h3>
+        <ol class="passos">
+          <li>Abra a turma e toque em <b>Colar lista</b>.</li>
+          <li>Cole os nomes, <b>um por linha</b> <span class="m">1</span>. Pode copiar de uma planilha, de um documento ou do WhatsApp: números e marcadores ("1.", "2)", "-", "•") são tirados sozinhos.</li>
+          <li>Confira a prévia <span class="m">2</span>: quem vai entrar e quem já estava na turma (fica como está; repetidos são ignorados, mesmo com acento ou maiúscula diferente).</li>
+          <li>Toque em <b>Adicionar</b> <span class="m">3</span>.</li>
+        </ol>
+        <div class="caixa atencao"><b>Nome + turma = uma pessoa</b><p>Na mesma turma não pode haver dois alunos com o mesmo nome: use o sobrenome ou uma inicial. Em turmas diferentes, nomes iguais são pessoas diferentes.</p></div>
+        <p class="sm">Se a turma passar da capacidade, o AVIZ avisa antes de você confirmar.</p>
+      </div>
+      <div>
+        <div class="fig" data-id="adicionar-aluno" data-cap="Um aluno por vez."></div>
+        <div style="height:5mm"></div>
+        <div class="fig" data-id="colar-lista" data-cap="Lista colada: 2 entram, 1 já estava."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Histórico do aluno">
+    <h2 class="s"><span class="n">3.5</span>Histórico do aluno</h2>
+    <div class="lado">
+      <div>
+        <p>Na turma aberta, toque no <b>📋</b> ao lado do nome. Abre a linha do tempo do aluno, da mais nova para a mais antiga:</p>
+        <ul>
+          <li><b style="color:#ef4444">✗ Faltou</b>: faltas que já passaram;</li>
+          <li><b style="color:#3b82f6">↩ Repôs</b>: reposições já feitas;</li>
+          <li><b>•</b> tudo o que foi feito com o aluno: entrou na turma, falta registrada, reposição marcada, crédito dado…</li>
+        </ul>
+        <p>À direita aparece <b>quem fez</b> cada coisa, cada pessoa da equipe com uma cor. O que o próprio aluno fez pelo link aparece em <b>cinza</b>, com o nome dele.</p>
+        <div class="caixa dica"><b>Útil numa conversa com o aluno</b><p>"Quantas faltas eu tenho?", "Quando eu repus?": a resposta está aqui, com data e hora.</p></div>
+      </div>
+      <div class="fig" data-id="historico" data-w="56" data-cap="Histórico da Marina: o que ela fez pelo link aparece em cinza."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Gerenciar: capacidade, renomear, mover e remover">
+    <h2 class="s"><span class="n">3.6</span>Gerenciar: capacidade, renomear, mover e remover</h2>
+    <div class="lado">
+      <div>
+        <p>No cartão da turma, toque em <b>Gerenciar</b>.</p>
+        <ul class="legenda">
+          <li><span class="m">1</span><b>Capacidade</b> desta turma: <b>Máx. alunos</b> (quantos alunos fixos) e <b>Máx. na sala</b> (quantas pessoas cabem, contando quem vem repor). Vazio = usa o padrão da escola. Toque em <b>Salvar</b> quando mudar.</li>
+          <li><span class="m">2</span>Toque no nome de um aluno para abrir. <b>Renomear</b>: corrija o nome e toque em Salvar. Faltas, reposições, férias, créditos e o link acompanham o nome novo.</li>
+          <li><span class="m">3</span><b>Mover para outra turma</b>: escolha a turma nova. Faltas, reposições e o link do aluno vão junto. Turmas onde não dá aparecem com o motivo (ex.: "tem faltas futuras": cancele antes).</li>
+          <li><span class="m">4</span><b>Remover aluno</b>: pede confirmação e avisa se ele tem faltas ou reposições pendentes. O link dele deixa de funcionar.</li>
+        </ul>
+        <div class="caixa dica"><b>Aluno saiu da escola?</b><p>Em vez de remover, mova para <b>Alunos extras &amp; ex-alunos</b>: o histórico fica guardado e, se ele voltar, é só mover de volta.</p></div>
+      </div>
+      <div class="fig" data-id="gerenciar" data-cap="Gerenciar a turma de terça, com o Bruno aberto."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Notas da turma">
+    <h2 class="s"><span class="n">3.7</span>Notas da turma</h2>
+    <div class="lado">
+      <div>
+        <p>Recados entre quem dá aula, presos à turma: "forno cheio", "acabou o material", "aluno novo começa semana que vem".</p>
+        <ol class="passos">
+          <li>No cartão da turma, toque em <b>📋</b>.</li>
+          <li>Escreva a nota <span class="m">1</span> e toque em <b>Salvar</b> <span class="m">2</span>. Ela aparece com o seu nome, dia e hora.</li>
+          <li>Para apagar notas, toque em <b>✏️ Editar</b> <span class="m">3</span> e no ✕ da nota.</li>
+        </ol>
+        <p>Quando alguém escreve uma nota nova, o 📋 da turma ganha um <b style="color:#ef4444">!</b> vermelho para os outros, até abrirem.</p>
+        <p class="sm">As notas são só da equipe: o aluno não vê.</p>
+      </div>
+      <div class="fig" data-id="notas" data-cap="Notas da turma de terça."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Alunos extras e ex-alunos">
+    <h2 class="s"><span class="n">3.8</span>Alunos extras e ex-alunos</h2>
+    <p>O cartão tracejado no fim da aba Turmas é uma turma especial, <b>sem dia nem horário</b>. Use para:</p>
+    <ul>
+      <li><b>alunos avulsos</b>, que não têm turma fixa (dá para registrar falta para eles digitando a data e marcar reposição em qualquer turma);</li>
+      <li><b>ex-alunos</b>, para guardar o histórico de quem saiu.</li>
+    </ul>
+    <p class="sm">Ninguém repõe "na" turma extra (ela não tem aula), e ela não tem férias nem aula cancelada.</p>
+  </div>
+
+  <div class="secao" data-sec="O link do aluno">
+    <h2 class="s"><span class="n">3.9</span>O link do aluno</h2>
+    <p>Cada aluno tem um <b>link pessoal</b>. Por ele, o aluno avisa falta, marca reposição e registra férias (capítulo 8). Não tem senha: o link é a chave, então mande só para o próprio aluno.</p>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Na aba Turmas, toque em <b>🔗 Link</b>.</li>
+          <li>Escolha a <b>turma</b> <span class="m">1</span> e o <b>aluno</b> <span class="m">2</span>.</li>
+          <li>Se ele ainda não tem link, toque em <b>Gerar link</b> <span class="m">3</span>. O link é criado na hora e é <b>permanente</b>.</li>
+        </ol>
+      </div>
+      <div class="fig" data-id="link-gerar" data-cap="Aluno sem link: gere com um toque."></div>
+    </div>
+    <div class="lado">
+      <div>
+        <p>Com o link pronto:</p>
+        <ul class="legenda">
+          <li><span class="m">1</span>O endereço completo do link.</li>
+          <li><span class="m">2</span><b>📋 Copiar link</b>: copie e cole no WhatsApp ou e-mail do aluno.</li>
+          <li><span class="m">3</span><b>↗ Abrir</b>: veja exatamente o que o aluno vê.</li>
+          <li><span class="m">4</span><b>▦ QR code</b>: o aluno aponta a câmera do celular e abre o link. Ótimo para fazer na hora, na aula.</li>
+          <li><span class="m">5</span><b>Revogar link</b>: o link atual para de funcionar. Use se ele foi parar com outra pessoa; depois gere um novo.</li>
+        </ul>
+        <div class="caixa dica"><b>Aluno perdeu o link ou trocou de celular?</b><p>Abra 🔗 Link, escolha o aluno e copie de novo: o link é sempre o mesmo, a não ser que você revogue.</p></div>
+        <p class="sm">Dica: na seção 8.10 há uma mensagem pronta para mandar junto com o link.</p>
+      </div>
+      <div class="fig" data-id="link" data-cap="Link da Marina, com o QR code aberto."></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 4. FALTAS & REPOSIÇÕES ======================= -->
+<section class="capitulo" data-cor="#d97706" data-clara="#fef3c7" data-cap="4" data-titulo="Faltas &amp; Reposições">
+  <div class="abertura"><div class="num">Capítulo 4</div><h1>Faltas &amp; Reposições</h1>
+    <p>Tudo o que a equipe registra no dia a dia: faltas (inclusive atrasadas), reposições, aulas extras, férias, créditos e o cancelamento de uma aula inteira.</p>
+    <div class="papeis"><span class="pp">Equipe</span></div></div>
+
+  <div class="secao" data-sec="Visão geral da aba">
+    <h2 class="s"><span class="n">4.1</span>Visão geral da aba</h2>
+    <div class="lado">
+      <div>
+        <p>A aba é dividida em cinco blocos. Toque no nome de um bloco para abrir (e de novo para fechar). Os que têm duas tarefas mostram abas internas, como <b>Registrar</b> e <b>Cancelar</b>.</p>
+        <ul class="legenda">
+          <li><span class="m">1</span><b>Faltas</b>: registrar e cancelar.</li>
+          <li><span class="m">2</span><b>Reposições</b>: registrar (ou aula extra) e cancelar.</li>
+          <li><span class="m">3</span><b>Férias</b>: ausência programada de um mês.</li>
+          <li><span class="m">4</span><b>Crédito Extra</b>: dar um direito de reposição avulso.</li>
+          <li><span class="m">5</span><b>Cancelar Aula</b>: cancelar uma aula inteira da turma.</li>
+        </ul>
+        <div class="caixa saber"><b>O aluno também faz pelo link</b><p>Se o aluno avisa a falta ou marca a reposição pelo link dele, você não precisa registrar nada: aparece tudo no Painel e no Registro. Esta aba é para quando o aviso chega por outro caminho (WhatsApp, pessoalmente) ou para corrigir algo.</p></div>
+      </div>
+      <div class="fig" data-id="fr-visao" data-cap="Os cinco blocos da aba."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Registrar falta">
+    <h2 class="s"><span class="n">4.2</span>Registrar falta</h2>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Abra <b>Faltas → Registrar</b>.</li>
+          <li>Escolha a <b>turma</b> <span class="m">1</span> e o <b>aluno</b> <span class="m">2</span>.</li>
+          <li>Marque uma ou mais <b>datas</b> <span class="m">4</span> entre as próximas 8 aulas. Datas de feriado (🎌), recesso (🏠) ou com falta já registrada aparecem apagadas.</li>
+          <li>Toque em <b>Registrar Falta</b> <span class="m">5</span>. Aparece a confirmação em verde.</li>
+        </ol>
+        <p>Cada falta abre uma <b>vaga</b> naquela aula, que outros alunos podem usar para repor.</p>
+        <p>Para uma aula que já passou, use <b>⏪ Retroativas</b> <span class="m">3</span> (seção 4.3).</p>
+        <div class="caixa regra"><b>Em cima da hora: falta sem antecedência</b><p>Se a escola exige aviso com antecedência e permite falta sem antecedência (seção 6.5), ao marcar uma aula muito próxima o AVIZ pergunta como classificar cada data: <b>Comum</b> ou <b>Sem antecedência</b>. A falta sem antecedência só pode ser reposta numa aula que está prestes a começar.</p></div>
+      </div>
+      <div>
+        <div class="fig" data-id="falta-registrar" data-cap="Duas faltas do Bruno sendo registradas."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="falta-ok" data-cap="Confirmação depois de registrar."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Falta retroativa">
+    <h2 class="s"><span class="n">4.3</span>Falta retroativa</h2>
+    <div class="lado">
+      <div>
+        <p>Esqueceu de registrar uma falta da semana passada? Dá para lançar faltas de <b>até 3 meses atrás</b>:</p>
+        <ol class="passos">
+          <li>Em <b>Faltas → Registrar</b>, escolha a turma e o aluno.</li>
+          <li>Toque em <b>⏪ Retroativas</b>.</li>
+          <li>Escolha a <b>data da aula passada</b> <span class="m">1</span>.</li>
+          <li>Toque em <b>Comum</b> <span class="m">2</span> (ou <b>Sem antecedência</b>, se a escola usa esse tipo).</li>
+        </ol>
+        <p class="sm">O prazo para repor conta a partir da data da falta, não do dia em que você registrou.</p>
+      </div>
+      <div class="fig" data-id="falta-retro" data-cap="Falta retroativa de uma aula passada."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Cancelar falta">
+    <h2 class="s"><span class="n">4.4</span>Cancelar falta</h2>
+    <div class="lado">
+      <div>
+        <p>O aluno avisou que vai, afinal? Cancele a falta e ele volta para a aula:</p>
+        <ol class="passos">
+          <li>Abra <b>Faltas</b> e toque na aba <b>Cancelar</b> <span class="m">1</span>.</li>
+          <li>Escolha a turma, o aluno e a <b>falta</b> <span class="m">2</span> (só aparecem faltas futuras, ainda sem reposição).</li>
+          <li>Confira o resumo e toque em <b>Cancelar Falta</b> <span class="m">3</span>. Confirme na janela.</li>
+        </ol>
+        <div class="caixa saber"><b>E se alguém já pegou a vaga?</b><p>O AVIZ avisa no resumo: a reposição de quem usou a vaga passa para outra vaga da mesma aula, ou fica sem vaga vinculada (a turma pode ficar com uma pessoa a mais).</p></div>
+        <p class="sm">Faltas que vieram de uma aula cancelada não aparecem aqui: elas só somem se a aula for reativada (seção 4.10).</p>
+      </div>
+      <div>
+        <div class="fig" data-id="falta-cancelar" data-cap="Cancelando a falta da Helena."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="falta-cancelar-confirma"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Registrar reposição">
+    <h2 class="s"><span class="n">4.5</span>Registrar reposição</h2>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Abra <b>Reposições → Registrar</b>.</li>
+          <li>Escolha a <b>turma de origem</b> <span class="m">1</span> (a turma fixa do aluno) e o <b>aluno</b> <span class="m">2</span>.</li>
+          <li>Veja em azul a <b>falta mais antiga a consumir</b> <span class="m">3</span> e quando ela vence.</li>
+          <li>Escolha a <b>vaga</b> <span class="m">4</span>: a lista mostra as vagas abertas em outras turmas, por data. As marcadas com ✦ são vagas extras.</li>
+          <li>Confira o que será usado <span class="m">5</span> e a <b>lotação</b> da aula <span class="m">6</span>: verde (tem lugar), amarelo (fica cheia) ou vermelho (passa do máximo).</li>
+          <li>Toque em <b>Confirmar Reposição</b> <span class="m">7</span>.</li>
+        </ol>
+        <div class="caixa regra"><b>Qual direito é usado?</b><p>O aluno pode ter faltas, créditos de férias e créditos extras. O AVIZ escolhe sozinho o que <b>vence primeiro</b>, para nada se perder.</p></div>
+        <p class="sm">Não dá para repor na própria turma de origem: é a mesma aula. (No link do aluno, a vaga da própria falta aparece como "Voltar para a aula", que é o mesmo que cancelar a falta.)</p>
+      </div>
+      <div class="fig" data-id="repo-registrar" data-cap="Reposição do Bruno numa vaga de quarta."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Escolher qualquer data e turma, ou aula extra">
+    <h2 class="s"><span class="n">4.6</span>Escolher qualquer data e turma, ou aula extra</h2>
+    <div class="lado">
+      <div>
+        <p>Às vezes o aluno precisa de um dia sem vaga aberta. A equipe pode encaixá-lo assim mesmo:</p>
+        <ol class="passos">
+          <li>Na lista de vagas, escolha <b>✦ Escolher data / turma</b> <span class="m">1</span>.</li>
+          <li>Escolha a <b>data</b> <span class="m">2</span> e depois a <b>turma</b> <span class="m">3</span>. Só aparecem turmas que têm aula naquela data (sem feriado, recesso ou aula cancelada).</li>
+          <li>Veja a lotação: se passar do máximo, o AVIZ avisa em vermelho, mas deixa confirmar.</li>
+        </ol>
+        <h3>Aluno sem falta para repor? Aula extra</h3>
+        <p>Se o aluno não tem nenhum direito pendente, aparece a escolha de <b>Tipo</b> <span class="m">4</span>:</p>
+        <ul>
+          <li><b>Reposição sem falta vinculada</b>: marca a reposição e deixa um aviso para conferir depois;</li>
+          <li><b>Aula extra</b>: uma aula a mais, que pode ser cobrada. No Painel ela ganha o botão <b>PAGO</b> (seção 5.2).</li>
+        </ul>
+      </div>
+      <div class="fig" data-id="repo-livre" data-cap="Aula extra do Diego num sábado escolhido à mão."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Cancelar reposição">
+    <h2 class="s"><span class="n">4.7</span>Cancelar reposição</h2>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Abra <b>Reposições → Cancelar</b>.</li>
+          <li>Escolha a <b>reposição agendada</b> <span class="m">1</span> (aluno, data e turma).</li>
+          <li>Confira o resumo <span class="m">2</span> e toque em <b>Cancelar Reposição</b> <span class="m">3</span>. Confirme.</li>
+        </ol>
+        <p>Quando a equipe cancela, o direito usado <b>volta inteiro</b> para o aluno (a falta volta a ficar "a marcar") e a vaga é reaberta para outra pessoa. Aula extra cancelada simplesmente some.</p>
+        <p class="sm">Pelo link, o aluno também pode cancelar, mas com regras de prazo (seção 8.5).</p>
+      </div>
+      <div class="fig" data-id="repo-cancelar" data-cap="Cancelando a reposição da Marina."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Férias (ausência programada)">
+    <h2 class="s"><span class="n">4.8</span>Férias (ausência programada)</h2>
+    <div class="lado">
+      <div>
+        <p>Para quando o aluno vai ficar um <b>mês inteiro</b> fora. Só aparece se a escola oferece férias (seção 6.7).</p>
+        <ol class="passos">
+          <li>Abra <b>Férias</b>. A caixa azul resume a regra da sua escola (quantos créditos, até quando).</li>
+          <li>Escolha a <b>turma</b> <span class="m">1</span>, o <b>aluno</b> <span class="m">2</span> e o <b>mês</b> <span class="m">3</span>. Aparece até quando ele pode repor.</li>
+          <li>Toque em <b>Registrar Ausência</b> <span class="m">4</span>.</li>
+        </ol>
+        <p>As aulas dele no mês viram <b>vagas</b> para outros alunos e, se a escola dá crédito de férias, ele ganha crédito(s) de reposição.</p>
+        <p>Em <b>Ausências registradas</b> <span class="m">5</span> aparece cada férias, se o crédito está disponível ou usado, e as vagas liberadas (riscadas quando alguém já ocupou). <b>Remover</b> desfaz.</p>
+        <div class="caixa atencao"><b>Tem falta no mesmo mês?</b><p>O AVIZ não deixa marcar férias num mês em que o aluno tem falta: seriam duas vagas da mesma pessoa no mesmo dia. Cancele a falta antes.</p></div>
+        <p class="sm">Meses que pegam um recesso liberam as vagas, mas não geram crédito.</p>
+      </div>
+      <div class="fig" data-id="ferias" data-cap="Férias da Úrsula no mês que vem."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Crédito extra">
+    <h2 class="s"><span class="n">4.9</span>Crédito extra</h2>
+    <div class="lado">
+      <div>
+        <p>Um direito de reposição dado pela escola, <b>sem precisar de falta</b>: uma cortesia, uma compensação, um combinado com o aluno.</p>
+        <ol class="passos">
+          <li>Abra <b>Crédito Extra</b>.</li>
+          <li>Escolha a turma e o <b>aluno</b> <span class="m">1</span>.</li>
+          <li>Confira a <b>data de expiração</b> <span class="m">2</span> (vem com 30 dias; mude se quiser).</li>
+          <li>Toque em <b>Dar Crédito</b> <span class="m">3</span>.</li>
+        </ol>
+        <p>O aluno vê o crédito em roxo no link dele e pode usar para marcar reposição. Em <b>Créditos ativos</b> <span class="m">4</span> ficam os que ainda valem, com quem deu; <b>Remover</b> tira o crédito. Os vencidos aparecem em <b>Expirados</b>.</p>
+      </div>
+      <div class="fig" data-id="credito" data-cap="Dando crédito extra à Gabi."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Cancelar uma aula inteira">
+    <h2 class="s"><span class="n">4.10</span>Cancelar uma aula inteira</h2>
+    <div class="lado">
+      <div>
+        <p>Quando a aula não vai acontecer (professor doente, problema no espaço):</p>
+        <ol class="passos">
+          <li>Abra <b>Cancelar Aula</b> e escolha a turma.</li>
+          <li>Escolha a <b>data da aula</b> <span class="m">1</span> (próximos 60 dias).</li>
+          <li>Leia a prévia <span class="m">2</span>: quantos alunos ficarão com falta e quantas reposições marcadas para essa aula serão desfeitas.</li>
+          <li>Toque em <b>Cancelar aula</b> e depois em <b>Confirmar</b> <span class="m">3</span>.</li>
+        </ol>
+        <p>O que acontece: todos os alunos da turma (menos quem já tinha falta ou estava de férias) ganham uma <b>falta comum</b>, com direito a repor. Nenhuma vaga é aberta. Quem tinha marcado reposição nessa aula recebe o direito de volta, <b>sem punição</b>.</p>
+        <div class="caixa dica"><b>Cancelou errado?</b><p>Em <b>Aulas canceladas</b>, no fim do bloco, toque em <b>Reativar</b>: as faltas criadas pelo cancelamento somem.</p></div>
+      </div>
+      <div class="fig" data-id="cancelar-aula" data-cap="Cancelando uma aula de quinta."></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 5. PAINEL ======================= -->
+<section class="capitulo" data-cor="#334155" data-clara="#e2e8f0" data-cap="5" data-titulo="Painel">
+  <div class="abertura"><div class="num">Capítulo 5</div><h1>Painel</h1>
+    <p>A visão do momento: quem está com falta, quem vem repor, quais vagas estão abertas e o que precisa de atenção. E também o registro de tudo e o resumo de cada dia.</p>
+    <div class="papeis"><span class="pp">Equipe</span></div></div>
+
+  <div class="secao" data-sec="Lista atual: faltas">
+    <h2 class="s"><span class="n">5.1</span>Lista atual: faltas</h2>
+    <div class="lado">
+      <div>
+        <p>A aba Painel tem duas partes: <b>Lista atual</b> <span class="m">1</span> e <b>Registro</b> <span class="m">2</span>. No alto, <b>🕘 Fotos</b> <span class="m">3</span> guarda cópias da lista (seção 5.7).</p>
+        <p>A Lista atual é feita de blocos escuros: toque no título para abrir ou fechar.</p>
+        <h3>Bloco FALTAS <span class="m">4</span></h3>
+        <ul>
+          <li>Cada aluno com falta <b>a repor</b>, a turma e a(s) data(s).</li>
+          <li>Fundo <b style="color:#b45309">amarelo</b> <span class="m">5</span>: a falta <b>vence nos próximos 7 dias</b>. Vale lembrar o aluno!</li>
+          <li>Etiqueta laranja "sem antecedência", quando for o caso.</li>
+          <li>Alunos de férias no mês aparecem com "Férias: mês".</li>
+          <li><b>JÁ MARCADAS</b> <span class="m">6</span>: faltas que já têm reposição agendada.</li>
+        </ul>
+        <p>Toque num item para ver os detalhes: data de cada falta, quando vence, quem registrou e quando.</p>
+        <p>No fim da página fica o botão <b>RESUMO DO DIA</b> <span class="m">7</span> (seção 5.6).</p>
+      </div>
+      <div class="fig" data-id="painel" data-w="54" data-cap="Painel com o bloco de faltas aberto."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Reposições e vagas">
+    <h2 class="s"><span class="n">5.2</span>Reposições e vagas</h2>
+    <div class="lado">
+      <div>
+        <h3>Bloco REPOSIÇÕES <span class="m">1</span></h3>
+        <p>As reposições e aulas extras agendadas: quem, de qual turma, e para quando ("Repõe: Quarta, 11/11, 10h"), com quantos alunos são esperados naquela aula. Etiquetas mostram se é <b>vaga extra</b>, <b>crédito de férias</b>, <b>aula extra</b> ou <b>sem falta vinculada</b>.</p>
+        <div class="caixa dica"><b>Aula extra paga</b><p>Na aula extra aparece o botão <b>PAGO</b> <span class="m">2</span>. Toque quando o aluno pagar: ele fica verde (✓ PAGO). Toque de novo para desmarcar.</p></div>
+        <h3>Bloco VAGAS <span class="m">3</span></h3>
+        <p>As aulas com lugar livre para reposição, por data e horário. Quando há mais de uma vaga na mesma aula, aparece "2 vagas", "3 vagas"…</p>
+        <p>Toque numa vaga para ver <b>quem a liberou</b> (a falta de qual aluno, férias ou vaga extra) e para <b>ocultar</b> a vaga dos alunos (seção 5.4).</p>
+      </div>
+      <div class="fig" data-id="painel-repos" data-cap="Reposições agendadas e vagas abertas."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Turmas e observações">
+    <h2 class="s"><span class="n">5.3</span>Turmas e observações</h2>
+    <div class="lado">
+      <div>
+        <p><b>TURMAS</b> mostra a lotação de cada turma (alunos/máximo), em amarelo quando cheia e vermelho quando acima.</p>
+        <p><b>OBSERVAÇÕES</b> é a lista de alertas que o AVIZ monta sozinho:</p>
+        <ul>
+          <li>⚠️ faltas que estão para vencer;</li>
+          <li>✦ vagas extras abertas;</li>
+          <li>ℹ️ aulas extras e reposições sem falta vinculada, para conferir;</li>
+          <li>e outros avisos sobre lotação e prazos.</li>
+        </ul>
+        <div class="caixa dica"><b>Rotina de 2 minutos</b><p>Abra as Observações uma vez por semana e mande mensagem para quem tem falta vencendo. É o jeito mais simples de nenhuma reposição se perder.</p></div>
+      </div>
+      <div class="fig" data-id="painel-obs" data-cap="Alertas do bloco Observações."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Detalhes e ocultar vagas">
+    <h2 class="s"><span class="n">5.4</span>Detalhes e ocultar vagas</h2>
+    <p>Todo item da Lista atual abre uma janela de detalhes. Na reposição, por exemplo, aparecem a turma de origem e a de reposição, o dia e a hora, a falta que está sendo reposta, <b>quem liberou a vaga</b> e quem marcou.</p>
+    <div class="lado">
+      <div>
+        <h3>Ocultar vagas dos alunos</h3>
+        <p>Às vezes a escola não quer que os alunos marquem reposição numa aula (uma aula especial, uma turma de iniciantes num dia difícil):</p>
+        <ol class="passos">
+          <li>Abra o bloco <b>VAGAS</b> e toque na aula.</li>
+          <li>Veja de onde vieram as vagas <span class="m">1</span>.</li>
+          <li>Toque em <b>Ocultar vagas dos alunos</b> <span class="m">2</span>.</li>
+        </ol>
+        <p>A vaga continua na lista da equipe, riscada e com a etiqueta "oculta dos alunos". Para voltar a mostrar, abra de novo e toque em <b>Reabrir vagas para alunos</b>.</p>
+      </div>
+      <div>
+        <div class="fig" data-id="painel-detalhe" data-cap="Detalhe de uma reposição."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="painel-vaga" data-cap="Detalhe de uma vaga."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Registro: tudo o que foi feito">
+    <h2 class="s"><span class="n">5.5</span>Registro: tudo o que foi feito</h2>
+    <div class="lado">
+      <div>
+        <p>Na aba <b>Registro</b> fica cada ação feita no AVIZ, da mais nova para a mais antiga, com dia e hora: faltas, reposições, férias, créditos, alunos adicionados, movidos, renomeados…</p>
+        <ul class="legenda">
+          <li><span class="m">2</span>A etiqueta colorida mostra <b>quem fez</b>: cada pessoa da equipe tem uma cor.</li>
+          <li><span class="m">3</span>Em <b>cinza</b>, o que o próprio aluno fez pelo link. Toque no nome dele para abrir o histórico do aluno.</li>
+          <li><span class="m">1</span><b>✏️ Editar</b> (só o dono): aparece um ✕ em cada linha para apagar registros. Toque em <b>✓ Concluir</b> para sair.</li>
+        </ul>
+        <div class="caixa atencao"><b>Apagar do Registro não desfaz a ação</b><p>Tirar uma linha do Registro só limpa a anotação. Para desfazer uma falta ou reposição, cancele pela aba Faltas &amp; Reposições.</p></div>
+        <p class="sm">Faltas que vencem sem reposição também aparecem aqui, como "⏰ Expirou", feitas pelo Sistema.</p>
+      </div>
+      <div class="fig" data-id="registro" data-cap="Registro: equipe em cores, aluna em cinza."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Resumo do dia">
+    <h2 class="s"><span class="n">5.6</span>Resumo do dia</h2>
+    <div class="lado">
+      <div>
+        <p>Toque em <b>▼ RESUMO DO DIA</b>, no fim do Painel. Para cada aula do dia aparece:</p>
+        <ul>
+          <li>quantos são <b>esperados</b> (entre parênteses);</li>
+          <li><b>Presentes</b>: quem tem aula e não avisou falta;</li>
+          <li><b style="color:#dc2626">Faltam</b>: quem avisou falta;</li>
+          <li><b style="color:#0d9488">🏖️ Férias</b>: quem está de férias no mês;</li>
+          <li><b style="color:#2563eb">Repondo</b>: quem vem de outra turma, com a turma de origem.</li>
+        </ul>
+        <p>Use <span class="m">1</span> ‹ e › <span class="m">3</span> para ir de um dia para o outro, ou toque na data <span class="m">2</span> para escolher no calendário. <b>Voltar para hoje</b> volta ao dia atual.</p>
+        <div class="caixa saber"><b>Dias passados ficam guardados como estavam</b><p>O resumo de um dia que já passou é congelado: mesmo que você mude a turma depois, ele mostra quem era esperado naquele dia. Dias futuros mostram o que já está marcado até agora.</p></div>
+      </div>
+      <div class="fig" data-id="resumo" data-cap="Resumo de um sábado: presentes, falta e quem veio repor."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Fotos da lista">
+    <h2 class="s"><span class="n">5.7</span>Fotos da lista</h2>
+    <div class="lado">
+      <div>
+        <p>Uma <b>foto</b> guarda como estava a Lista atual num momento (faltas, reposições, vagas, turmas e observações), para consultar depois. Por exemplo: o fechamento da semana ou do mês.</p>
+        <ol class="passos">
+          <li>No Painel, toque em <b>🕘 Fotos</b>.</li>
+          <li>Se quiser, dê um nome <span class="m">1</span> (sem nome, fica a data de hoje).</li>
+          <li>Toque em <b>Salvar agora</b> <span class="m">2</span>.</li>
+          <li>Para consultar, toque em <b>Ver</b> <span class="m">3</span>. <b>Excluir</b> apaga a foto.</li>
+        </ol>
+        <p class="sm">A foto não muda nada no funcionamento. O AVIZ guarda as 20 mais recentes.</p>
+      </div>
+      <div>
+        <div class="fig" data-id="fotos" data-cap="Fotos salvas."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="foto-ver" data-w="50" data-cap="Uma foto aberta."></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 6. CONFIGURAÇÕES ======================= -->
+<section class="capitulo" data-cor="#7c3aed" data-clara="#ede9fe" data-cap="6" data-titulo="Configurações">
+  <div class="abertura"><div class="num">Capítulo 6</div><h1>Configurações</h1>
+    <p>As regras da sua escola: o AVIZ se adapta a elas, e não o contrário. Só o dono vê o botão ⚙. Tudo o que é mudado aqui vale na hora, para a equipe e para os alunos.</p>
+    <div class="papeis"><span class="pp">Dono</span></div></div>
+
+  <div class="secao" data-sec="O menu de configurações">
+    <h2 class="s"><span class="n">6.1</span>O menu de configurações</h2>
+    <div class="lado">
+      <div>
+        <p>Toque em <b>⚙</b>, no alto da tela. O menu tem quatro grupos:</p>
+        <table class="t">
+          <tr><th>Grupo</th><th>O que tem</th></tr>
+          <tr><td><b>A escola</b></td><td>Nome e cor · Vocabulário · Capacidades · Calendário</td></tr>
+          <tr><td><b>Regras de faltas e reposição</b></td><td>Faltas · Vaga extra · Férias</td></tr>
+          <tr><td><b>Equipe</b></td><td>Professores e seu PIN</td></tr>
+          <tr><td><b>Dados</b></td><td>Baixar os dados</td></tr>
+        </table>
+        <p>Toque num item para abrir. Em cada tela, <b>Salvar</b> grava e <b>Voltar</b> (ou <b>← Configurações</b>) volta sem mudar nada.</p>
+        <div class="caixa dica"><b>Comece pelas regras</b><p>Antes de mandar os links aos alunos, confira Faltas, Vaga extra, Férias e o Calendário. São essas regras que o aluno vê no botão "Regras" do link dele.</p></div>
+      </div>
+      <div class="fig" data-id="config" data-cap="Menu de configurações."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Nome e cor, e Vocabulário">
+    <h2 class="s"><span class="n">6.2</span>Nome e cor, e Vocabulário</h2>
+    <div class="lado">
+      <div>
+        <h3>Nome e cor</h3>
+        <ul class="legenda">
+          <li><span class="m">1</span>O <b>artigo</b> (O, A ou nenhum) e o <b>nome do espaço</b>, como aparece no app, no link do aluno e embaixo do ícone na tela do celular.</li>
+          <li><span class="m">2</span>A <b>cor de destaque</b> da escola.</li>
+          <li><span class="m">3</span>Toque em <b>Salvar</b>.</li>
+        </ul>
+        <h3>Vocabulário</h3>
+        <p>As palavras que o app usa, no singular e no plural: <b>aluno</b>, <b>turma</b> e <b>professor</b>. Se a sua escola fala "praticante", "classe" ou "instrutor", troque aqui e o app inteiro passa a falar assim, inclusive no link dos alunos.</p>
+      </div>
+      <div>
+        <div class="fig" data-id="cfg-nome" data-cap="Nome e cor."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="cfg-vocab" data-cap="Vocabulário."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Capacidades">
+    <h2 class="s"><span class="n">6.3</span>Capacidades</h2>
+    <div class="lado">
+      <div>
+        <p>Dois números, que valem para todas as turmas (cada turma pode ter os seus em <b>Gerenciar</b>, seção 3.6):</p>
+        <ul>
+          <li><b>Máximo por turma (nominal)</b>, de 1 a 30: quantos alunos fixos cabem numa turma. É o "7" do "5/7".</li>
+          <li><b>Máximo na sala (físico)</b>, de 1 a 40: quantas pessoas cabem de verdade, contando quem vem repor. É usado para abrir <b>vagas extras</b>.</li>
+        </ul>
+        <div class="caixa saber"><b>Exemplo</b><p>Turma com máximo de 7 alunos numa sala que cabe 8: quando a turma está com 7, ainda sobra 1 lugar físico. Se a vaga extra estiver ligada, esse lugar vira uma vaga extra perto da aula.</p></div>
+        <p class="sm">Arraste a barra até o número desejado e toque em Salvar.</p>
+      </div>
+      <div class="fig" data-id="cfg-capacidades" data-cap="Capacidades padrão da escola."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Calendário: recessos e feriados">
+    <h2 class="s"><span class="n">6.4</span>Calendário: recessos e feriados</h2>
+    <div class="lado">
+      <div>
+        <h3>Recessos</h3>
+        <p>Períodos sem aula (férias coletivas, fim de ano). Toque em <b>+ Adicionar recesso</b>, escolha o primeiro e o último dia e dê um nome. Nesses dias não há falta, vaga nem aula no resumo.</p>
+        <p class="sm">Meses que pegam um recesso não geram crédito de férias.</p>
+        <h3>Feriados municipais</h3>
+        <p>Os feriados da sua cidade. Toque em <b>+ Adicionar feriado</b>, escolha a data e o nome.</p>
+        <h3>Feriados nacionais</h3>
+        <p>Já vêm marcados (do ano atual e do próximo). Se a escola <b>funciona</b> num feriado, desmarque-o: aquele dia volta a ter aula normal.</p>
+        <p>Toque em <b>Salvar</b> no fim da tela.</p>
+        <div class="caixa dica"><b>Faça no começo de cada semestre</b><p>Cadastrar o recesso antes evita que os alunos marquem falta ou reposição em dias sem aula.</p></div>
+      </div>
+      <div class="fig" data-id="cfg-calendario" data-w="56" data-cap="Recesso de fim de ano e um feriado municipal."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Regras de faltas">
+    <h2 class="s"><span class="n">6.5</span>Regras de faltas</h2>
+    <div class="lado">
+      <div>
+        <ul>
+          <li><b>Antecedência mínima para avisar</b>: sem exigência, 1, 2, 3, 6, 12, 24 ou 48 horas antes da aula. Depois desse limite, o aluno não consegue mais registrar a falta pelo link.</li>
+          <li><b>Permitir falta sem antecedência?</b> (aparece se houver antecedência): se <b>sim</b>, o aluno ainda pode avisar depois do limite, até a hora escolhida em <b>Até quantas horas antes ainda vale</b>.</li>
+          <li><b>Validade da falta</b>: 30, 45, 60 ou 90 dias, ou <b>não expira</b>. É o prazo para repor, contado da data da falta.</li>
+        </ul>
+      </div>
+      <div class="fig" data-id="cfg-faltas" data-cap="Regras de faltas com falta sem antecedência ligada."></div>
+    </div>
+    <div class="junto">
+      <h3>Exemplo: antecedência de 24 h, com falta sem antecedência valendo até 2 h antes</h3>
+      <table class="t">
+        <tr><th>O aluno avisa…</th><th>Tipo de falta</th><th>O que ele pode fazer</th></tr>
+        <tr><td>mais de 24 h antes da aula</td><td><b>Comum</b></td><td>Repor em qualquer vaga, no prazo de validade.</td></tr>
+        <tr><td>entre 24 h e 2 h antes</td><td><b style="color:#ea580c">Sem antecedência</b> ⏱️</td><td>Tem direito a repor, mas só pode marcar numa aula que começa em menos de 2 h.</td></tr>
+        <tr><td>menos de 2 h antes (ou depois do início)</td><td><b style="color:#dc2626">Não dá</b> ⛔</td><td>A data fica bloqueada no link. Se for o caso, a equipe registra.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Vaga extra">
+    <h2 class="s"><span class="n">6.6</span>Vaga extra</h2>
+    <div class="lado">
+      <div>
+        <p><b>Liberar vaga extra?</b> Se <b>sim</b>, os lugares que sobram na sala (até o máximo físico) viram vagas de reposição, além das vagas abertas por faltas.</p>
+        <p><b>Quando a vaga extra abre</b>: 6 horas antes, 12 horas antes, na véspera, 2 dias antes ou 3 dias antes da aula. Antes disso, o lugar fica guardado (por exemplo, para um aluno novo).</p>
+        <div class="caixa saber"><b>Por que esperar para abrir?</b><p>Abrir perto da aula garante que a turma não vai lotar com reposições muito antes, e aproveita os lugares que de fato ficaram livres.</p></div>
+      </div>
+      <div class="fig" data-id="cfg-vagaextra" data-cap="Vaga extra abrindo 3 dias antes."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Férias">
+    <h2 class="s"><span class="n">6.7</span>Férias</h2>
+    <div class="lado">
+      <div>
+        <ul>
+          <li><b>Oferece marcação de férias?</b> Se <b>não</b>, o bloco de férias some do app e do link dos alunos.</li>
+          <li><b>Férias dão crédito de reposição?</b> Se <b>sim</b>:
+            <ul>
+              <li><b>Quantos créditos por período</b>: de 1 a 4;</li>
+              <li><b>Validade do crédito</b>: 30, 45, 60 ou 90 dias depois do fim do mês de férias;</li>
+              <li><b>Limite por ano</b>: 1 vez, 2 vezes ou sem limite.</li>
+            </ul></li>
+        </ul>
+        <p class="sm">Com ou sem crédito, as aulas do aluno no mês de férias viram vagas para os outros.</p>
+      </div>
+      <div class="fig" data-id="cfg-ferias" data-cap="Férias com 2 créditos, 1 vez por ano."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Equipe: professores e seu PIN">
+    <h2 class="s"><span class="n">6.8</span>Equipe: professores e seu PIN</h2>
+    <div class="lado">
+      <div>
+        <p>O topo da tela lembra o endereço onde a equipe entra.</p>
+        <ul class="legenda">
+          <li><span class="m">1</span><b>trocar meu PIN</b>: o seu PIN de responsável. Digite o novo e salve.</li>
+          <li><span class="m">2</span><b>editar</b> um professor: mudar o nome ou definir um PIN novo (deixe vazio para manter o atual).</li>
+          <li><span class="m">3</span><b>remover</b>: o professor perde o acesso <b>na hora</b>, mesmo com o app aberto. O histórico continua com o nome dele.</li>
+          <li><span class="m">4</span><b>Adicionar professor</b>.</li>
+        </ul>
+      </div>
+      <div class="fig" data-id="cfg-equipe" data-cap="A equipe do Ateliê Barro Bom."></div>
+    </div>
+    <div class="lado">
+      <div>
+        <h3>Adicionar um professor</h3>
+        <ol class="passos">
+          <li>Toque em <b>Adicionar professor</b>.</li>
+          <li>Digite o <b>nome</b> <span class="m">1</span>, como vai aparecer no histórico.</li>
+          <li>Digite o <b>e-mail</b> <span class="m">2</span> dele. É com esse e-mail que ele entra.</li>
+          <li>Crie um <b>PIN de 4 números</b> <span class="m">3</span> e toque em <b>Salvar</b> <span class="m">4</span>.</li>
+          <li>Passe o endereço da escola e o PIN <b>pessoalmente</b> ao professor. Depois de salvo, o PIN não aparece mais na tela.</li>
+        </ol>
+        <div class="caixa saber"><b>Bom saber</b><p>O e-mail do professor não muda depois de salvo: para trocar, remova e adicione de novo. Se o e-mail já tem conta no AVIZ (de outra escola), a pessoa entra com o PIN que já usa, e o AVIZ avisa.</p></div>
+      </div>
+      <div class="fig" data-id="cfg-equipe-novo" data-cap="Cadastrando a professora Joana."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Baixar os dados">
+    <h2 class="s"><span class="n">6.9</span>Baixar os dados</h2>
+    <div class="lado">
+      <div>
+        <p>Toque em <b>Baixar dados (JSON)</b> <span class="m">1</span> para receber um arquivo com <b>tudo</b> o que a escola tem no AVIZ: turmas, alunos, faltas, reposições, férias, links, histórico, regras e equipe. Os dados são da escola: baixe quando quiser, por exemplo uma vez por mês, para guardar.</p>
+        <p class="sm">O arquivo é técnico (formato JSON); serve como cópia de segurança e para levar os dados para outro sistema.</p>
+        <div class="caixa saber"><b>Excluir a escola</b><p>Não há botão para isso no app, de propósito. Para excluir a escola e todos os dados, fale com a equipe do AVIZ.</p></div>
+      </div>
+      <div class="fig" data-id="cfg-dados" data-cap="Baixar os dados da escola."></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 7. PROFESSORES ======================= -->
+<section class="capitulo" data-cor="#0d9488" data-clara="#ccfbf1" data-cap="7" data-titulo="Para professores">
+  <div class="abertura"><div class="num">Capítulo 7</div><h1>Para professores</h1>
+    <p>Um resumo para entregar a quem dá aula: como entrar e o que o professor faz no AVIZ.</p>
+    <div class="papeis"><span class="pp">Equipe</span></div></div>
+
+  <div class="secao" data-sec="Como o professor entra">
+    <h2 class="s"><span class="n">7.1</span>Como o professor entra</h2>
+    <ol class="passos">
+      <li>O dono cadastra o professor com nome, e-mail e PIN (seção 6.8) e passa o <b>endereço da escola</b> e o <b>PIN</b>.</li>
+      <li>O professor abre o endereço, digita o e-mail e o PIN e toca em <b>Entrar</b> (seção 2.3).</li>
+      <li>Se quiser, coloca o AVIZ na tela do celular (seção 2.5). Esqueceu o PIN? "Esqueci meu PIN" (seção 2.4).</li>
+    </ol>
+    <div class="lado">
+      <div>
+        <p>A tela do professor é igual à do dono, só que <b>sem o botão ⚙</b> de configurações. No alto à direita fica só o <b>sair</b> <span class="m">1</span>.</p>
+      </div>
+      <div class="fig" data-id="professor" data-cap="Topo da tela do professor: sem ⚙."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="O que o professor faz">
+    <h2 class="s"><span class="n">7.2</span>O que o professor faz</h2>
+    <div class="cartoes dois">
+      <div class="cartao"><div class="ic">✅</div><h4>Pode</h4><ul>
+        <li>Criar turmas, cadastrar, mover e renomear alunos (cap. 3)</li>
+        <li>Gerar, copiar e mostrar o QR do link do aluno</li>
+        <li>Escrever notas da turma</li>
+        <li>Registrar e cancelar faltas, reposições, férias e créditos (cap. 4)</li>
+        <li>Cancelar e reativar aulas</li>
+        <li>Ver o Painel, o Registro, o Resumo do dia e as Fotos (cap. 5)</li>
+      </ul></div>
+      <div class="cartao"><div class="ic">🔒</div><h4>Fica com o dono</h4><ul>
+        <li>Regras de faltas, vaga extra e férias</li>
+        <li>Nome, vocabulário, capacidades padrão e calendário</li>
+        <li>Cadastrar e remover professores</li>
+        <li>Apagar linhas do Registro</li>
+        <li>Baixar os dados da escola</li>
+      </ul></div>
+    </div>
+    <div class="caixa dica"><b>Rotina do professor em 3 toques</b><p>Antes da aula: <b>Painel → RESUMO DO DIA</b> para ver quem vem e quem vem repor. Depois da aula: se alguém faltou sem avisar, <b>Faltas → Registrar</b> (ou <b>⏪ Retroativas</b>, se lembrar só depois).</p></div>
+    <div class="caixa saber"><b>Tudo fica com o seu nome</b><p>Cada coisa que o professor faz aparece no Registro e no histórico do aluno com o nome dele, numa cor própria.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 8. ALUNO ======================= -->
+<section class="capitulo" data-cor="#ea580c" data-clara="#ffedd5" data-cap="8" data-titulo="O app do aluno">
+  <div class="abertura"><div class="num">Capítulo 8</div><h1>O app do aluno</h1>
+    <p>O que o aluno vê e faz pelo link pessoal: avisar falta, marcar e cancelar reposição, registrar férias e receber avisos de vaga. Mostre este capítulo para quem tiver dúvida.</p>
+    <div class="papeis"><span class="pp">Aluno</span></div></div>
+
+  <div class="secao" data-sec="Abrir o link e a tela inicial">
+    <h2 class="s"><span class="n">8.1</span>Abrir o link e a tela inicial</h2>
+    <div class="lado">
+      <div>
+        <p>O aluno recebe o link da escola (seção 3.9) e toca nele. <b>Não precisa de senha nem de baixar nada.</b> Para ter o ícone no celular, é só adicionar à tela de início (seção 2.5).</p>
+        <ul class="legenda">
+          <li><span class="m">1</span><b>Regras</b>: como funcionam faltas e reposições na escola dele (seção 8.8). Ao lado, a turma dele.</li>
+          <li><span class="m">2</span><b>Alerta vermelho</b>: falta que vence nos próximos 7 dias.</li>
+          <li><span class="m">3</span><b>Alerta azul</b>: reposição marcada nos próximos 7 dias, com data e hora.</li>
+          <li><span class="m">4</span><b>Minhas faltas</b>: cada falta com a situação: <b style="color:#d97706">A marcar</b>, <b style="color:#2563eb">Marcada</b> (já tem reposição) ou <b style="color:#16a34a">Reposta</b>, e quando vence.</li>
+          <li><span class="m">5</span><b>Avisos</b> de vaga (seção 8.9).</li>
+          <li><span class="m">6</span><b>Vagas esta semana</b>: atalho para as vagas dos próximos dias. Tocar abre "Marcar reposição".</li>
+          <li><span class="m">7</span><b>Créditos</b>: em roxo, crédito extra; em verde-água, crédito de férias.</li>
+        </ul>
+        <p class="sm">Mais abaixo ficam os cartões <b>Registrar falta</b>, <b>Marcar reposição</b>, <b>Minhas reposições</b> e <b>Férias</b>. Toque num cartão para abrir.</p>
+      </div>
+      <div class="fig" data-id="aluno" data-cap="O link da aluna Marina."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Avisar uma falta">
+    <h2 class="s"><span class="n">8.2</span>Avisar uma falta</h2>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Toque em <b>🙋 Registrar falta</b>. Embaixo do título aparece a antecedência que a escola pede.</li>
+          <li>Marque a(s) aula(s) em que vai faltar <span class="m">1</span>, entre as próximas 8.</li>
+          <li>Toque em <b>Confirmar falta</b> <span class="m">2</span>. Aparece "Falta registrada!" e a falta entra em Minhas faltas.</li>
+        </ol>
+        <h3>O que cada data mostra</h3>
+        <ul>
+          <li><b>normal</b>: pode marcar;</li>
+          <li><b style="color:#ea580c">⏱️ laranja</b>: só como falta sem antecedência;</li>
+          <li><b>⛔</b>: prazo encerrado, não dá mais;</li>
+          <li><b>🎌 / 🏠</b>: feriado ou recesso; <b>🏖️</b>: mês de férias dele.</li>
+        </ul>
+        <p class="sm">Aula que o aluno já marcou como falta não aparece de novo na lista.</p>
+      </div>
+      <div>
+        <div class="fig" data-id="aluno-falta" data-cap="Escolhendo a aula em que vai faltar."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="aluno-falta-ok" data-cap="A falta nova já aparece como “A marcar”."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Marcar reposição">
+    <h2 class="s"><span class="n">8.3</span>Marcar reposição</h2>
+    <div class="lado">
+      <div>
+        <ol class="passos">
+          <li>Toque em <b>Marcar reposição</b>. Aparecem as vagas abertas, por data e turma.</li>
+          <li>Toque no botão da vaga desejada <span class="m">1</span>.</li>
+          <li>Pronto: aparece "Reposição marcada!" e ela vai para <b>Minhas reposições</b>.</li>
+        </ol>
+        <h3>O botão de cada vaga diz o que vai ser usado</h3>
+        <ul>
+          <li><b style="color:#2563eb">Repor</b>: usa uma falta;</li>
+          <li><b style="color:#0f766e">Repor (férias)</b>: usa o crédito de férias;</li>
+          <li><b style="color:#7e22ce">Repor (crédito)</b>: usa o crédito extra;</li>
+          <li><b style="color:#15803d">Aula extra</b>: quando não há direito. Pode ter custo: o AVIZ pede confirmação e sugere combinar com a escola;</li>
+          <li><b style="color:#2563eb">Voltar para a aula</b>: é a vaga da própria falta. Confirmar é o mesmo que cancelar a falta.</li>
+        </ul>
+        <p class="sm">Vagas em que o aluno já tem reposição aparecem apagadas. Se não houver nenhum direito, o cartão se chama "Marcar aula extra".</p>
+        <div class="caixa atencao"><b>Aula quase começando</b><p>Se a aula começa em pouco tempo, o AVIZ avisa: marcando agora e cancelando depois, o direito não volta.</p></div>
+      </div>
+      <div>
+        <div class="fig" data-id="aluno-repor" data-cap="Vagas abertas para a Marina."></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="aluno-repor-ok"></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="aluno-credito" data-cap="Ao usar um crédito, o app pede confirmação."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Minhas reposições e cancelar">
+    <h2 class="s"><span class="n">8.4</span>Minhas reposições e cancelar</h2>
+    <div class="lado">
+      <div>
+        <p>Em <b>🗓️ Minhas reposições</b> ficam as reposições agendadas: dia, turma e qual falta está sendo reposta. Para desmarcar, toque em <b>Cancelar</b> <span class="m">1</span> e confirme.</p>
+        <p>Se o prazo já está curto, aparece um aviso laranja antes, dizendo o que vai acontecer.</p>
+      </div>
+      <div class="fig" data-id="aluno-minhas" data-cap="Uma reposição agendada."></div>
+    </div>
+    <div class="junto">
+      <h3>O que volta quando o aluno cancela (exemplo com aviso de 24 h e janela de 2 h)</h3>
+      <table class="t">
+        <tr><th>Cancelou…</th><th>O que acontece</th></tr>
+        <tr><td>com mais de 24 h de antecedência</td><td>O direito volta inteiro (a falta volta para "A marcar"; o crédito volta a ficar disponível).</td></tr>
+        <tr><td>entre 24 h e 2 h antes</td><td>O direito volta, mas como <b>falta sem antecedência</b> (só se a escola usa esse tipo).</td></tr>
+        <tr><td>com menos de 2 h</td><td>Dá para cancelar, mas <b>o direito não volta</b>.</td></tr>
+      </table>
+      <p class="sm">Os horários seguem as regras da escola (seção 6.5). Se a escola não usa falta sem antecedência, cancelar depois do prazo de aviso não devolve o direito; sem exigência de antecedência, cancelar antes da aula sempre devolve. Quando é a equipe que cancela, pela aba Faltas &amp; Reposições, o direito volta inteiro.</p>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Cancelar uma falta">
+    <h2 class="s"><span class="n">8.5</span>Cancelar uma falta</h2>
+    <div class="lado">
+      <div>
+        <p>Vai poder ir, afinal? Em <b>Minhas faltas</b>, toque no <b>✕</b> ao lado da falta e confirme: a vaga volta a ficar disponível para ele.</p>
+        <p>Quando não dá para cancelar, o ✕ fica cinza. Tocando nele, aparece o motivo:</p>
+        <ul>
+          <li>a falta <b>já tem reposição marcada</b> (cancele a reposição primeiro);</li>
+          <li>o <b>horário da aula já passou</b>;</li>
+          <li>a vaga dele <b>já foi ocupada</b> por outra pessoa e não há outra para substituir;</li>
+          <li>a falta veio de uma <b>aula cancelada pela escola</b>.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="fig" data-id="aluno-cancelar-falta"></div>
+        <div style="height:4mm"></div>
+        <div class="fig" data-id="aluno-motivo" data-cap="Falta com reposição marcada: o motivo aparece em vermelho."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Férias pelo link">
+    <h2 class="s"><span class="n">8.6</span>Férias pelo link</h2>
+    <div class="lado">
+      <div>
+        <p>Se a escola oferece férias, o aluno registra sozinho:</p>
+        <ol class="passos">
+          <li>Toque em <b>🏖️ Férias</b>.</li>
+          <li>Escolha o <b>mês</b> <span class="m">1</span>.</li>
+          <li>Toque em <b>Confirmar férias</b> <span class="m">2</span>.</li>
+        </ol>
+        <p>O cartão mostra cada férias registrada, o crédito (disponível, usado ou expirado, com a data) e as vagas que ele liberou.</p>
+        <p class="sm">Só aparecem meses permitidos pelo limite por ano. Se houver falta no mês escolhido, o app pede para cancelar a falta antes.</p>
+      </div>
+      <div class="fig" data-id="aluno-ferias" data-cap="Escolhendo o mês das férias."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Regras da escola">
+    <h2 class="s"><span class="n">8.7</span>Regras da escola</h2>
+    <div class="lado">
+      <div>
+        <p>O botão <b>Regras</b>, no alto, abre o "Como funciona": avisar falta, cancelar falta, marcar e cancelar reposição e férias.</p>
+        <p>O texto é montado <b>com as regras que você configurou</b> (antecedência, validade, férias, recessos). Mudou uma regra nas Configurações? O texto do aluno muda junto.</p>
+        <div class="caixa dica"><b>Use a seu favor</b><p>Quando um aluno perguntar "até quando posso repor?", peça para ele tocar em Regras.</p></div>
+      </div>
+      <div class="fig" data-id="aluno-regras" data-w="56" data-cap="“Como funciona”, com as regras do Ateliê Barro Bom."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Avisos de vaga">
+    <h2 class="s"><span class="n">8.8</span>Avisos de vaga</h2>
+    <div class="lado">
+      <div>
+        <p>Para quem só pode repor em certos dias: o aluno escolhe as turmas e o celular avisa quando abrir vaga nelas.</p>
+        <ol class="passos">
+          <li>Em Minhas faltas, toque em <b>🔕 Avisos</b>.</li>
+          <li>Toque nas turmas desejadas <span class="m">1</span>. Na primeira vez, o celular pede permissão para notificações: toque em <b>Permitir</b>.</li>
+          <li>As turmas escolhidas ficam com <b>🔔 Ativo</b>. "Desativar todos" desliga tudo.</li>
+        </ol>
+        <div class="caixa atencao"><b>Para o aviso chegar</b><p>O app precisa estar aberto (pode ficar em segundo plano). Os avisos só disparam quando o aluno tem falta para repor, e param sozinhos quando não tiver mais. Se o navegador bloquear notificações, é preciso liberar nas configurações do site.</p></div>
+      </div>
+      <div class="fig" data-id="aluno-avisos" data-cap="Avisos ligados para a turma de quarta."></div>
+    </div>
+  </div>
+
+  <div class="secao" data-sec="Mensagem pronta para os alunos">
+    <h2 class="s"><span class="n">8.9</span>Mensagem pronta para os alunos</h2>
+    <p>Um modelo para mandar junto com o link. Ajuste o que quiser:</p>
+    <div class="mensagem"><div class="bolha">
+      Oi, <b>[nome]</b>! A partir de agora as faltas e reposições do <b>[nome da escola]</b> são pelo AVIZ. 📲<br /><br />
+      Este é o seu link pessoal (não passe para ninguém): <b>[link]</b><br /><br />
+      Por ele você:<br />
+      🙋 avisa quando vai faltar;<br />
+      ✅ escolhe uma vaga para repor, na turma e no dia que preferir;<br />
+      🏖️ registra suas férias.<br /><br />
+      Dica: toque em "Regras" para ver os prazos, e adicione o link à tela de início do celular para abrir como um app. Qualquer dúvida, é só chamar!
+    </div></div>
+  </div>
+</section>
+
+<!-- ======================= 9. ROTINA ======================= -->
+<section class="capitulo" data-cor="#16a34a" data-clara="#dcfce7" data-cap="9" data-titulo="Rotina sugerida">
+  <div class="abertura"><div class="num">Capítulo 9</div><h1>Rotina sugerida</h1>
+    <p>Poucos minutos por semana bastam para nenhuma reposição se perder. Uma sugestão de rotina; adapte ao jeito da sua escola.</p>
+    <div class="papeis"><span class="pp">Dono</span><span class="pp">Equipe</span></div></div>
+
+  <div class="secao" data-sec="Para começar a usar">
+    <h2 class="s"><span class="n">9.1</span>Para começar a usar</h2>
+    <ul class="lista-check">
+      <li>Conferir as regras: Faltas, Vaga extra e Férias (seções 6.5 a 6.7).</li>
+      <li>Cadastrar recessos e feriados da cidade (seção 6.4).</li>
+      <li>Criar as turmas com dias e horários (seção 3.2).</li>
+      <li>Colar a lista de alunos de cada turma (seção 3.4).</li>
+      <li>Ajustar a capacidade das turmas que são diferentes do padrão (seção 3.6).</li>
+      <li>Cadastrar os professores, se houver (seção 6.8).</li>
+      <li>Gerar e enviar os links, com a mensagem pronta (seções 3.9 e 8.9). Na primeira aula, mostrar o QR code para quem não abriu.</li>
+    </ul>
+  </div>
+
+  <div class="secao" data-sec="Dia a dia, semana e mês">
+    <h2 class="s"><span class="n">9.2</span>Dia a dia, semana e mês</h2>
+    <div class="rotina">
+      <div class="cartao"><h4>☀️ Antes de cada aula <span class="tag-tempo">1 min</span></h4><ul>
+        <li>Painel → <b>RESUMO DO DIA</b>: quem vem, quem faltou e quem vem repor.</li>
+        <li>Ler as <b>📋 notas</b> da turma, se tiver o <b style="color:#ef4444">!</b> vermelho.</li>
+      </ul></div>
+      <div class="cartao"><h4>🌙 Depois da aula <span class="tag-tempo">1 min</span></h4><ul>
+        <li>Faltou sem avisar? <b>Faltas → Registrar</b> (ou ⏪ Retroativas).</li>
+        <li>Aviso chegou pelo WhatsApp? Registre no AVIZ, para a vaga abrir para os outros.</li>
+      </ul></div>
+      <div class="cartao"><h4>📅 Uma vez por semana <span class="tag-tempo">5 min</span></h4><ul>
+        <li>Painel → <b>OBSERVAÇÕES</b> e faltas em amarelo: lembrar quem está com falta vencendo.</li>
+        <li>Conferir aulas extras: marcar <b>PAGO</b>.</li>
+        <li>Se quiser, salvar uma <b>🕘 Foto</b> da lista ("Fechamento da semana").</li>
+      </ul></div>
+      <div class="cartao"><h4>🗓️ Uma vez por mês <span class="tag-tempo">5 min</span></h4><ul>
+        <li>Conferir as férias do mês seguinte.</li>
+        <li>Revisar créditos extras ativos e expirados.</li>
+        <li><b>Baixar os dados</b> (seção 6.9) e guardar a cópia.</li>
+        <li>Começo de semestre: cadastrar o próximo recesso.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 10. FAQ ======================= -->
+<section class="capitulo" data-cor="#db2777" data-clara="#fce7f3" data-cap="10" data-titulo="Perguntas frequentes">
+  <div class="abertura"><div class="num">Capítulo 10</div><h1>Perguntas frequentes</h1>
+    <p>As dúvidas mais comuns de quem está começando, com a resposta curta e onde encontrar mais.</p></div>
+
+  <div class="faq-grupo">Acesso e login</div>
+  <div class="faq">
+    <div class="q"><h4>Esqueci meu PIN. E agora?</h4><p>Na tela de entrada, toque em "Esqueci meu PIN", receba o link por e-mail e escolha um PIN novo (seção 2.4). Professor também pode pedir ao dono um PIN novo.</p></div>
+    <div class="q"><h4>Errei o PIN e não consigo mais entrar.</h4><p>Depois de 10 erros seguidos, a entrada daquele e-mail trava por 15 minutos. Espere e tente de novo, ou use "Esqueci meu PIN".</p></div>
+    <div class="q"><h4>Preciso digitar e-mail e PIN toda vez?</h4><p>Não. O aparelho fica conectado até você tocar em "sair".</p></div>
+    <div class="q"><h4>Posso usar no celular e no computador ao mesmo tempo?</h4><p>Sim, e várias pessoas da equipe também. O que um faz aparece para os outros em segundos.</p></div>
+    <div class="q"><h4>Sou de mais de uma escola. Como troco?</h4><p>A mesma conta e o mesmo PIN servem para todas. Ao entrar sem o endereço de uma escola, aparece "Suas escolas". Cada escola tem o seu endereço (e o seu ícone, se instalar).</p></div>
+    <div class="q"><h4>O link do "Esqueci meu PIN" abriu no Safari, não no app.</h4><p>No iPhone é assim. Crie o PIN no Safari, volte ao app da tela de início e entre com o e-mail e o PIN novo.</p></div>
+    <div class="q"><h4>Esqueci o endereço da escola.</h4><p>Abra o endereço principal do AVIZ e entre com e-mail e PIN: o app encontra a sua escola sozinho. O endereço principal aparece em Configurações → Professores e seu PIN.</p></div>
+  </div>
+
+  <div class="faq-grupo">Alunos e links</div>
+  <div class="faq">
+    <div class="q"><h4>O aluno precisa de senha ou baixar um app?</h4><p>Não. Ele usa o link pessoal. Se quiser, adiciona à tela de início e abre como um app (seção 2.5).</p></div>
+    <div class="q"><h4>O aluno perdeu o link ou trocou de celular.</h4><p>Abra 🔗 Link, escolha o aluno e copie de novo: o link é sempre o mesmo.</p></div>
+    <div class="q"><h4>O link de um aluno foi parar com outra pessoa.</h4><p>Toque em "Revogar link" (o antigo para de funcionar), gere um novo e mande só para o aluno (seção 3.9).</p></div>
+    <div class="q"><h4>O aluno consegue ver os colegas?</h4><p>Não. Ele vê só as faltas, reposições e férias dele. As vagas aparecem só como dia e turma, sem dizer de quem eram.</p></div>
+    <div class="q"><h4>Tenho dois alunos com o mesmo nome.</h4><p>Na mesma turma não pode: use o sobrenome ou uma inicial ("Ana S." e "Ana P."). Em turmas diferentes não tem problema.</p></div>
+    <div class="q"><h4>Um aluno mudou de turma.</h4><p>Gerenciar → toque no aluno → "Mover para outra turma". Faltas, reposições e o link vão junto. Se tiver falta ou férias futuras, cancele antes (seção 3.6).</p></div>
+    <div class="q"><h4>Um aluno saiu da escola.</h4><p>Mova para "Alunos extras &amp; ex-alunos" para guardar o histórico, ou remova. Removido, o link dele para de funcionar.</p></div>
+  </div>
+
+  <div class="faq-grupo">Faltas, vagas e reposições</div>
+  <div class="faq">
+    <div class="q"><h4>O aluno avisou a falta pelo WhatsApp.</h4><p>Registre você mesmo em Faltas → Registrar (seção 4.2). Assim a vaga dele abre para os outros.</p></div>
+    <div class="q"><h4>Esqueci de lançar uma falta da semana passada.</h4><p>Use "⏪ Retroativas", em Faltas → Registrar: até 3 meses para trás (seção 4.3).</p></div>
+    <div class="q"><h4>Qual falta é usada quando o aluno repõe?</h4><p>O AVIZ escolhe sozinho o direito que vence primeiro (falta, crédito de férias ou crédito extra). Ninguém precisa escolher.</p></div>
+    <div class="q"><h4>O que acontece quando a falta vence?</h4><p>Ela sai da lista, a vaga dela fecha e o aluno perde o direito. O Registro anota "⏰ Expirou". O prazo é a "Validade da falta" (seção 6.5).</p></div>
+    <div class="q"><h4>O que é falta sem antecedência?</h4><p>Falta avisada em cima da hora. Se a escola permitir, o aluno ainda pode repor, mas só numa aula que vai começar logo. Veja a tabela da seção 6.5.</p></div>
+    <div class="q"><h4>De onde vêm as vagas?</h4><p>De faltas e férias de outros alunos e, se ligado, das vagas extras: os lugares que sobram até o máximo da sala, abertos um tempo antes da aula (seção 6.6).</p></div>
+    <div class="q"><h4>O aluno quer repor numa turma sem vaga.</h4><p>Pelo link ele só vê vagas abertas. A equipe pode encaixá-lo com "✦ Escolher data / turma"; o AVIZ avisa se passar do máximo (seção 4.6).</p></div>
+    <div class="q"><h4>Qual a diferença entre reposição e aula extra?</h4><p>Reposição usa um direito (falta ou crédito). Aula extra é para quem não tem direito e pode ser cobrada: marque "PAGO" no Painel (seção 5.2).</p></div>
+    <div class="q"><h4>O aluno não consegue cancelar a falta.</h4><p>Ao tocar no ✕ cinza aparece o motivo: reposição já marcada, horário passado, vaga já ocupada ou aula cancelada pela escola (seção 8.5). A equipe pode ajudar pela aba Faltas &amp; Reposições.</p></div>
+    <div class="q"><h4>O professor faltou. Como cancelo a aula?</h4><p>Faltas &amp; Reposições → Cancelar Aula. Todos ganham falta com direito a repor, sem punição. Errou? "Reativar" desfaz (seção 4.10).</p></div>
+    <div class="q"><h4>E os feriados?</h4><p>Os nacionais já vêm marcados. Os da cidade e os recessos você cadastra no Calendário. Nesses dias não há falta nem vaga (seção 6.4).</p></div>
+    <div class="q"><h4>Não quero que os alunos marquem reposição numa aula.</h4><p>Painel → VAGAS → toque na aula → "Ocultar vagas dos alunos" (seção 5.4).</p></div>
+  </div>
+
+  <div class="faq-grupo">Férias e créditos</div>
+  <div class="faq">
+    <div class="q"><h4>Como funcionam as férias?</h4><p>O aluno (ou a equipe) registra um mês. As aulas dele viram vagas e, se a escola quiser, ele ganha crédito(s) de reposição com validade (seções 4.8 e 6.7).</p></div>
+    <div class="q"><h4>Por que as férias não deram crédito?</h4><p>Ou a escola configurou férias sem crédito, ou o mês pega um recesso. Nos dois casos as vagas são liberadas mesmo assim.</p></div>
+    <div class="q"><h4>Quando usar o crédito extra?</h4><p>Quando a escola quer dar uma reposição sem falta: cortesia, compensação, um combinado. Ele tem data para vencer (seção 4.9).</p></div>
+  </div>
+
+  <div class="faq-grupo">Equipe</div>
+  <div class="faq">
+    <div class="q"><h4>O que o professor não pode fazer?</h4><p>Mudar regras e configurações, cadastrar professores, apagar linhas do Registro e baixar os dados. O resto ele faz (capítulo 7).</p></div>
+    <div class="q"><h4>Um professor saiu da escola.</h4><p>Configurações → Professores → "remover". O acesso acaba na hora; o histórico continua com o nome dele.</p></div>
+    <div class="q"><h4>Preciso trocar o e-mail de um professor.</h4><p>O e-mail não muda depois de salvo. Remova o professor e adicione de novo com o e-mail certo.</p></div>
+  </div>
+
+  <div class="faq-grupo">Dados, segurança e celular</div>
+  <div class="faq">
+    <div class="q"><h4>Registrei algo errado.</h4><p>Desfaça pelo caminho contrário: cancele a falta ou a reposição, remova as férias ou o crédito, reative a aula. O Registro mostra tudo o que foi feito e por quem.</p></div>
+    <div class="q"><h4>Apaguei algo importante sem querer.</h4><p>Avise a equipe do AVIZ o quanto antes: o sistema guarda cópias de segurança automáticas da escola.</p></div>
+    <div class="q"><h4>Posso ter uma cópia dos dados?</h4><p>Sim: Configurações → Baixar os dados (seção 6.9). Os dados são da escola.</p></div>
+    <div class="q"><h4>Como excluo a escola?</h4><p>Peça à equipe do AVIZ. Não há botão no app, para ninguém apagar tudo sem querer.</p></div>
+    <div class="q"><h4>Funciona sem internet?</h4><p>Não. O AVIZ precisa de internet para mostrar e salvar as informações na hora para todos.</p></div>
+    <div class="q"><h4>As palavras do app são diferentes das deste guia.</h4><p>A sua escola deve ter mudado o Vocabulário (por exemplo, "classe" em vez de "turma"). É o mesmo app (seção 6.2).</p></div>
+  </div>
+
+  <div class="fim">
+    <img src="../../public/icons/icon-192.png" alt="" />
+    <div><h3>Ficou alguma dúvida?</h3><p>Fale com a equipe do AVIZ pelo mesmo canal em que você recebeu o convite. A gente responde e, se a dúvida for comum, ela entra na próxima edição deste guia.</p></div>
+  </div>
+</section>
+
+<script>
+// Monta figuras, cores dos capítulos e sumário. Dados vêm do montar-pdf.mjs:
+// window.CAPTURAS (tamanho e marcadores de cada captura) e window.PAGINAS
+// (página de cada capítulo/seção, na segunda passada).
+(function () {
+  const K = 62 / 390; // mm por pixel de tela: um celular de 390 px vira 62 mm
+  const CAP = window.CAPTURAS || {};
+  const PAG = window.PAGINAS || {};
+
+  document.querySelectorAll('.fig[data-id]').forEach((el) => {
+    const id = el.dataset.id;
+    const c = CAP[id];
+    if (!c) { el.textContent = '[captura ' + id + ' não encontrada]'; return; }
+    const largura = el.dataset.w ? Number(el.dataset.w) : c.w * K;
+    const escala = largura / c.w;
+    el.classList.add(c.tela ? 'tela' : 'recorte');
+    const quadro = document.createElement('div');
+    quadro.className = 'quadro';
+    quadro.style.width = largura + 'mm';
+    if (!c.tela) quadro.style.borderRadius = Math.max(1.6, 12 * escala) + 'mm';
+    const caixaImg = document.createElement('div');
+    caixaImg.style.position = 'relative';
+    if (!c.tela) caixaImg.style.borderRadius = 'inherit';
+    const img = document.createElement('img');
+    img.src = 'saida/capturas/' + id + '.png';
+    if (!c.tela) img.style.borderRadius = 'inherit';
+    caixaImg.appendChild(img);
+    for (const m of c.marcas || []) {
+      const mk = document.createElement('span');
+      mk.className = 'mk a-' + (m.a || 'c');
+      mk.style.left = m.x + '%';
+      mk.style.top = m.y + '%';
+      mk.textContent = m.n;
+      caixaImg.appendChild(mk);
+    }
+    quadro.appendChild(caixaImg);
+    el.appendChild(quadro);
+    if (el.dataset.cap) {
+      const fc = document.createElement('figcaption');
+      fc.textContent = el.dataset.cap;
+      fc.style.maxWidth = Math.max(largura, 48) + 'mm';
+      el.appendChild(fc);
+    }
+  });
+
+  // Título de seção nunca fica sozinho no pé da página: vai junto com o
+  // primeiro bloco que vem depois dele.
+  document.querySelectorAll('.secao > h2.s').forEach((h2) => {
+    const prox = h2.nextElementSibling;
+    if (!prox) return;
+    const cab = document.createElement('div');
+    cab.className = 'cabeca';
+    h2.before(cab);
+    cab.append(h2, prox);
+  });
+
+  // Cores por capítulo + âncoras invisíveis para achar a página de cada título.
+  const sumario = document.getElementById('sumario');
+  document.querySelectorAll('.capitulo').forEach((cap) => {
+    cap.style.setProperty('--cor', cap.dataset.cor);
+    cap.style.setProperty('--cor-clara', cap.dataset.clara);
+    const n = cap.dataset.cap;
+    const h1 = cap.querySelector('.abertura h1');
+    const ancCap = document.createElement('span');
+    ancCap.className = 'ancora';
+    ancCap.textContent = '[[C' + n + ']]';
+    h1.prepend(ancCap);
+
+    const bloco = document.createElement('div');
+    bloco.className = 'cap';
+    const pgCap = PAG['C' + n] || '';
+    bloco.innerHTML = '<div class="cap-tit"><span class="n" style="background:' + cap.dataset.cor + '">' + n + '</span><span class="t">' + cap.dataset.titulo + '</span><span class="pontos"></span><span class="pg">' + pgCap + '</span></div>';
+    cap.querySelectorAll('.secao[data-sec]').forEach((sec) => {
+      const h2 = sec.querySelector('h2.s');
+      const num = h2.querySelector('.n').textContent;
+      const chave = 'S' + num;
+      const anc = document.createElement('span');
+      anc.className = 'ancora';
+      anc.textContent = '[[' + chave + ']]';
+      h2.prepend(anc);
+      const linha = document.createElement('div');
+      linha.className = 'linha';
+      linha.innerHTML = '<span class="t">' + num + '  ' + sec.dataset.sec + '</span><span class="pontos"></span><span class="pg">' + (PAG[chave] || '') + '</span>';
+      bloco.appendChild(linha);
+    });
+    sumario.appendChild(bloco);
+  });
+  // Na passada final as âncoras saem (não mudam o layout: são absolutas).
+  if (window.SEM_ANCORAS) document.querySelectorAll('.ancora').forEach((a) => a.remove());
+  if (window.EDICAO) document.getElementById('edicao').textContent = window.EDICAO;
+})();
+</script>
+</body>
+</html>

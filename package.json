@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "bash test/run.sh"
+    "test": "bash test/run.sh",
+    "tutorial": "node scripts/tutorial/capturar.mjs && node scripts/tutorial/montar-pdf.mjs"
   },
   "dependencies": {
     "firebase": "^11.10.0",
