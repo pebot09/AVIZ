@@ -5,6 +5,19 @@ data, o que foi feito, o que ficou pendente e o próximo passo.
 
 ---
 
+## 2026-11-08 — Tutorial em PDF: sombras cinzas no iPhone
+
+- Pedro: no GitHub o PDF ficava perfeito, mas baixado e aberto no iPhone
+  apareciam retângulos cinzas em volta das telas e dos marcadores.
+- Causa: o Chromium grava cada sombra (box-shadow) como imagem com
+  transparência, e o leitor de PDF do iPhone desenha isso errado.
+- Feito: o PDF não tem mais sombra, opacidade nem cor transparente (bordas
+  finas e cores sólidas no lugar). Conferido no arquivo: 0 máscaras, 0 grupos
+  de transparência. Ficou com 5,4 MB (antes 6,5).
+- Próximo passo: Pedro baixar de novo e conferir no iPhone.
+
+---
+
 ## 2026-11-08 — Tutorial em PDF: "Guia completo do AVIZ"
 
 - Pedido do Pedro: PDF diagramado, com imagens, ensinando todas as ações do
